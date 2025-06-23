@@ -130,7 +130,7 @@ export default function AtendimentoPage() {
   // Funções para controle de IA
   const handleToggleAI = async (chatId: string, enabled: boolean) => {
     try {
-      const action = enabled ? 'resume_ai' : 'pause_ai'
+      const action = enabled ? 'return_to_ai' : 'pause_ai'
       const response = await fetch('/api/atendimento/ai-control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,7 +150,7 @@ export default function AtendimentoPage() {
               ...chat, 
               aiEnabled: enabled,
               aiPaused: !enabled,
-              conversationStatus: enabled ? 'ai_responding' : 'agent_assigned'
+              conversationStatus: enabled ? 'ai_active' : 'agent_assigned'
             }
           : chat
       ))
@@ -161,14 +161,57 @@ export default function AtendimentoPage() {
           ...prev,
           aiEnabled: enabled,
           aiPaused: !enabled,
-          conversationStatus: enabled ? 'ai_responding' : 'agent_assigned'
+          conversationStatus: enabled ? 'ai_active' : 'agent_assigned'
         } : null)
       }
 
-      toast.success(enabled ? 'IA ativada com sucesso' : 'IA pausada com sucesso')
+      toast.success(enabled ? 'Conversa retornada para IA' : 'IA pausada com sucesso')
     } catch (error: any) {
       console.error(error)
       toast.error(`Erro ao ${enabled ? 'ativar' : 'pausar'} IA: ${error.message}`)
+    }
+  }
+
+  const handleAssumeChat = async (chatId: string) => {
+    try {
+      const response = await fetch('/api/atendimento/ai-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId,
+          action: 'assume_chat',
+          agentId: 'current-agent' // TODO: Pegar do contexto de autenticação
+        }),
+      })
+
+      if (!response.ok) throw new Error('Falha ao assumir atendimento')
+
+      // Atualizar o chat local
+      setChats(prev => prev.map(chat =>
+        chat.id === chatId
+          ? { 
+              ...chat, 
+              aiPaused: true,
+              conversationStatus: 'agent_assigned',
+              assignedAgent: 'current-agent'
+            }
+          : chat
+      ))
+
+      // Atualizar selectedChat se for o mesmo
+      if (selectedChat?.id === chatId) {
+        setSelectedChat(prev => prev ? {
+          ...prev,
+          aiPaused: true,
+          conversationStatus: 'agent_assigned',
+          assignedAgent: 'current-agent'
+        } : null)
+      }
+
+      toast.success('Atendimento assumido com sucesso!')
+    } catch (error: any) {
+      console.error(error)
+      toast.error(`Erro ao assumir atendimento: ${error.message}`)
     }
   }
 
@@ -227,7 +270,7 @@ export default function AtendimentoPage() {
         }),
       })
 
-      if (!response.ok) throw new Error('Falha ao marcar como resolvido')
+      if (!response.ok) throw new Error('Falha ao finalizar atendimento')
 
       // Atualizar o chat local
       setChats(prev => prev.map(chat =>
@@ -235,7 +278,9 @@ export default function AtendimentoPage() {
           ? { 
               ...chat, 
               conversationStatus: 'resolved',
-              aiPaused: true
+              aiPaused: true,
+              resolvedAt: new Date().toISOString(),
+              resolvedBy: 'current-agent'
             }
           : chat
       ))
@@ -245,14 +290,16 @@ export default function AtendimentoPage() {
         setSelectedChat(prev => prev ? {
           ...prev,
           conversationStatus: 'resolved',
-          aiPaused: true
+          aiPaused: true,
+          resolvedAt: new Date().toISOString(),
+          resolvedBy: 'current-agent'
         } : null)
       }
 
-      toast.success('Conversa marcada como resolvida')
+      toast.success('Atendimento finalizado com sucesso!')
     } catch (error: any) {
       console.error(error)
-      toast.error(`Erro ao marcar como resolvida: ${error.message}`)
+      toast.error(`Erro ao finalizar atendimento: ${error.message}`)
     }
   }
 
@@ -274,6 +321,7 @@ export default function AtendimentoPage() {
               onSendMessage={handleSendMessage}
               isLoading={isLoadingMessages && messages.length === 0}
               onToggleAI={handleToggleAI}
+              onAssumeChat={handleAssumeChat}
               onAssignAgent={handleAssignAgent}
               onMarkResolved={handleMarkResolved}
             />

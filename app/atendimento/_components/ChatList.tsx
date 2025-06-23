@@ -33,10 +33,10 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
     switch (chat.conversationStatus) {
       case 'waiting':
         return <div title="Aguardando"><Clock className="w-4 h-4 text-yellow-500" /></div>
-      case 'ai_responding':
-        return <div title="IA Respondendo"><Bot className="w-4 h-4 text-blue-500" /></div>
+      case 'ai_active':
+        return <div title="IA Ativa"><Bot className="w-4 h-4 text-blue-500" /></div>
       case 'agent_assigned':
-        return <div title="Agente Atribuído"><User className="w-4 h-4 text-green-500" /></div>
+        return <div title="Em Atendimento"><User className="w-4 h-4 text-green-500" /></div>
       case 'resolved':
         return <div title="Resolvido"><CheckCircle className="w-4 h-4 text-gray-500" /></div>
       default:
@@ -47,7 +47,7 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
   const getStatusColor = () => {
     switch (chat.conversationStatus) {
       case 'waiting': return 'border-l-yellow-500'
-      case 'ai_responding': return 'border-l-blue-500'
+      case 'ai_active': return 'border-l-blue-500'
       case 'agent_assigned': return 'border-l-green-500'
       case 'resolved': return 'border-l-gray-400'
       default: return 'border-l-gray-200 dark:border-l-gray-700'
@@ -102,8 +102,13 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
   const [newContact, setNewContact] = useState({ name: '', phone: '' })
   const [isSaving, setIsSaving] = useState(false)
 
-  // TODO: Implement filtering logic for tabs
-  const filteredChats = chats
+  // Filtrar chats por status/aba
+  const chatsByStatus = {
+    waiting: chats.filter(chat => chat.conversationStatus === 'waiting'),
+    ai_active: chats.filter(chat => chat.conversationStatus === 'ai_active'),
+    agent_assigned: chats.filter(chat => chat.conversationStatus === 'agent_assigned'),
+    resolved: chats.filter(chat => chat.conversationStatus === 'resolved')
+  }
 
   const handleAddContact = async () => {
     if (!newContact.name.trim() || !newContact.phone.trim()) return
@@ -134,13 +139,23 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
       </div>
       
       <Tabs defaultValue="chats" className="flex-grow flex flex-col">
-        <TabsList className="px-4">
-          <TabsTrigger value="chats" className="flex-1">Chats ({filteredChats.length})</TabsTrigger>
-          <TabsTrigger value="espera" className="flex-1">Espera (0)</TabsTrigger>
-          <TabsTrigger value="andamento" className="flex-1">Andamento (0)</TabsTrigger>
+        <TabsList className="px-4 grid grid-cols-4">
+          <TabsTrigger value="chats" className="text-xs">
+            Chats ({chatsByStatus.waiting.length})
+          </TabsTrigger>
+          <TabsTrigger value="ia" className="text-xs">
+            IA ({chatsByStatus.ai_active.length})
+          </TabsTrigger>
+          <TabsTrigger value="andamento" className="text-xs">
+            Andamento ({chatsByStatus.agent_assigned.length})
+          </TabsTrigger>
+          <TabsTrigger value="resolvidos" className="text-xs">
+            Resolvidos ({chatsByStatus.resolved.length})
+          </TabsTrigger>
         </TabsList>
 
         <div className="flex-grow overflow-y-auto">
+          {/* Aba Chats - Conversas aguardando */}
           <TabsContent value="chats" className="m-0">
             {isLoading ? (
               <div className="flex justify-center items-center h-full p-8">
@@ -148,18 +163,79 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
               </div>
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                 {filteredChats.map((chat) => (
-                    <ChatListItem
-                      key={chat.id}
-                      chat={chat}
-                      isSelected={selectedChat?.id === chat.id}
-                      onSelectChat={onSelectChat}
-                    />
-                  ))}
+                {chatsByStatus.waiting.map((chat) => (
+                  <ChatListItem
+                    key={chat.id}
+                    chat={chat}
+                    isSelected={selectedChat?.id === chat.id}
+                    onSelectChat={onSelectChat}
+                  />
+                ))}
+                {chatsByStatus.waiting.length === 0 && (
+                  <div className="p-8 text-center text-gray-500">
+                    <p>Nenhuma conversa aguardando</p>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>
-          {/* TODO: Add content for other tabs */}
+
+          {/* Aba IA - Conversas com IA ativa */}
+          <TabsContent value="ia" className="m-0">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {chatsByStatus.ai_active.map((chat) => (
+                <ChatListItem
+                  key={chat.id}
+                  chat={chat}
+                  isSelected={selectedChat?.id === chat.id}
+                  onSelectChat={onSelectChat}
+                />
+              ))}
+              {chatsByStatus.ai_active.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <p>Nenhuma conversa com IA ativa</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Aba Andamento - Conversas com agentes */}
+          <TabsContent value="andamento" className="m-0">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {chatsByStatus.agent_assigned.map((chat) => (
+                <ChatListItem
+                  key={chat.id}
+                  chat={chat}
+                  isSelected={selectedChat?.id === chat.id}
+                  onSelectChat={onSelectChat}
+                />
+              ))}
+              {chatsByStatus.agent_assigned.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <p>Nenhuma conversa em andamento</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Aba Resolvidos */}
+          <TabsContent value="resolvidos" className="m-0">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {chatsByStatus.resolved.map((chat) => (
+                <ChatListItem
+                  key={chat.id}
+                  chat={chat}
+                  isSelected={selectedChat?.id === chat.id}
+                  onSelectChat={onSelectChat}
+                />
+              ))}
+              {chatsByStatus.resolved.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <p>Nenhuma conversa resolvida</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
         </div>
         
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">

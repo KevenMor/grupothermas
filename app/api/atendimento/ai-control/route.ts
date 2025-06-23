@@ -30,12 +30,31 @@ export async function POST(request: NextRequest) {
         break
 
       case 'resume_ai':
+      case 'return_to_ai':
         updateData = {
           aiPaused: false,
           aiEnabled: true,
-          conversationStatus: 'ai_responding',
+          conversationStatus: 'ai_active',
+          assignedAgent: null,
           pausedAt: null,
           pausedBy: null
+        }
+        break
+
+      case 'assume_chat':
+        updateData = {
+          aiPaused: true,
+          conversationStatus: 'agent_assigned',
+          assignedAgent: agentId || 'unknown',
+          pausedAt: timestamp,
+          pausedBy: agentId || 'unknown',
+          transferHistory: {
+            from: 'ai',
+            to: 'agent',
+            agentId: agentId || 'unknown',
+            timestamp,
+            reason: 'Agent assumed chat'
+          }
         }
         break
 
@@ -55,6 +74,17 @@ export async function POST(request: NextRequest) {
           aiPaused: true,
           resolvedAt: timestamp,
           resolvedBy: agentId || 'unknown'
+        }
+        break
+
+      case 'reopen_chat':
+        updateData = {
+          conversationStatus: 'ai_active',
+          aiEnabled: true,
+          aiPaused: false,
+          assignedAgent: null,
+          resolvedAt: null,
+          resolvedBy: null
         }
         break
 

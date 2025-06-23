@@ -74,6 +74,41 @@ export async function POST(request: NextRequest) {
     await conversationRef.collection('messages').doc(messageId).set(msg)
 
     console.log('Mensagem salva com sucesso no Firestore')
+
+    // Chamar IA automaticamente se a conversa estiver ativa para IA
+    const conversationData = await conversationRef.get()
+    const chatData = conversationData.data()
+    
+    if (chatData && (chatData.conversationStatus === 'waiting' || chatData.conversationStatus === 'ai_active')) {
+      console.log('Chamando IA para responder automaticamente...')
+      
+      try {
+        // Chamar API da IA
+        const aiResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            chatId: phone,
+            customerMessage: content,
+            customerName: senderName || chatName || phone
+          })
+        })
+
+        if (aiResponse.ok) {
+          const aiResult = await aiResponse.json()
+          console.log('IA respondeu:', aiResult.aiMessage)
+        } else {
+          console.error('Erro ao chamar IA:', await aiResponse.text())
+        }
+      } catch (error) {
+        console.error('Erro ao processar resposta da IA:', error)
+      }
+    } else {
+      console.log('IA não está ativa para esta conversa, status:', chatData?.conversationStatus)
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Erro webhook Z-API:', error)

@@ -21,9 +21,9 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-FL8LVCVBC9
 Estas variáveis ficam apenas no servidor e não são expostas ao cliente:
 
 ```
-FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"grupo-thermas-a99fc","private_key_id":"...","private_key":"...","client_email":"...","client_id":"...","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"..."}
-ZAPI_TOKEN=seu_token_da_zapi_aqui
-OPENAI_API_KEY=sua_chave_da_openai_aqui
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"your-project-id",...}
+ZAPI_TOKEN=your_token
+OPENAI_API_KEY=sk-your-openai-api-key
 ```
 
 ## Como Configurar no Railway
@@ -49,3 +49,54 @@ Crie um arquivo `.env.local` na raiz do projeto com as mesmas variáveis acima.
 ## Verificação
 
 Após configurar as variáveis, o build no Railway deve funcionar sem erros de `auth/invalid-api-key` ou outras falhas relacionadas ao Firebase. 
+
+## Variáveis de Ambiente Necessárias
+
+## Firebase
+```
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"your-project-id",...}
+```
+
+## Z-API (WhatsApp)
+```
+ZAPI_INSTANCE_ID=your_instance_id
+ZAPI_TOKEN=your_token
+ZAPI_CLIENT_TOKEN=your_client_token
+```
+
+## OpenAI (IA Conversacional)
+```
+OPENAI_API_KEY=sk-your-openai-api-key
+```
+
+## Next.js
+```
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-nextauth-secret
+```
+
+## Como Configurar
+
+### 1. OpenAI
+1. Acesse https://platform.openai.com/api-keys
+2. Crie uma nova API key
+3. Adicione a variável `OPENAI_API_KEY` no Railway/Vercel
+
+### 2. Z-API
+1. Configure sua instância no painel Z-API
+2. Configure o webhook para: `https://seu-dominio.com/api/zapi/webhook`
+3. Adicione as variáveis no Railway/Vercel
+
+### 3. Firebase
+1. Baixe o arquivo de service account do Firebase
+2. Converta para string JSON
+3. Adicione como `FIREBASE_SERVICE_ACCOUNT_JSON`
+
+## Fluxo de IA
+
+Quando um cliente envia mensagem:
+1. Z-API recebe → Webhook salva no Firestore
+2. Sistema verifica se IA está ativa
+3. OpenAI processa mensagem com contexto
+4. Resposta é enviada via Z-API automaticamente
+5. Conversa fica na aba "IA" até agente assumir 

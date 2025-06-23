@@ -1,278 +1,230 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
 
-const CONFIG_COLLECTION = 'admin_config'
-const CONFIG_DOC_ID = 'ai_settings'
+export const runtime = 'nodejs'
 
-interface ChatRequest {
-  message: string
-  customerId: string
-  conversationHistory?: Array<{
-    role: 'user' | 'assistant'
-    content: string
-  }>
-}
+// Configuração da OpenAI
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
 
-interface WebhookTrigger {
-  type: 'leadCapture' | 'appointmentBooking' | 'paymentProcess' | 'supportTicket' | 'humanHandoff'
-  confidence: number
-  extractedData?: Record<string, any>
-}
+// Prompt do sistema para o Grupo Thermas
+const SYSTEM_PROMPT = `
+Você é um assistente virtual especializado do Grupo Thermas, uma empresa de águas termais e turismo.
+
+INFORMAÇÕES DA EMPRESA:
+- Grupo Thermas é especializado em águas termais terapêuticas
+- Oferece pacotes de turismo, hospedagem e tratamentos termais
+- Localizado em região de águas termais naturais
+- Foco em bem-estar, relaxamento e saúde
+
+SEUS OBJETIVOS:
+1. Atender clientes interessados em pacotes termais
+2. Informar sobre tratamentos e benefícios das águas termais
+3. Auxiliar com reservas e informações de hospedagem
+4. Identificar necessidades específicas dos clientes
+5. Encaminhar para departamentos quando necessário
+
+DEPARTAMENTOS DISPONÍVEIS:
+- Vendas: Pacotes e reservas
+- Atendimento: Informações gerais
+- Suporte: Problemas técnicos
+
+COMO RESPONDER:
+- Seja sempre cordial e profissional
+- Use linguagem acessível e acolhedora
+- Faça perguntas para entender melhor as necessidades
+- Ofereça soluções personalizadas
+- Se não souber algo, seja honesto e ofereça transferir para um especialista
+
+IMPORTANTE:
+- Sempre pergunte o nome do cliente no início da conversa
+- Identifique se é primeira visita ou cliente retornando
+- Colete informações sobre: datas desejadas, número de pessoas, tipo de experiência buscada
+- Se a conversa ficar complexa ou o cliente solicitar, ofereça transferir para um atendente humano
+
+Responda sempre em português brasileiro de forma natural e amigável.
+`
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, customerId, conversationHistory = [] }: ChatRequest = await request.json()
+    const { chatId, customerMessage, customerName, conversationHistory } = await request.json()
 
-    // Carregar configurações da IA
-    const configDoc = await adminDB.collection(CONFIG_COLLECTION).doc(CONFIG_DOC_ID).get()
-    if (!configDoc.exists) {
+    if (!chatId || !customerMessage) {
       return NextResponse.json(
-        { error: 'Configuração da IA não encontrada' },
+        { error: 'ChatId e mensagem são obrigatórios' },
         { status: 400 }
       )
     }
 
-    const config = configDoc.data()
-    if (!config?.openaiApiKey) {
+    // Verificar se a IA está ativa para esta conversa
+    const chatRef = adminDB.collection('conversations').doc(chatId)
+    const chatDoc = await chatRef.get()
+    
+    if (!chatDoc.exists) {
       return NextResponse.json(
-        { error: 'API Key OpenAI não configurada' },
-        { status: 400 }
+        { error: 'Conversa não encontrada' },
+        { status: 404 }
       )
     }
 
-    // Detectar intenção e webhook necessário
-    const webhookTrigger = detectWebhookIntent(message)
+    const chatData = chatDoc.data()
+    
+    // Só responder se a IA estiver ativa
+    if (chatData?.conversationStatus !== 'waiting' && chatData?.conversationStatus !== 'ai_active') {
+      return NextResponse.json({ 
+        message: 'IA não está ativa para esta conversa',
+        shouldRespond: false 
+      })
+    }
 
-    // Construir prompt contextual
-    const systemPrompt = `${config.systemPrompt}
+    // Preparar histórico da conversa para contexto
+    const messagesRef = chatRef.collection('messages')
+    const recentMessages = await messagesRef
+      .orderBy('timestamp', 'desc')
+      .limit(10)
+      .get()
 
-IMPORTANTE: Você deve analisar cada mensagem e identificar quando acionar webhooks específicos:
-
-1. LEAD CAPTURE (leadCapture): Quando o cliente demonstra interesse em produtos/serviços, pede orçamento, quer saber preços
-2. APPOINTMENT BOOKING (appointmentBooking): Quando o cliente quer agendar reunião, conversar por telefone, marcar visita
-3. PAYMENT PROCESS (paymentProcess): Quando o cliente fala sobre pagamento, formas de pagamento, quer fechar negócio
-4. SUPPORT TICKET (supportTicket): Quando o cliente tem problemas, reclamações, precisa de suporte técnico
-5. HUMAN HANDOFF (humanHandoff): Quando o cliente pede para falar com pessoa física, situação complexa
-
-Responda de forma natural e indique no final se algum webhook deve ser acionado.`
+    const context = recentMessages.docs
+      .reverse()
+      .map((doc: any) => {
+        const data = doc.data()
+        const role = data.role === 'user' ? 'Cliente' : 'Assistente'
+        return `${role}: ${data.content}`
+      })
+      .join('\n')
 
     // Preparar mensagens para OpenAI
     const messages = [
-      { role: 'system', content: systemPrompt },
-      ...conversationHistory,
-      { role: 'user', content: message }
+      {
+        role: 'system',
+        content: SYSTEM_PROMPT
+      },
+      {
+        role: 'user',
+        content: `
+Histórico da conversa:
+${context}
+
+Nova mensagem do cliente ${customerName || 'Cliente'}:
+${customerMessage}
+
+Responda de forma natural e útil, considerando o contexto da conversa.
+        `
+      }
     ]
 
-    // Chamar OpenAI
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Chamar OpenAI API
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY não configurada')
+    }
+
+    const openaiResponse = await fetch(OPENAI_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.openaiApiKey}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: config.openaiModel || 'gpt-4',
+        model: 'gpt-4o-mini', // Modelo mais econômico
         messages,
-        temperature: config.openaiTemperature || 0.7,
-        max_tokens: config.openaiMaxTokens || 1000
+        max_tokens: 500,
+        temperature: 0.7,
+        presence_penalty: 0.1,
+        frequency_penalty: 0.1
       })
     })
 
     if (!openaiResponse.ok) {
-      const error = await openaiResponse.json()
-      console.error('Erro OpenAI:', error)
-      return NextResponse.json(
-        { error: 'Erro ao processar com IA' },
-        { status: 500 }
-      )
+      const errorData = await openaiResponse.json().catch(() => ({}))
+      throw new Error(`OpenAI API Error: ${openaiResponse.status} - ${errorData.error?.message || 'Unknown error'}`)
     }
 
-    const aiResult = await openaiResponse.json()
-    const aiMessage = aiResult.choices[0]?.message?.content || config.fallbackMessage
+    const aiData = await openaiResponse.json()
+    const aiMessage = aiData.choices?.[0]?.message?.content
 
-    // Acionar webhook se detectado
-    let webhookResult = null
-    if (webhookTrigger && config.webhookUrls[webhookTrigger.type]) {
-      webhookResult = await triggerWebhook(
-        config.webhookUrls[webhookTrigger.type],
-        webhookTrigger,
-        {
-          customerId,
-          message,
-          aiResponse: aiMessage,
-          extractedData: webhookTrigger.extractedData
-        }
-      )
+    if (!aiMessage) {
+      throw new Error('Resposta vazia da OpenAI')
     }
 
-    // Salvar conversa no Firebase
-    await saveConversation(customerId, message, aiMessage, webhookTrigger?.type)
+    // Salvar resposta da IA no Firestore
+    const aiMessageDoc = {
+      content: aiMessage.trim(),
+      role: 'ai',
+      timestamp: new Date().toISOString(),
+      status: 'sent'
+    }
+
+    await messagesRef.add(aiMessageDoc)
+
+    // Atualizar status da conversa para ai_active
+    await chatRef.update({
+      conversationStatus: 'ai_active',
+      lastMessage: aiMessage.trim(),
+      timestamp: new Date().toISOString()
+    })
+
+    // Enviar mensagem via Z-API
+    const zapiResponse = await sendMessageViaZAPI(chatId, aiMessage.trim())
 
     return NextResponse.json({
-      response: aiMessage,
-      webhookTriggered: webhookTrigger?.type,
-      webhookResult,
-      confidence: webhookTrigger?.confidence
+      success: true,
+      aiMessage: aiMessage.trim(),
+      shouldRespond: true,
+      zapiSent: zapiResponse.success
     })
 
   } catch (error) {
-    console.error('Erro na API de chat:', error)
+    console.error('Erro no chat com IA:', error)
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { 
+        error: 'Erro interno do servidor',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
 }
 
-function detectWebhookIntent(message: string): WebhookTrigger | null {
-  const lowerMessage = message.toLowerCase()
-  
-  // Palavras-chave para cada tipo de webhook
-  const patterns = {
-    leadCapture: {
-      keywords: ['preço', 'valor', 'custo', 'orçamento', 'cotação', 'proposta', 'interesse', 'quero', 'gostaria'],
-      confidence: 0.8
-    },
-    appointmentBooking: {
-      keywords: ['agendar', 'reunião', 'conversar', 'ligar', 'telefone', 'visita', 'encontro', 'marcar'],
-      confidence: 0.9
-    },
-    paymentProcess: {
-      keywords: ['pagar', 'pagamento', 'cartão', 'boleto', 'pix', 'fechar', 'comprar', 'adquirir'],
-      confidence: 0.95
-    },
-    supportTicket: {
-      keywords: ['problema', 'erro', 'ajuda', 'suporte', 'não funciona', 'bug', 'reclamação'],
-      confidence: 0.85
-    },
-    humanHandoff: {
-      keywords: ['humano', 'pessoa', 'atendente', 'gerente', 'supervisor', 'falar com alguém'],
-      confidence: 1.0
-    }
-  }
-
-  for (const [type, config] of Object.entries(patterns)) {
-    const matchCount = config.keywords.filter(keyword => 
-      lowerMessage.includes(keyword)
-    ).length
-
-    if (matchCount > 0) {
-      const confidence = Math.min(config.confidence * (matchCount / config.keywords.length), 1.0)
-      
-      return {
-        type: type as WebhookTrigger['type'],
-        confidence,
-        extractedData: extractDataFromMessage(message, type)
-      }
-    }
-  }
-
-  return null
-}
-
-function extractDataFromMessage(message: string, type: string): Record<string, any> {
-  const data: Record<string, any> = {}
-
-  // Extrair nome
-  const nameMatch = message.match(/meu nome é ([a-záêç\s]+)/i) || 
-                   message.match(/me chamo ([a-záêç\s]+)/i) ||
-                   message.match(/sou ([a-záêç\s]+)/i)
-  if (nameMatch) {
-    data.customerName = nameMatch[1].trim()
-  }
-
-  // Extrair telefone
-  const phoneMatch = message.match(/(\(?[\d\s\-\(\)]{10,}\)?)/g)
-  if (phoneMatch) {
-    data.customerPhone = phoneMatch[0]
-  }
-
-  // Extrair email
-  const emailMatch = message.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g)
-  if (emailMatch) {
-    data.customerEmail = emailMatch[0]
-  }
-
-  // Extrair valores monetários
-  const valueMatch = message.match(/R?\$?\s?(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)/g)
-  if (valueMatch) {
-    data.mentionedValue = valueMatch[0]
-  }
-
-  // Extrair datas
-  const dateMatch = message.match(/(\d{1,2}\/\d{1,2}\/\d{4})|(\d{1,2} de \w+ de \d{4})/g)
-  if (dateMatch) {
-    data.mentionedDate = dateMatch[0]
-  }
-
-  return data
-}
-
-async function triggerWebhook(url: string, trigger: WebhookTrigger, context: any) {
+// Função para enviar mensagem via Z-API
+async function sendMessageViaZAPI(phone: string, message: string) {
   try {
-    const response = await fetch(url, {
+    const ZAPI_INSTANCE_ID = process.env.ZAPI_INSTANCE_ID
+    const ZAPI_TOKEN = process.env.ZAPI_TOKEN
+    const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN
+
+    if (!ZAPI_INSTANCE_ID || !ZAPI_TOKEN) {
+      throw new Error('Credenciais Z-API não configuradas')
+    }
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${ZAPI_TOKEN}`,
+      'Content-Type': 'application/json'
+    }
+
+    if (ZAPI_CLIENT_TOKEN) {
+      headers['Client-Token'] = ZAPI_CLIENT_TOKEN
+    }
+
+    const response = await fetch(`https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}/send-text`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers,
       body: JSON.stringify({
-        type: trigger.type,
-        confidence: trigger.confidence,
-        timestamp: new Date().toISOString(),
-        context,
-        extractedData: trigger.extractedData
+        phone,
+        message
       })
     })
 
+    const result = await response.json()
+    
     return {
       success: response.ok,
-      status: response.status,
-      data: response.ok ? await response.json().catch(() => null) : null
+      data: result
     }
   } catch (error) {
-    console.error('Erro ao acionar webhook:', error)
-    if (error instanceof Error) {
-      return {
-        success: false,
-        error: error.message
-      }
-    }
+    console.error('Erro ao enviar via Z-API:', error)
     return {
       success: false,
-      error: 'Erro desconhecido ao acionar webhook.'
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
-  }
-}
-
-async function saveConversation(customerId: string, userMessage: string, aiResponse: string, webhookType?: string) {
-  try {
-    const conversationRef = adminDB.collection('conversations').doc(customerId)
-    const timestamp = new Date().toISOString()
-
-    await conversationRef.set({
-      customerId,
-      lastUpdate: timestamp,
-      status: 'active'
-    }, { merge: true })
-
-    // Adicionar mensagens
-    await conversationRef.collection('messages').add({
-      content: userMessage,
-      role: 'user',
-      timestamp,
-      status: 'sent',
-      processed: true
-    })
-
-    await conversationRef.collection('messages').add({
-      content: aiResponse,
-      role: 'ai',
-      timestamp,
-      status: 'sent',
-      webhookTriggered: webhookType || null
-    })
-
-  } catch (error) {
-    console.error('Erro ao salvar conversa:', error)
   }
 } 

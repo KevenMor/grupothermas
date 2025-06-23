@@ -32,9 +32,7 @@ const withPWA = require('next-pwa')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    serverComponentsExternalPackages: ['firebase-admin'],
-  },
+  serverExternalPackages: ['firebase-admin'],
   // Desabilitar coleta de dados estáticos durante build para evitar erros com Firebase
   trailingSlash: false,
   generateBuildId: async () => {
@@ -45,7 +43,6 @@ const nextConfig = {
   images: {
     domains: ['firebasestorage.googleapis.com'],
   },
-  serverExternalPackages: ['firebase-admin'],
   webpack: (config, { dev, isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

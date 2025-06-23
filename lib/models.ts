@@ -65,6 +65,34 @@ export interface DashboardMetrics {
 
 // Interfaces para o sistema de Atendimento / Chat
 export type ChatStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
+export type ConversationStatus = 'waiting' | 'ai_active' | 'agent_assigned' | 'resolved'
+
+// Novo enum para departamentos
+export interface Department {
+  id: string
+  name: string
+  description?: string
+  isActive: boolean
+  createdAt: Date
+}
+
+// Sistema de usuários com departamentos
+export interface SystemUser {
+  id: string
+  name: string
+  email: string
+  role: 'admin' | 'agent' | 'supervisor'
+  departmentId?: string
+  permissions: {
+    canViewAllChats: boolean
+    canManageUsers: boolean
+    canManageDepartments: boolean
+    canAccessReports: boolean
+  }
+  isActive: boolean
+  createdAt: Date
+  lastLogin?: Date
+}
 
 export interface Chat {
   id: string
@@ -76,12 +104,24 @@ export interface Chat {
   unreadCount: number
   status: 'open' | 'pending' | 'closed' | 'archived'
   agentId?: string
+  // Campos de controle de IA e fluxo
   aiEnabled: boolean
   aiPaused: boolean
-  conversationStatus: 'waiting' | 'ai_responding' | 'agent_assigned' | 'resolved'
+  conversationStatus: ConversationStatus
   assignedAgent?: string
+  assignedDepartment?: string // Novo campo para departamento
   pausedAt?: string
   pausedBy?: string
+  resolvedAt?: string
+  resolvedBy?: string
+  // Histórico de transferências
+  transferHistory?: {
+    from: 'ai' | 'agent'
+    to: 'ai' | 'agent'
+    agentId?: string
+    timestamp: string
+    reason?: string
+  }[]
 }
 
 export interface ChatMessage {
@@ -105,10 +145,14 @@ export interface ChatCustomer {
   unreadCount: number
   priority: 'low' | 'medium' | 'high'
   tags: string[]
+  // Campos de controle de IA e departamento
   aiEnabled: boolean
   aiPaused: boolean
-  conversationStatus: 'waiting' | 'ai_responding' | 'agent_assigned' | 'resolved'
+  conversationStatus: ConversationStatus
   assignedAgent?: string
+  assignedDepartment?: string
   pausedAt?: Date | string
   pausedBy?: string
+  resolvedAt?: Date | string
+  resolvedBy?: string
 } 
