@@ -127,6 +127,135 @@ export default function AtendimentoPage() {
     }
   }
 
+  // Funções para controle de IA
+  const handleToggleAI = async (chatId: string, enabled: boolean) => {
+    try {
+      const action = enabled ? 'resume_ai' : 'pause_ai'
+      const response = await fetch('/api/atendimento/ai-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId,
+          action,
+          agentId: 'current-agent' // TODO: Pegar do contexto de autenticação
+        }),
+      })
+
+      if (!response.ok) throw new Error('Falha ao atualizar IA')
+
+      // Atualizar o chat local
+      setChats(prev => prev.map(chat =>
+        chat.id === chatId
+          ? { 
+              ...chat, 
+              aiEnabled: enabled,
+              aiPaused: !enabled,
+              conversationStatus: enabled ? 'ai_responding' : 'agent_assigned'
+            }
+          : chat
+      ))
+
+      // Atualizar selectedChat se for o mesmo
+      if (selectedChat?.id === chatId) {
+        setSelectedChat(prev => prev ? {
+          ...prev,
+          aiEnabled: enabled,
+          aiPaused: !enabled,
+          conversationStatus: enabled ? 'ai_responding' : 'agent_assigned'
+        } : null)
+      }
+
+      toast.success(enabled ? 'IA ativada com sucesso' : 'IA pausada com sucesso')
+    } catch (error: any) {
+      console.error(error)
+      toast.error(`Erro ao ${enabled ? 'ativar' : 'pausar'} IA: ${error.message}`)
+    }
+  }
+
+  const handleAssignAgent = async (chatId: string) => {
+    try {
+      const response = await fetch('/api/atendimento/ai-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId,
+          action: 'assign_agent',
+          agentId: 'current-agent' // TODO: Pegar do contexto de autenticação
+        }),
+      })
+
+      if (!response.ok) throw new Error('Falha ao assumir conversa')
+
+      // Atualizar o chat local
+      setChats(prev => prev.map(chat =>
+        chat.id === chatId
+          ? { 
+              ...chat, 
+              aiPaused: true,
+              conversationStatus: 'agent_assigned',
+              assignedAgent: 'current-agent'
+            }
+          : chat
+      ))
+
+      // Atualizar selectedChat se for o mesmo
+      if (selectedChat?.id === chatId) {
+        setSelectedChat(prev => prev ? {
+          ...prev,
+          aiPaused: true,
+          conversationStatus: 'agent_assigned',
+          assignedAgent: 'current-agent'
+        } : null)
+      }
+
+      toast.success('Conversa assumida com sucesso')
+    } catch (error: any) {
+      console.error(error)
+      toast.error(`Erro ao assumir conversa: ${error.message}`)
+    }
+  }
+
+  const handleMarkResolved = async (chatId: string) => {
+    try {
+      const response = await fetch('/api/atendimento/ai-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId,
+          action: 'mark_resolved',
+          agentId: 'current-agent' // TODO: Pegar do contexto de autenticação
+        }),
+      })
+
+      if (!response.ok) throw new Error('Falha ao marcar como resolvido')
+
+      // Atualizar o chat local
+      setChats(prev => prev.map(chat =>
+        chat.id === chatId
+          ? { 
+              ...chat, 
+              conversationStatus: 'resolved',
+              aiPaused: true
+            }
+          : chat
+      ))
+
+      // Atualizar selectedChat se for o mesmo
+      if (selectedChat?.id === chatId) {
+        setSelectedChat(prev => prev ? {
+          ...prev,
+          conversationStatus: 'resolved',
+          aiPaused: true
+        } : null)
+      }
+
+      toast.success('Conversa marcada como resolvida')
+    } catch (error: any) {
+      console.error(error)
+      toast.error(`Erro ao marcar como resolvida: ${error.message}`)
+    }
+  }
+
   return (
     <AppLayout>
       <Toaster richColors position="top-right" />
@@ -144,6 +273,9 @@ export default function AtendimentoPage() {
               messages={messages}
               onSendMessage={handleSendMessage}
               isLoading={isLoadingMessages && messages.length === 0}
+              onToggleAI={handleToggleAI}
+              onAssignAgent={handleAssignAgent}
+              onMarkResolved={handleMarkResolved}
             />
           </div>
         </div>

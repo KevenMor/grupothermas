@@ -229,10 +229,10 @@ class WhatsAppManager {
         .limit(10)
 
       const messagesSnapshot = await messagesRef.get()
-      const recentMessages = messagesSnapshot.docs.map(doc => doc.data())
+      const recentMessages = messagesSnapshot.docs.map((doc: any) => doc.data())
 
       // Preparar contexto para IA
-      const context = recentMessages.reverse().map(msg => 
+      const context = recentMessages.reverse().map((msg: any) =>
         `${msg.fromMe ? 'Assistente' : 'Cliente'}: ${msg.body}`
       ).join('\n')
 

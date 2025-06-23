@@ -31,13 +31,17 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['undici', '@firebase/auth'],
+  reactStrictMode: true,
   experimental: {
-    serverActions: {
-      allowedOrigins: ['localhost:3000', 'vercel.app'],
-    },
-
+    serverComponentsExternalPackages: ['firebase-admin'],
   },
+  // Desabilitar coleta de dados estáticos durante build para evitar erros com Firebase
+  trailingSlash: false,
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
+  // Não executar APIs durante build
+  staticPageGenerationTimeout: 30,
   images: {
     domains: ['firebasestorage.googleapis.com'],
   },

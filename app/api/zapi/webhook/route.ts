@@ -51,7 +51,11 @@ export async function POST(request: NextRequest) {
         timestamp,
         unreadCount: 0,
         status: 'open',
-        source: 'zapi'
+        source: 'zapi',
+        // Campos padrão de controle de IA
+        aiEnabled: true,
+        aiPaused: false,
+        conversationStatus: 'waiting',
       })
     } else {
       await conversationRef.update({

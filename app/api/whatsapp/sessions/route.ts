@@ -6,7 +6,7 @@ export async function GET() {
     const sessionsRef = adminDB.collection('whatsapp_sessions')
     const snapshot = await sessionsRef.get()
     
-    const sessions = snapshot.docs.map(doc => ({
+    const sessions = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
       lastActivity: doc.data().lastActivity?.toDate(),

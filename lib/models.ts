@@ -76,6 +76,12 @@ export interface Chat {
   unreadCount: number
   status: 'open' | 'pending' | 'closed' | 'archived'
   agentId?: string
+  aiEnabled: boolean
+  aiPaused: boolean
+  conversationStatus: 'waiting' | 'ai_responding' | 'agent_assigned' | 'resolved'
+  assignedAgent?: string
+  pausedAt?: string
+  pausedBy?: string
 }
 
 export interface ChatMessage {
@@ -99,4 +105,10 @@ export interface ChatCustomer {
   unreadCount: number
   priority: 'low' | 'medium' | 'high'
   tags: string[]
+  aiEnabled: boolean
+  aiPaused: boolean
+  conversationStatus: 'waiting' | 'ai_responding' | 'agent_assigned' | 'resolved'
+  assignedAgent?: string
+  pausedAt?: Date | string
+  pausedBy?: string
 } 

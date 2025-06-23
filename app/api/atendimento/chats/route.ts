@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json([])
     }
     
-    const chats: Chat[] = conversationsSnapshot.docs.map(doc => {
+    const chats: Chat[] = conversationsSnapshot.docs.map((doc: any) => {
       const data = doc.data()
       return {
         id: doc.id,
@@ -26,6 +26,12 @@ export async function GET() {
         timestamp: data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
         unreadCount: data.unreadCount || 0,
         status: data.status || 'open',
+        aiEnabled: data.aiEnabled !== undefined ? data.aiEnabled : true,
+        aiPaused: data.aiPaused || false,
+        conversationStatus: data.conversationStatus || 'waiting',
+        assignedAgent: data.assignedAgent,
+        pausedAt: data.pausedAt,
+        pausedBy: data.pausedBy,
       }
     })
 
@@ -57,6 +63,9 @@ export async function POST(request: Request) {
       timestamp: now,
       unreadCount: 0,
       status: 'open',
+      aiEnabled: true,
+      aiPaused: false,
+      conversationStatus: 'waiting',
     }, { merge: true })
     return NextResponse.json({ success: true })
   } catch (error) {

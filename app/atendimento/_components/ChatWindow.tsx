@@ -12,7 +12,13 @@ import {
   Send, 
   Loader2,
   Phone,
-  Video
+  Video,
+  Bot,
+  BotOff,
+  User,
+  CheckCircle,
+  Pause,
+  Play
 } from 'lucide-react'
 import { ChatMessageItem } from './ChatMessageItem'
 import { isSameDay } from 'date-fns'
@@ -22,6 +28,9 @@ interface ChatWindowProps {
   messages: ChatMessage[]
   onSendMessage: (content: string) => void
   isLoading: boolean
+  onToggleAI?: (chatId: string, enabled: boolean) => void
+  onAssignAgent?: (chatId: string) => void
+  onMarkResolved?: (chatId: string) => void
 }
 
 const WelcomeScreen = () => (
@@ -38,27 +47,119 @@ const WelcomeScreen = () => (
   </div>
 );
 
-const ChatHeader = ({ chat }: { chat: Chat }) => (
-  <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-    <div className="flex items-center gap-3">
-      <Avatar className="w-10 h-10">
-        <AvatarImage src={chat.customerAvatar} />
-        <AvatarFallback>{chat.customerName.charAt(0)}</AvatarFallback>
-      </Avatar>
-      <div>
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100">{chat.customerName}</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{chat.customerPhone}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">online</p>
+const ChatHeader = ({ 
+  chat, 
+  onToggleAI, 
+  onAssignAgent, 
+  onMarkResolved 
+}: { 
+  chat: Chat
+  onToggleAI?: (chatId: string, enabled: boolean) => void
+  onAssignAgent?: (chatId: string) => void
+  onMarkResolved?: (chatId: string) => void
+}) => {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'waiting': return 'text-yellow-500'
+      case 'ai_responding': return 'text-blue-500'
+      case 'agent_assigned': return 'text-green-500'
+      case 'resolved': return 'text-gray-500'
+      default: return 'text-gray-500'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'waiting': return 'Aguardando'
+      case 'ai_responding': return 'IA Respondendo'
+      case 'agent_assigned': return 'Agente Atribuído'
+      case 'resolved': return 'Resolvido'
+      default: return 'Online'
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div className="flex items-center gap-3">
+        <Avatar className="w-10 h-10">
+          <AvatarImage src={chat.customerAvatar} />
+          <AvatarFallback>{chat.customerName.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <div>
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100">{chat.customerName}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{chat.customerPhone}</p>
+          <div className="flex items-center gap-2">
+            <p className={`text-sm ${getStatusColor(chat.conversationStatus || 'waiting')}`}>
+              {getStatusText(chat.conversationStatus || 'waiting')}
+            </p>
+            {chat.aiEnabled && !chat.aiPaused && (
+              <div title="IA Ativa"><Bot className="w-4 h-4 text-blue-500" /></div>
+            )}
+            {chat.aiPaused && (
+              <div title="IA Pausada"><BotOff className="w-4 h-4 text-gray-500" /></div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {/* Controles de IA */}
+        <div className="flex items-center gap-1 mr-2 border-r border-gray-200 dark:border-gray-600 pr-2">
+          {chat.aiEnabled && !chat.aiPaused ? (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => onToggleAI?.(chat.id, false)}
+              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              title="Pausar IA"
+            >
+              <Pause className="w-4 h-4 mr-1" />
+              Pausar IA
+            </Button>
+          ) : (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => onToggleAI?.(chat.id, true)}
+              className="text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              title="Ativar IA"
+            >
+              <Play className="w-4 h-4 mr-1" />
+              Ativar IA
+            </Button>
+          )}
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => onAssignAgent?.(chat.id)}
+            className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
+            title="Assumir Conversa"
+          >
+            <User className="w-4 h-4 mr-1" />
+            Assumir
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => onMarkResolved?.(chat.id)}
+            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            title="Marcar como Resolvido"
+          >
+            <CheckCircle className="w-4 h-4 mr-1" />
+            Resolver
+          </Button>
+        </div>
+        
+        {/* Controles originais */}
+        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><Phone className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><Video className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><Search className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><MoreVertical className="w-5 h-5" /></Button>
       </div>
     </div>
-    <div className="flex items-center gap-2">
-      <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><Phone className="w-5 h-5" /></Button>
-      <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><Video className="w-5 h-5" /></Button>
-      <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><Search className="w-5 h-5" /></Button>
-      <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><MoreVertical className="w-5 h-5" /></Button>
-    </div>
-  </div>
-);
+  )
+}
 
 const MessageInput = ({ onSendMessage }: { onSendMessage: (content: string) => void }) => {
   const [message, setMessage] = useState('')
@@ -96,7 +197,7 @@ const MessageInput = ({ onSendMessage }: { onSendMessage: (content: string) => v
   );
 };
 
-export function ChatWindow({ chat, messages, onSendMessage, isLoading }: ChatWindowProps) {
+export function ChatWindow({ chat, messages, onSendMessage, isLoading, onToggleAI, onAssignAgent, onMarkResolved }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -112,7 +213,7 @@ export function ChatWindow({ chat, messages, onSendMessage, isLoading }: ChatWin
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 bg-white dark:bg-gray-900">
-      <ChatHeader chat={chat} />
+      <ChatHeader chat={chat} onToggleAI={onToggleAI} onAssignAgent={onAssignAgent} onMarkResolved={onMarkResolved} />
       <div className="flex-1 min-h-0 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')]">
         {isLoading && messages.length === 0 ? (
           <div className="flex justify-center items-center h-full">
