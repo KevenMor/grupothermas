@@ -74,6 +74,9 @@ interface AdminConfig {
     humanHandoff: string
   }
   zapiClientToken?: string
+  // Novos campos para delay humanizado
+  responseDelayMin: number
+  responseDelayMax: number
 }
 
 export async function POST(request: NextRequest) {
@@ -356,9 +359,38 @@ async function handleMessage(message: ZAPIWebhookEvent) {
   }
 }
 
+// Função para gerar delay humanizado
+function generateHumanDelay(minSeconds: number, maxSeconds: number): number {
+  const min = Math.max(1, minSeconds || 2) // Mínimo de 1 segundo
+  const max = Math.max(min, maxSeconds || 5) // Máximo pelo menos igual ao mínimo
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+// Função para simular digitação (delay baseado no tamanho da mensagem)
+function calculateTypingDelay(message: string, baseDelaySeconds: number): number {
+  const wordsPerMinute = 40 // Velocidade média de digitação
+  const wordsCount = message.split(' ').length
+  const typingTimeSeconds = (wordsCount / wordsPerMinute) * 60
+  
+  // Combina delay base + tempo de digitação simulado (limitado a 15 segundos)
+  return Math.min(baseDelaySeconds + Math.floor(typingTimeSeconds), 15)
+}
+
 async function sendMessage(config: AdminConfig, phone: string, message: string) {
   try {
-    console.log(`Enviando mensagem para ${phone}: ${message}`)
+    // Aplicar delay humanizado antes de enviar
+    const delayMin = config.responseDelayMin || 2
+    const delayMax = config.responseDelayMax || 5
+    const baseDelay = generateHumanDelay(delayMin, delayMax)
+    const typingDelay = calculateTypingDelay(message, baseDelay)
+    
+    console.log(`💭 Simulando digitação: ${typingDelay}s para mensagem de ${message.split(' ').length} palavras`)
+    console.log(`⏱️ Aguardando ${typingDelay} segundos antes de enviar para ${phone}...`)
+    
+    // Aguardar o delay humanizado
+    await new Promise(resolve => setTimeout(resolve, typingDelay * 1000))
+    
+    console.log(`📤 Enviando mensagem para ${phone}: ${message.substring(0, 50)}...`)
     
     const url = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`
     
@@ -385,11 +417,11 @@ async function sendMessage(config: AdminConfig, phone: string, message: string) 
     }
 
     const result = await response.json()
-    console.log('Mensagem enviada com sucesso:', result)
+    console.log('✅ Mensagem enviada com sucesso:', result)
     return result
 
   } catch (error) {
-    console.error('Erro ao enviar mensagem via Z-API:', error)
+    console.error('❌ Erro ao enviar mensagem via Z-API:', error)
     throw error
   }
 }

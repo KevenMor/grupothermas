@@ -60,6 +60,9 @@ interface AdminConfig {
   lastStatusCheck?: string
   createdAt: string
   updatedAt: string
+  // Novo campo para delay humanizado
+  responseDelayMin: number
+  responseDelayMax: number
 }
 
 const defaultConfig: AdminConfig = {
@@ -111,7 +114,10 @@ INSTRUÇÕES:
   lastConnection: '',
   lastStatusCheck: '',
   createdAt: '',
-  updatedAt: ''
+  updatedAt: '',
+  // Valores padrão para delay humanizado
+  responseDelayMin: 2,
+  responseDelayMax: 5
 }
 
 export default function AdminPage() {
@@ -731,6 +737,54 @@ export default function AdminPage() {
                     />
                   </div>
                 </div>
+
+                {/* Nova seção para Delay Humanizado */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    🤖 Delay Humanizado
+                  </h4>
+                  <p className="text-sm text-blue-600 mb-3">
+                    Configure um delay aleatório entre as respostas para simular digitação humana e tornar a conversa mais natural
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="responseDelayMin" className="text-blue-700">
+                        Delay Mínimo (segundos)
+                      </Label>
+                      <Input
+                        id="responseDelayMin"
+                        name="responseDelayMin"
+                        type="number"
+                        value={config.responseDelayMin}
+                        onChange={(e) => handleInputChange(e)}
+                        min="1"
+                        max="10"
+                        className="border-blue-200 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="responseDelayMax" className="text-blue-700">
+                        Delay Máximo (segundos)
+                      </Label>
+                      <Input
+                        id="responseDelayMax"
+                        name="responseDelayMax"
+                        type="number"
+                        value={config.responseDelayMax}
+                        onChange={(e) => handleInputChange(e)}
+                        min="1"
+                        max="30"
+                        className="border-blue-200 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3 p-2 bg-blue-100 rounded text-xs text-blue-700">
+                    💡 <strong>Exemplo:</strong> Min 2s, Max 5s = Delay aleatório entre 2-5 segundos antes de cada resposta
+                    <br />
+                    ⚡ Recomendado: 2-5 segundos para conversas naturais
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -989,6 +1043,80 @@ export default function AdminPage() {
             {saving ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
         </div>
+
+        {/* Nova Seção: Diagnóstico do Webhook */}
+        <Card className="p-6 mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold">🔍 Diagnóstico do Webhook</h2>
+              <p className="text-gray-600 mt-1">Verifique por que as mensagens do WhatsApp não estão chegando</p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/admin/webhook-diagnostics')
+                    const result = await response.json()
+                    console.log('Diagnóstico:', result)
+                    
+                    if (result.status === 'ok') {
+                      toast.success('✅ Webhook configurado corretamente!')
+                    } else {
+                      toast.error(`❌ Problemas encontrados: ${result.diagnostics.issues.length} issues`)
+                      console.error('Issues:', result.diagnostics.issues)
+                    }
+                  } catch (error) {
+                    toast.error('Erro ao fazer diagnóstico')
+                    console.error(error)
+                  }
+                }}
+              >
+                🔍 Diagnosticar
+              </Button>
+              
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/admin/webhook-diagnostics', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'fix_webhook' })
+                    })
+                    const result = await response.json()
+                    
+                    if (result.success) {
+                      toast.success('✅ Webhook corrigido com sucesso!')
+                    } else {
+                      toast.error(`❌ Erro ao corrigir: ${result.error}`)
+                    }
+                  } catch (error) {
+                    toast.error('Erro ao corrigir webhook')
+                    console.error(error)
+                  }
+                }}
+              >
+                🔧 Corrigir Webhook
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-medium mb-2">🚨 Possíveis Problemas</h4>
+            <ul className="text-sm space-y-1 text-gray-700">
+              <li>• Webhook não configurado na Z-API</li>
+              <li>• URL do webhook incorreta</li>
+              <li>• WhatsApp não conectado</li>
+              <li>• Credenciais Z-API inválidas</li>
+              <li>• Variável NEXT_PUBLIC_BASE_URL não configurada</li>
+            </ul>
+            
+            <div className="mt-4 p-3 bg-blue-100 rounded text-sm">
+              <strong>💡 Dica:</strong> Se o diagnóstico mostrar problemas, clique em "Corrigir Webhook" para tentar resolver automaticamente.
+            </div>
+          </div>
+        </Card>
 
         {/* Nova Seção: Simulação/Treinamento da IA */}
         <Card className="p-6 mt-8">
