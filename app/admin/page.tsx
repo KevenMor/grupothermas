@@ -123,7 +123,6 @@ export default function AdminPage() {
   const [testing, setTesting] = useState(false)
   const [sendingTest, setSendingTest] = useState(false)
   const [testPhone, setTestPhone] = useState('')
-  const [testMessage, setTestMessage] = useState('Esta é uma mensagem de teste.')
   const [showApiKeys, setShowApiKeys] = useState({
     zapi: false,
     openai: false,
@@ -147,7 +146,7 @@ export default function AdminPage() {
 
   // Estados para simulação
   const [simulationMode, setSimulationMode] = useState(false)
-  const [testMessage, setTestMessage] = useState('')
+  const [testMessage, setTestMessage] = useState('Esta é uma mensagem de teste.')
   const [testConversation, setTestConversation] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: string}>>([])
   const [isTestingAI, setIsTestingAI] = useState(false)
 
