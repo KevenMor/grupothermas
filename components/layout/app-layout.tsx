@@ -38,7 +38,8 @@ import {
   UserCheck,
   Bot,
   ShoppingCart,
-  FileText
+  FileText,
+  Users
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -162,6 +163,24 @@ function AppSidebar() {
           </SidebarNav>
         </SidebarGroup>
 
+        <SidebarGroup title="Gestão">
+          <SidebarNav>
+            <SidebarNavItem
+              icon={<Users className="h-4 w-4" />}
+              active={pathname === '/users'}
+              onClick={() => router.push('/users')}
+            >
+              Usuários
+            </SidebarNavItem>
+            <SidebarNavItem
+              icon={<Settings className="h-4 w-4" />}
+              onClick={() => router.push('/settings')}
+            >
+              Configurações
+            </SidebarNavItem>
+          </SidebarNav>
+        </SidebarGroup>
+
         <SidebarGroup title="Ações Rápidas">
           <SidebarNav>
             <SidebarNavItem
@@ -169,12 +188,6 @@ function AppSidebar() {
               onClick={() => router.push('/sales/new')}
             >
               Nova Venda
-            </SidebarNavItem>
-            <SidebarNavItem
-              icon={<Settings className="h-4 w-4" />}
-              onClick={() => router.push('/settings')}
-            >
-              Configurações
             </SidebarNavItem>
           </SidebarNav>
         </SidebarGroup>

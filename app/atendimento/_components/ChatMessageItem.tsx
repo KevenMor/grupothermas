@@ -1,9 +1,11 @@
 import { ChatMessage, ChatStatus } from '@/lib/models'
 import { cn } from '@/lib/utils'
-import { Check, CheckCheck, Clock, AlertCircle } from 'lucide-react'
+import { Check, CheckCheck, Clock, AlertCircle, Reply, Edit, Trash2, Info, MoreVertical } from 'lucide-react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { useState } from 'react'
 
 interface ChatMessageItemProps {
   message: ChatMessage
@@ -12,6 +14,10 @@ interface ChatMessageItemProps {
   showAvatar?: boolean
   showName?: boolean
   isFirstOfDay?: boolean
+  onReply?: (message: ChatMessage) => void
+  onEdit?: (message: ChatMessage) => void
+  onDelete?: (messageId: string) => void
+  onInfo?: (message: ChatMessage) => void
 }
 
 const MessageStatus = ({ status }: { status: ChatStatus }) => {
@@ -37,7 +43,8 @@ const formatDate = (date: Date) => {
   return format(date, "dd/MM/yyyy", { locale: ptBR })
 }
 
-export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false }: ChatMessageItemProps) {
+export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo }: ChatMessageItemProps) {
+  const [showActions, setShowActions] = useState(false)
   // Mensagens da empresa (IA ou agente) ficam do lado esquerdo
   const isFromCompany = message.role === 'agent' || message.role === 'ai'
   const isFromCustomer = message.role === 'user'
@@ -71,32 +78,86 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
       )}
       <div className={cn(
         "flex items-end gap-2",
-        isFromCustomer ? "justify-end" : "justify-start"
+        isFromCustomer ? "justify-start" : "justify-end"
       )}>
-        {/* Avatar do lado esquerdo para empresa (IA/Agente) */}
-        {isFromCompany && showAvatar && (
+        {/* Avatar do lado esquerdo para cliente */}
+        {isFromCustomer && showAvatar && (
           <Avatar className="w-8 h-8">
             <AvatarImage src={avatar} />
-            <AvatarFallback>
-              {isAI ? '🤖' : displayName.charAt(0)}
-            </AvatarFallback>
+            <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
           </Avatar>
         )}
         
-        <div className={cn(
-          "rounded-lg px-3 py-2 max-w-lg lg:max-w-xl shadow-sm",
-          isFromCustomer 
-            ? "bg-blue-500 text-white" 
-            : isAI 
-            ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-700"
-            : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100",
-          isFailed && "border border-red-500"
-        )}>
+        <div 
+          className={cn(
+            "rounded-lg px-3 py-2 max-w-lg lg:max-w-xl shadow-sm relative group",
+            isFromCustomer 
+              ? "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100" 
+              : isAI 
+              ? "bg-green-500 text-white"
+              : "bg-blue-500 text-white",
+            isFailed && "border border-red-500"
+          )}
+          onMouseEnter={() => setShowActions(true)}
+          onMouseLeave={() => setShowActions(false)}
+        >
+          {/* Menu de ações */}
+          {showActions && (
+            <div className={cn(
+              "absolute top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
+              isFromCustomer ? "-right-20" : "-left-20"
+            )}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                onClick={() => onReply?.(message)}
+                title="Responder"
+              >
+                <Reply className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                onClick={() => onInfo?.(message)}
+                title="Informações"
+              >
+                <Info className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+              </Button>
+              
+              {isFromCompany && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={() => onEdit?.(message)}
+                    title="Editar"
+                  >
+                    <Edit className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-red-100 dark:hover:bg-red-900/20"
+                    onClick={() => onDelete?.(message.id)}
+                    title="Excluir"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400" />
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Mostrar nome para mensagens da empresa */}
           {showName && isFromCompany && (
             <div className={cn(
               "text-xs font-semibold mb-1",
-              isAI ? "text-green-700 dark:text-green-300" : "text-gray-700 dark:text-gray-300"
+              isAI ? "text-green-100" : "text-blue-100"
             )}>
               {displayName}
             </div>
@@ -109,22 +170,24 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
           <div className="flex items-center justify-end gap-2 mt-1">
             <span className={cn(
               "text-xs",
-              isFromCustomer ? "text-blue-100" : isAI ? "text-green-600 dark:text-green-400" : "text-gray-500 dark:text-gray-400"
+              isFromCustomer ? "text-gray-500 dark:text-gray-400" : isAI ? "text-green-100" : "text-blue-100"
             )}>
               {format(dateObj, 'HH:mm')}
             </span>
-            {isFromCustomer && <MessageStatus status={message.status} />}
+            {isFromCompany && <MessageStatus status={message.status} />}
             {isFailed && (
               <span className="text-xs text-red-500 ml-2">Erro</span>
             )}
           </div>
         </div>
         
-        {/* Avatar do lado direito para cliente */}
-        {isFromCustomer && showAvatar && (
+        {/* Avatar do lado direito para empresa (IA/Agente) */}
+        {isFromCompany && showAvatar && (
           <Avatar className="w-8 h-8">
             <AvatarImage src={avatar} />
-            <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
+            <AvatarFallback>
+              {isAI ? '🤖' : displayName.charAt(0)}
+            </AvatarFallback>
           </Avatar>
         )}
       </div>

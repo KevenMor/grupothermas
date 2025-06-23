@@ -18,7 +18,14 @@ import {
   User,
   CheckCircle,
   Pause,
-  Play
+  Play,
+  Image,
+  FileText,
+  Camera,
+  Reply,
+  Edit,
+  Trash2,
+  Info
 } from 'lucide-react'
 import { ChatMessageItem } from './ChatMessageItem'
 import { isSameDay } from 'date-fns'
@@ -32,6 +39,10 @@ interface ChatWindowProps {
   onAssignAgent?: (chatId: string) => void
   onMarkResolved?: (chatId: string) => void
   onAssumeChat?: (chatId: string) => void
+  onReplyMessage?: (message: ChatMessage) => void
+  onEditMessage?: (message: ChatMessage) => void
+  onDeleteMessage?: (messageId: string) => void
+  onMessageInfo?: (message: ChatMessage) => void
 }
 
 const WelcomeScreen = () => (
@@ -198,6 +209,8 @@ const MessageInput = ({
   onAssumeChat?: () => void
 }) => {
   const [message, setMessage] = useState('')
+  const [showAttachments, setShowAttachments] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
   
   const handleSend = () => {
     if (message.trim()) {
@@ -206,16 +219,91 @@ const MessageInput = ({
     }
   }
 
+  const handleAttachment = (type: string) => {
+    setShowAttachments(false)
+    // TODO: Implementar envio de anexos
+    console.log('Anexo tipo:', type)
+  }
+
+  const toggleRecording = () => {
+    setIsRecording(!isRecording)
+    // TODO: Implementar gravação de áudio
+  }
+
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50">
+    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      {/* Menu de anexos */}
+      {showAttachments && (
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-4 gap-3 max-w-xs">
+            <button
+              onClick={() => handleAttachment('image')}
+              className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-2">
+                <Image className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="text-xs text-gray-600 dark:text-gray-400">Imagem</span>
+            </button>
+            
+            <button
+              onClick={() => handleAttachment('camera')}
+              className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-2">
+                <Camera className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="text-xs text-gray-600 dark:text-gray-400">Câmera</span>
+            </button>
+            
+            <button
+              onClick={() => handleAttachment('document')}
+              className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
+                <FileText className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <span className="text-xs text-gray-600 dark:text-gray-400">Documento</span>
+            </button>
+            
+            <button
+              onClick={() => handleAttachment('contact')}
+              className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mb-2">
+                <User className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              </div>
+              <span className="text-xs text-gray-600 dark:text-gray-400">Contato</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input de mensagem */}
       <div className="p-3">
-        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg">
-          <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400"><Smile className="w-5 h-5" /></Button>
-          <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400"><Paperclip className="w-5 h-5" /></Button>
+        <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            title="Emojis"
+          >
+            <Smile className="w-5 h-5" />
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            onClick={() => setShowAttachments(!showAttachments)}
+            title="Anexos"
+          >
+            <Paperclip className="w-5 h-5" />
+          </Button>
+          
           <Input
             type="text"
-            placeholder="Digite uma mensagem"
+            placeholder="Digite uma mensagem..."
             value={message}
             onChange={e => setMessage(e.target.value)}
             onKeyDown={e => {
@@ -224,11 +312,29 @@ const MessageInput = ({
                 handleSend();
               }
             }}
-            className="flex-grow bg-transparent border-none focus:ring-0 h-10 px-2"
+            className="flex-grow bg-transparent border-none focus:ring-0 h-10 px-2 text-gray-900 dark:text-gray-100"
           />
-          <Button onClick={handleSend} size="icon" className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10">
-            <Send className="w-5 h-5" />
-          </Button>
+          
+          {message.trim() ? (
+            <Button 
+              onClick={handleSend} 
+              size="icon" 
+              className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10"
+              title="Enviar mensagem"
+            >
+              <Send className="w-5 h-5" />
+            </Button>
+          ) : (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={`rounded-full w-10 h-10 ${isRecording ? 'bg-red-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+              onClick={toggleRecording}
+              title={isRecording ? "Parar gravação" : "Gravar áudio"}
+            >
+              <Mic className="w-5 h-5" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -243,7 +349,11 @@ export function ChatWindow({
   onToggleAI, 
   onAssignAgent, 
   onMarkResolved,
-  onAssumeChat 
+  onAssumeChat,
+  onReplyMessage,
+  onEditMessage,
+  onDeleteMessage,
+  onMessageInfo
 }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -294,6 +404,10 @@ export function ChatWindow({
                   showAvatar={true}
                   showName={true}
                   isFirstOfDay={isFirstOfDay}
+                  onReply={onReplyMessage}
+                  onEdit={onEditMessage}
+                  onDelete={onDeleteMessage}
+                  onInfo={onMessageInfo}
                 />
               )
             })}

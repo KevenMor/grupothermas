@@ -115,10 +115,14 @@ export async function POST(request: NextRequest) {
         headers['Client-Token'] = process.env.ZAPI_CLIENT_TOKEN
       }
 
+      // Incluir nome do atendente na mensagem para o cliente
+      const agentName = userName || 'Atendente'
+      const messageWithAgent = `*${agentName}:*\n${content}`
+
       const zapiResponse = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ phone, message: content })
+        body: JSON.stringify({ phone, message: messageWithAgent })
       })
 
       if (!zapiResponse.ok) {
