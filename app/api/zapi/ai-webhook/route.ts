@@ -168,6 +168,16 @@ async function handleMessageStatus(body: any) {
 async function handleMessage(message: ZAPIWebhookEvent) {
   try {
     console.log('=== PROCESSANDO MENSAGEM ===')
+
+    // Trava de segurança #2: Garantir que temos um objeto de texto antes de prosseguir.
+    // Esta é a correção para o erro de build `message.text is possibly 'undefined'`.
+    if (!message.text || typeof message.text.message !== 'string') {
+      console.log('Evento ignorado: não é uma mensagem de texto válida.', message.type)
+      return NextResponse.json({
+        status: 'ignored',
+        reason: 'Not a valid text message object'
+      })
+    }
     
     // Load admin configuration
     const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
