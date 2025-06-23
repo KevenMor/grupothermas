@@ -127,10 +127,8 @@ export async function POST(request: NextRequest) {
       customerPhone: phone
     }, { merge: true })
 
-    const savedMessage: ChatMessage = {
-      id: messageRef.id,
-      ...(await messageRef.get()).data() as ChatMessage
-    }
+    const savedData = (await messageRef.get()).data() as Omit<ChatMessage, 'id'>
+    const savedMessage: ChatMessage = { id: messageRef.id, ...savedData }
 
     return NextResponse.json(savedMessage, { status: 201 })
 
