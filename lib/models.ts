@@ -132,6 +132,10 @@ export interface ChatMessage {
   role: 'user' | 'agent' | 'system' | 'ai'
   sender?: 'user' | 'agent' // for legacy
   status: ChatStatus
+  // Campos para identificar o agente
+  agentId?: string
+  agentName?: string
+  userName?: string // Nome do usuário logado que enviou a mensagem
 }
 
 export interface ChatCustomer {

@@ -50,7 +50,11 @@ export async function GET(request: NextRequest) {
           content: data.content || '',
           timestamp: isoTimestamp,
           role: data.role || data.sender || 'user',
-          status: data.status || 'sent'
+          status: data.status || 'sent',
+          // Incluir informações do agente se disponíveis
+          userName: data.userName,
+          agentId: data.agentId,
+          agentName: data.agentName
         })
       } catch (err) {
         console.error('Erro ao mapear mensagem', doc.id, err)
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { chatId, content, phone } = body
+    const { chatId, content, phone, userName, agentId } = body
 
     if (!chatId || !content || !phone) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -80,7 +84,11 @@ export async function POST(request: NextRequest) {
       content,
       timestamp: new Date().toISOString(),
       role: 'agent',
-      status: 'sending'
+      status: 'sending',
+      // Adicionar informações do agente
+      userName: userName || 'Atendente',
+      agentId: agentId,
+      agentName: userName || 'Atendente'
     }
 
     // Salvar primeiro para garantir persistência mesmo se Z-API falhar
