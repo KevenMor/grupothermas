@@ -1059,17 +1059,31 @@ export default function AdminPage() {
                   try {
                     const response = await fetch('/api/admin/webhook-diagnostics')
                     const result = await response.json()
-                    console.log('Diagnóstico:', result)
+                    console.log('Diagnóstico completo:', result)
                     
                     if (result.status === 'ok') {
                       toast.success('✅ Webhook configurado corretamente!')
+                    } else if (result.status === 'error') {
+                      // Mostrar erro específico
+                      if (result.diagnostics?.issues?.length > 0) {
+                        const mainIssue = result.diagnostics.issues[0]
+                        toast.error(`❌ ${mainIssue.message}`)
+                        console.error('Issues detalhados:', result.diagnostics.issues)
+                      } else {
+                        toast.error(`❌ ${result.error || 'Erro desconhecido'}`)
+                      }
                     } else {
-                      toast.error(`❌ Problemas encontrados: ${result.diagnostics.issues.length} issues`)
-                      console.error('Issues:', result.diagnostics.issues)
+                      const issueCount = result.diagnostics?.issues?.length || 0
+                      if (issueCount > 0) {
+                        toast.warning(`⚠️ ${issueCount} problema(s) encontrado(s)`)
+                        console.warn('Issues:', result.diagnostics.issues)
+                      } else {
+                        toast.success('✅ Nenhum problema encontrado')
+                      }
                     }
                   } catch (error) {
-                    toast.error('Erro ao fazer diagnóstico')
-                    console.error(error)
+                    console.error('Erro completo:', error)
+                    toast.error('❌ Erro ao fazer diagnóstico - verifique o console')
                   }
                 }}
               >
@@ -1085,15 +1099,21 @@ export default function AdminPage() {
                       body: JSON.stringify({ action: 'fix_webhook' })
                     })
                     const result = await response.json()
+                    console.log('Resultado da correção:', result)
                     
                     if (result.success) {
                       toast.success('✅ Webhook corrigido com sucesso!')
                     } else {
-                      toast.error(`❌ Erro ao corrigir: ${result.error}`)
+                      // Mostrar erro mais detalhado
+                      const errorMsg = result.error || result.message || 'Erro desconhecido'
+                      toast.error(`❌ Erro na correção: ${errorMsg}`)
+                      if (result.details) {
+                        console.error('Detalhes do erro:', result.details)
+                      }
                     }
                   } catch (error) {
-                    toast.error('Erro ao corrigir webhook')
-                    console.error(error)
+                    console.error('Erro completo na correção:', error)
+                    toast.error('❌ Erro ao corrigir webhook - verifique o console')
                   }
                 }}
               >
