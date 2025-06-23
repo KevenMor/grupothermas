@@ -15,6 +15,7 @@ import {
   Video
 } from 'lucide-react'
 import { ChatMessageItem } from './ChatMessageItem'
+import { isSameDay } from 'date-fns'
 
 interface ChatWindowProps {
   chat: Chat | null
@@ -106,6 +107,9 @@ export function ChatWindow({ chat, messages, onSendMessage, isLoading }: ChatWin
     return <WelcomeScreen />
   }
 
+  // Agrupar mensagens por data
+  let lastDate: Date | null = null
+
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 bg-white dark:bg-gray-900">
       <ChatHeader chat={chat} />
@@ -115,10 +119,21 @@ export function ChatWindow({ chat, messages, onSendMessage, isLoading }: ChatWin
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           </div>
         ) : (
-          <div className="space-y-4">
-            {messages.map((msg) => (
-              <ChatMessageItem key={msg.id} message={msg} />
-            ))}
+          <div className="space-y-2">
+            {messages.map((msg, idx) => {
+              const dateObj = new Date(msg.timestamp)
+              const isFirstOfDay = !lastDate || !isSameDay(lastDate, dateObj)
+              lastDate = dateObj
+              return (
+                <ChatMessageItem
+                  key={msg.id}
+                  message={msg}
+                  showAvatar={true}
+                  showName={true}
+                  isFirstOfDay={isFirstOfDay}
+                />
+              )
+            })}
           </div>
         )}
         <div ref={messagesEndRef} />
