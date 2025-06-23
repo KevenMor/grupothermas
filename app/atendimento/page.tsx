@@ -117,7 +117,7 @@ export default function AtendimentoPage() {
     <AppLayout>
       <Toaster richColors position="top-right" />
       <div className="flex justify-center items-center h-screen w-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
-        <div className="flex w-full max-w-6xl h-[90vh] rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-900">
+        <div className="flex w-full max-w-5xl h-[95vh] rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-900">
           <ChatList
             chats={chats}
             selectedChat={selectedChat}
