@@ -74,7 +74,8 @@ const MessageInput = ({ onSendMessage }: { onSendMessage: (content: string) => v
       <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg">
         <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400"><Smile className="w-5 h-5" /></Button>
         <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400"><Paperclip className="w-5 h-5" /></Button>
-        <Textarea
+        <Input
+          type="text"
           placeholder="Digite uma mensagem"
           value={message}
           onChange={e => setMessage(e.target.value)}
@@ -84,8 +85,7 @@ const MessageInput = ({ onSendMessage }: { onSendMessage: (content: string) => v
               handleSend();
             }
           }}
-          className="flex-grow bg-transparent border-none focus:ring-0 resize-none h-auto max-h-24 p-2"
-          rows={1}
+          className="flex-grow bg-transparent border-none focus:ring-0 h-10 px-2"
         />
         <Button onClick={handleSend} size="icon" className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10">
           <Send className="w-5 h-5" />
