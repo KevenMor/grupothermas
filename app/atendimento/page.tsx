@@ -16,23 +16,22 @@ export default function AtendimentoPage() {
 
   // Função para buscar chats
   const fetchChats = async () => {
-      setIsLoadingChats(true)
-      try {
-        const response = await fetch('/api/atendimento/chats')
+    setIsLoadingChats(true)
+    try {
+      const response = await fetch('/api/atendimento/chats')
       if (!response.ok) throw new Error('Failed to fetch chats')
       const data: Chat[] = await response.json()
       setChats(data)
-      // Se não houver chat selecionado, seleciona o primeiro
       if (data.length > 0 && !selectedChat) {
         handleSelectChat(data[0])
-        }
-      } catch (error) {
+      }
+    } catch (error) {
       console.error(error)
       toast.error('Erro ao carregar as conversas.')
-      } finally {
-        setIsLoadingChats(false)
-      }
+    } finally {
+      setIsLoadingChats(false)
     }
+  }
 
   // Função para buscar mensagens do chat selecionado
   const fetchMessages = async (chatId: string) => {
@@ -41,8 +40,13 @@ export default function AtendimentoPage() {
       const response = await fetch(`/api/atendimento/messages?chatId=${chatId}`)
       if (!response.ok) throw new Error('Failed to fetch messages')
       const data: ChatMessage[] = await response.json()
+      // Manter mensagens com erro (failed) no array
       setMessages(prev => {
-        if (JSON.stringify(prev) !== JSON.stringify(data)) return data
+        const failed = prev.filter(m => m.status === 'failed')
+        // Só atualiza se mudou
+        if (JSON.stringify(prev.filter(m => m.status !== 'failed')) !== JSON.stringify(data)) {
+          return [...data, ...failed]
+        }
         return prev
       })
     } catch (error) {
@@ -70,10 +74,9 @@ export default function AtendimentoPage() {
     setSelectedChat(chat)
     fetchMessages(chat.id)
   }
-  
+
   const handleSendMessage = async (content: string) => {
     if (!selectedChat) return
-
     const tempId = `temp-${Date.now()}`
     const optimisticMessage: ChatMessage = {
       id: tempId,
@@ -83,36 +86,29 @@ export default function AtendimentoPage() {
       status: 'sending',
     }
     setMessages(prev => [...prev, optimisticMessage])
-
     try {
       const response = await fetch('/api/atendimento/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           chatId: selectedChat.id,
           content,
           phone: selectedChat.customerPhone,
         }),
       })
-      
       if (!response.ok) throw new Error('Failed to send message')
-      
       const sentMessage: ChatMessage = await response.json()
-
-      setMessages(prev => 
+      setMessages(prev =>
         prev.map(msg => msg.id === tempId ? { ...sentMessage, status: 'sent' } : msg)
       )
-      
-      // Update chat list with new last message
-      setChats(prev => prev.map(chat => 
-        chat.id === selectedChat.id 
+      setChats(prev => prev.map(chat =>
+        chat.id === selectedChat.id
           ? { ...chat, lastMessage: sentMessage.content, timestamp: sentMessage.timestamp }
           : chat
       ))
-
     } catch (error) {
       console.error(error)
-       toast.error('Erro ao enviar mensagem.')
+      toast.error('Erro ao enviar mensagem.')
       setMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, status: 'failed' } : msg))
     }
   }
@@ -120,19 +116,23 @@ export default function AtendimentoPage() {
   return (
     <AppLayout>
       <Toaster richColors position="top-right" />
-      <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
-        <ChatList
-          chats={chats}
-          selectedChat={selectedChat}
-          onSelectChat={handleSelectChat}
-          isLoading={isLoadingChats}
-        />
-        <ChatWindow
-          chat={selectedChat}
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          isLoading={isLoadingMessages && messages.length === 0}
-        />
+      <div className="flex justify-center items-center h-screen w-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        <div className="flex w-full max-w-6xl h-[90vh] rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-900">
+          <ChatList
+            chats={chats}
+            selectedChat={selectedChat}
+            onSelectChat={handleSelectChat}
+            isLoading={isLoadingChats}
+          />
+          <div className="flex-1 flex flex-col min-w-0">
+            <ChatWindow
+              chat={selectedChat}
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              isLoading={isLoadingMessages && messages.length === 0}
+            />
+          </div>
+        </div>
       </div>
     </AppLayout>
   )
