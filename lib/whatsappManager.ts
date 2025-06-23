@@ -4,6 +4,7 @@ import { adminDB } from './firebaseAdmin'
 import { Server } from 'socket.io'
 import OpenAI from 'openai'
 import axios from 'axios'
+import { FieldValue } from 'firebase-admin/firestore'
 
 interface WhatsAppSession {
   id: string
@@ -184,7 +185,7 @@ class WhatsAppManager {
 
       // Incrementar contador de mensagens
       await this.updateSessionInDB(sessionId, {
-        messagesCount: adminDB.FieldValue.increment(1),
+        messagesCount: FieldValue.increment(1),
         lastActivity: new Date()
       })
 
@@ -206,6 +207,8 @@ class WhatsAppManager {
       if (session.aiEnabled && !message.fromMe && session.client) {
         await this.processWithAI(sessionId, message)
       }
+
+      this.io?.emit('message', { sessionId, message })
 
     } catch (error) {
       console.error(`Erro ao processar mensagem para sessão ${sessionId}:`, error)

@@ -121,6 +121,7 @@ export default function AtendimentoPage() {
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       content: newMessage,
+      role: 'agent',
       sender: 'agent',
       timestamp: new Date().toISOString()
     }

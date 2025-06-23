@@ -264,9 +264,13 @@ export default function KanbanPage() {
                           
                           <div className="flex items-center space-x-1">
                             {conversation.aiActive ? (
-                              <Bot className="w-4 h-4 text-purple-500" title="IA Ativa" />
+                              <span title="IA Ativa">
+                                <Bot className="w-4 h-4 text-purple-500" />
+                              </span>
                             ) : (
-                              <User className="w-4 h-4 text-blue-500" title="Atendimento Humano" />
+                              <span title="Atendimento Humano">
+                                <User className="w-4 h-4 text-blue-500" />
+                              </span>
                             )}
                             <Button variant="ghost" size="icon" className="w-6 h-6">
                               <MoreVertical className="w-3 h-3" />

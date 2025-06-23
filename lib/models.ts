@@ -66,6 +66,7 @@ export interface DashboardMetrics {
 // Interfaces para o sistema de Atendimento / Chat
 export interface ChatMessage {
   id: string
+  role: 'user' | 'assistant' | 'agent'
   content: string
   sender: 'user' | 'ai' | 'agent'
   timestamp: Date | string // string for firestore
