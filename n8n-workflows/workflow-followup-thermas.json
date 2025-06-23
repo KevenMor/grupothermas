@@ -1,0 +1,312 @@
+{
+  "name": "Follow-up Automático - Grupo Thermas",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "trigger-followup",
+      "name": "Trigger Follow-up (2h)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://seudominio.com/api/leads/pending-followup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer SEU_TOKEN_SISTEMA"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-leads-pendentes",
+      "name": "Buscar Leads Pendentes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Processar leads que precisam de follow-up\nconst leads = items[0].json.leads || [];\n\nif (!leads.length) {\n  return [];\n}\n\n// Filtrar leads que precisam de follow-up\nconst now = new Date();\nconst leadsForFollowUp = leads.filter(lead => {\n  const lastContact = new Date(lead.lastContactAt);\n  const hoursSinceLastContact = (now - lastContact) / (1000 * 60 * 60);\n  \n  // Follow-up se:\n  // - Mais de 2 horas sem resposta\n  // - Não teve follow-up ainda\n  // - Interesse em pacotes/preços\n  return hoursSinceLastContact >= 2 && \n         !lead.followUpSent && \n         ['pacotes', 'precos', 'reserva'].includes(lead.intention);\n});\n\nreturn leadsForFollowUp.map(lead => ({\n  json: {\n    ...lead,\n    followUpType: 'automated_2h',\n    processedAt: now.toISOString()\n  }\n}));"
+      },
+      "id": "processar-leads-followup",
+      "name": "Processar Leads Follow-up",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Gerar mensagens de follow-up personalizadas\nconst lead = items[0].json;\nconst intention = lead.intention;\nconst name = lead.name || 'Cliente';\nconst timeOfDay = new Date().getHours();\n\nlet greeting = '';\nif (timeOfDay < 12) greeting = 'Bom dia';\nelse if (timeOfDay < 18) greeting = 'Boa tarde';\nelse greeting = 'Boa noite';\n\nlet followUpMessage = '';\n\nswitch (intention) {\n  case 'pacotes':\n    followUpMessage = `${greeting} ${name}! 🌅\n\nVi que você teve interesse nos nossos pacotes para Caldas Novas mais cedo.\n\n🤔 Ficou alguma dúvida? Posso ajudar com mais informações?\n\n💡 **OFERTA ESPECIAL AGORA:**\n🎯 20% de desconto para reservas feitas hoje\n⏰ Últimas vagas para o próximo fim de semana!\n\n📱 **PACOTES MAIS PROCURADOS:**\n• 💑 Pacote Casal Romântico - R$ 712 (era R$ 890)\n• 👨‍👩‍👧‍👦 Pacote Família Completo - R$ 960 (era R$ 1.200)\n• 👥 Pacote Grupo Amigos - R$ 600 (era R$ 750)\n\nQuer garantir sua vaga? É só me avisar! 😊\n\n*Oferta válida apenas hoje*`;\n    break;\n    \n  case 'precos':\n    followUpMessage = `${greeting} ${name}! 💰\n\nVoltando ao assunto dos preços que você perguntou...\n\n🔥 **ACABOU DE SAIR DO FORNO:**\nPromocão relâmpago com até 25% OFF!\n\n💸 **PREÇOS DE HOJE:**\n• Final de semana: R$ 562,50 (era R$ 750)\n• Durante a semana: R$ 442,50 (era R$ 590)\n• Pacote especial: R$ 367,50 (era R$ 490)\n\n🎁 **BÔNUS EXCLUSIVO:**\n• Upgrade GRATUITO no quarto\n• Jantar romântico incluso\n• Late check-out sem taxa\n\n⏰ Essa promoção acaba à meia-noite!\n\nVamos garantir sua reserva? 🚀`;\n    break;\n    \n  case 'reserva':\n    followUpMessage = `${greeting} ${name}! 📅\n\nSobre a reserva que você queria fazer...\n\n✅ **DISPONIBILIDADE ATUALIZADA:**\n• Próximo fim de semana: 3 vagas restantes\n• Semana que vem: Disponível\n• Feriado próximo: Lista de espera\n\n🚨 **ATENÇÃO:** As vagas estão acabando rápido!\n\n📋 **PARA RESERVAR AGORA:**\n1️⃣ Me informe quantas pessoas\n2️⃣ Datas preferidas (1ª e 2ª opção)\n3️⃣ Tipo de quarto desejado\n\n💳 **FACILIDADES:**\n• Entrada de apenas R$ 200\n• Restante em até 10x sem juros\n• Cancelamento gratuito até 48h antes\n\nVamos fazer sua reserva agora? ⚡`;\n    break;\n    \n  default:\n    followUpMessage = `${greeting} ${name}! 👋\n\nVi que você entrou em contato conosco mais cedo.\n\n🤝 Estou aqui para ajudar com qualquer dúvida sobre:\n• 🏨 Pacotes e hospedagem\n• 💰 Preços e promoções\n• 📅 Reservas e disponibilidade\n• 🎯 Ofertas especiais\n\n💡 **DICA ESPECIAL:**\nTemos uma promoção surpresa rolando hoje!\n\nO que você gostaria de saber? 😊`;\n}\n\nreturn [{\n  json: {\n    ...lead,\n    followUpMessage: followUpMessage,\n    messageGenerated: true,\n    messageLength: followUpMessage.length\n  }\n}];"
+      },
+      "id": "gerar-mensagem-followup",
+      "name": "Gerar Mensagem Follow-up",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.z-api.io/instances/{{$json.instanceId}}/token/SEU_TOKEN_ZAPI/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{$json.phone}}"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.followUpMessage}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "enviar-followup-zapi",
+      "name": "Enviar Follow-up Z-API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://seudominio.com/api/leads/{{$json.id}}/followup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer SEU_TOKEN_SISTEMA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "followUpSent",
+              "value": true
+            },
+            {
+              "name": "followUpType",
+              "value": "={{$json.followUpType}}"
+            },
+            {
+              "name": "followUpSentAt",
+              "value": "={{$json.processedAt}}"
+            },
+            {
+              "name": "followUpMessage",
+              "value": "={{$json.followUpMessage}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "marcar-followup-enviado",
+      "name": "Marcar Follow-up Enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Agendar próximo follow-up se necessário\nconst lead = items[0].json;\n\n// Agendar follow-up de 24h se ainda não converteu\nconst nextFollowUp = new Date();\nnextFollowUp.setHours(nextFollowUp.getHours() + 24);\n\n// Mensagem mais persuasiva para o follow-up de 24h\nconst urgentMessage = `🔥 **ÚLTIMA CHANCE ${lead.name}!**\n\nEssa é sua última oportunidade de garantir os preços promocionais para Caldas Novas!\n\n⏰ **PROMOÇÃO ACABA EM 2 HORAS!**\n\n💥 **SUPER DESCONTO FINAL:**\n• 30% OFF em todos os pacotes\n• Parcelamento em até 12x SEM JUROS\n• Brinde exclusivo: Jantar romântico\n\n🚨 **ATENÇÃO:** Apenas 2 vagas restantes!\n\n📞 **RESERVA EXPRESSA:**\nMe chama agora e garanto sua vaga em 2 minutos!\n\n*Depois dessa promoção, os preços voltam ao normal.*\n\nVamos fechar? 🤝`;\n\nreturn [{\n  json: {\n    ...lead,\n    nextFollowUpScheduled: nextFollowUp.toISOString(),\n    nextFollowUpMessage: urgentMessage,\n    followUpLevel: 2,\n    isUrgent: true\n  }\n}];"
+      },
+      "id": "agendar-proximo-followup",
+      "name": "Agendar Próximo Follow-up",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://seudominio.com/api/followup/schedule-next",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer SEU_TOKEN_SISTEMA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "leadId",
+              "value": "={{$json.id}}"
+            },
+            {
+              "name": "scheduledFor",
+              "value": "={{$json.nextFollowUpScheduled}}"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.nextFollowUpMessage}}"
+            },
+            {
+              "name": "level",
+              "value": "={{$json.followUpLevel}}"
+            },
+            {
+              "name": "isUrgent",
+              "value": "={{$json.isUrgent}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "salvar-proximo-followup",
+      "name": "Salvar Próximo Follow-up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Trigger Follow-up (2h)": {
+      "main": [
+        [
+          {
+            "node": "Buscar Leads Pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Leads Pendentes": {
+      "main": [
+        [
+          {
+            "node": "Processar Leads Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Leads Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Gerar Mensagem Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Mensagem Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Enviar Follow-up Z-API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Follow-up Z-API": {
+      "main": [
+        [
+          {
+            "node": "Marcar Follow-up Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Follow-up Enviado": {
+      "main": [
+        [
+          {
+            "node": "Agendar Próximo Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agendar Próximo Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Salvar Próximo Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "America/Sao_Paulo"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-followup-thermas",
+  "tags": ["followup", "automation", "thermas", "z-api"]
+} 

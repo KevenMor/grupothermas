@@ -1,0 +1,412 @@
+{
+  "name": "Atendimento Automatizado - Grupo Thermas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-thermas",
+        "options": {}
+      },
+      "id": "webhook-whatsapp",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Processar mensagem recebida do Z-API\nconst message = items[0].json;\n\n// Extrair dados importantes\nconst phoneNumber = message.from || message.data?.from;\nconst messageText = message.message || message.data?.message || '';\nconst instanceId = message.instanceId || message.data?.instanceId;\nconst fromName = message.fromName || message.data?.fromName || 'Cliente';\n\n// Normalizar número de telefone\nconst cleanPhone = phoneNumber.replace(/\\D/g, '');\nconst formattedPhone = cleanPhone.startsWith('55') ? cleanPhone : '55' + cleanPhone;\n\n// Detectar intenção baseada em palavras-chave\nconst messageTextLower = messageText.toLowerCase();\nlet intention = 'general';\nlet priority = 'normal';\n\n// Palavras-chave para diferentes intenções\nconst keywords = {\n  pacotes: ['pacote', 'viagem', 'caldas novas', 'thermas', 'resort', 'hospedagem'],\n  precos: ['preço', 'valor', 'quanto custa', 'orçamento', 'promoção'],\n  reserva: ['reservar', 'agendar', 'disponibilidade', 'data', 'quando'],\n  urgente: ['urgente', 'emergência', 'problema', 'cancelar'],\n  humano: ['atendente', 'humano', 'pessoa', 'falar com alguém']\n};\n\n// Detectar intenção\nfor (const [key, words] of Object.entries(keywords)) {\n  if (words.some(word => messageTextLower.includes(word))) {\n    intention = key;\n    if (key === 'urgente') priority = 'high';\n    break;\n  }\n}\n\n// Verificar se é primeira mensagem do cliente\nconst isFirstContact = !messageText.includes('continuando') && !messageText.includes('obrigad');\n\nreturn [{\n  json: {\n    phoneNumber: formattedPhone,\n    originalPhone: phoneNumber,\n    messageText: messageText,\n    instanceId: instanceId,\n    fromName: fromName,\n    intention: intention,\n    priority: priority,\n    isFirstContact: isFirstContact,\n    timestamp: new Date().toISOString(),\n    processedAt: Date.now()\n  }\n}];"
+      },
+      "id": "processar-mensagem",
+      "name": "Processar Mensagem",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.intention}}",
+              "operation": "equal",
+              "value2": "humano"
+            }
+          ]
+        }
+      },
+      "id": "verificar-handoff",
+      "name": "Verificar Handoff",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Gerar resposta automática baseada na intenção\nconst data = items[0].json;\nconst intention = data.intention;\nconst fromName = data.fromName;\nconst isFirstContact = data.isFirstContact;\n\nlet response = '';\nlet shouldContinue = true;\n\n// Respostas baseadas na intenção\nswitch (intention) {\n  case 'pacotes':\n    response = `🌊 Olá ${fromName}! Que bom que você tem interesse nos nossos pacotes para Caldas Novas!\n\n🏨 **PACOTES DISPONÍVEIS:**\n• 💑 Pacote Casal - A partir de R$ 890\n• 👨‍👩‍👧‍👦 Pacote Família - A partir de R$ 1.200  \n• 👥 Pacote Grupo - A partir de R$ 750\n\n✅ **INCLUSOS:**\n• Hospedagem em resort 5 estrelas\n• Café da manhã completo\n• Acesso às piscinas termais\n• Transfer aeroporto\n• Recreação infantil\n\nGostaria de mais detalhes sobre algum pacote específico? 😊\n\nDigite:\n• \"CASAL\" para pacote romântico\n• \"FAMÍLIA\" para pacote familiar\n• \"GRUPO\" para pacote em grupo`;\n    break;\n    \n  case 'precos':\n    response = `💰 **PREÇOS ESPECIAIS GRUPO THERMAS**\n\n🏷️ Valores promocionais:\n• **Final de semana:** R$ 750/pessoa\n• **Semana:** R$ 590/pessoa  \n• **Promoção Flash:** R$ 490/pessoa\n\n📋 **INCLUSO NO PREÇO:**\n✅ 3 dias / 2 noites\n✅ Todas as refeições\n✅ Atividades aquáticas\n✅ Recreação e entretenimento\n✅ Estacionamento gratuito\n\n🎯 **CONDIÇÕES ESPECIAIS:**\n• Até 12x sem juros\n• 10% desconto à vista\n• Crianças até 6 anos: GRÁTIS\n\nQuer que eu monte um orçamento personalizado? \nMe informe quantas pessoas e as datas! 📅`;\n    break;\n    \n  case 'reserva':\n    response = `📅 **FAZER SUA RESERVA É FÁCIL!**\n\nPara verificar disponibilidade e fazer sua reserva, preciso de algumas informações:\n\n👥 **Quantas pessoas?**\n📅 **Datas desejadas?**\n🏨 **Tipo de acomodação preferida?**\n💰 **Orçamento aproximado?**\n\n⚡ **DISPONIBILIDADE EM TEMPO REAL:**\n• Próximos fins de semana: ✅ Disponível\n• Feriados: ⚠️ Limitado\n• Férias escolares: 🔥 Alta demanda\n\nResponda essas informações e eu verifico tudo para você em segundos! 🚀`;\n    break;\n    \n  case 'urgente':\n    response = `🚨 **ATENDIMENTO PRIORITÁRIO**\n\nEntendi que é urgente! Vou te conectar com nossa equipe especializada imediatamente.\n\n📞 **CONTATOS DIRETOS:**\n• WhatsApp Urgência: (62) 99999-9999\n• Telefone 24h: (62) 3333-3333\n\n⏰ Tempo de resposta: **IMEDIATO**\n\nEnquanto isso, me conte o que aconteceu para eu já adiantar sua solicitação:`;\n    shouldContinue = false; // Não continuar automação, transferir para humano\n    break;\n    \n  case 'humano':\n    response = `👋 Claro! Vou te conectar com um de nossos atendentes especializados.\n\n⏰ **Horário de atendimento humano:**\n• Segunda a Sexta: 8h às 18h\n• Sábados: 8h às 14h\n• Domingos: 9h às 17h\n\n🕐 Agora são ${new Date().toLocaleTimeString('pt-BR')} - ${new Date().getHours() >= 8 && new Date().getHours() <= 18 ? 'ONLINE' : 'OFFLINE'}\n\n${new Date().getHours() >= 8 && new Date().getHours() <= 18 ? \n  '✅ Conectando você com atendente... Aguarde alguns segundos!' :\n  '🌙 Fora do horário de atendimento. Deixe sua mensagem que responderemos primeira hora da manhã!'}`;\n    shouldContinue = false;\n    break;\n    \n  default:\n    if (isFirstContact) {\n      response = `👋 **Olá ${fromName}! Bem-vindo ao Grupo Thermas!**\n\n🌊 Somos especialistas em viagens para **Caldas Novas** com mais de 15 anos de experiência!\n\n🎯 **COMO POSSO AJUDAR VOCÊ HOJE?**\n\n📱 **MENU RÁPIDO:**\n• Digite \"PACOTES\" - Ver opções de viagem\n• Digite \"PREÇOS\" - Consultar valores\n• Digite \"RESERVAR\" - Fazer sua reserva\n• Digite \"HUMANO\" - Falar com atendente\n\n🏆 **POR QUE ESCOLHER O GRUPO THERMAS?**\n✅ Melhor custo-benefício da região\n✅ Atendimento 24/7\n✅ Mais de 50.000 clientes satisfeitos\n✅ Parcelamento em até 12x sem juros\n\nEstou aqui para tornar sua viagem inesquecível! 😊`;\n    } else {\n      response = `Olá ${fromName}! 😊\n\nNão entendi muito bem sua mensagem. Pode me explicar melhor como posso ajudar?\n\n💡 **DICAS RÁPIDAS:**\n• \"PACOTES\" - Ver opções de viagem\n• \"PREÇOS\" - Consultar valores  \n• \"RESERVAR\" - Fazer reserva\n• \"HUMANO\" - Falar com atendente\n\nOu me conte em suas palavras o que você está procurando! 🎯`;\n    }\n}\n\nreturn [{\n  json: {\n    ...data,\n    response: response,\n    shouldContinue: shouldContinue,\n    responseGenerated: true,\n    responseLength: response.length\n  }\n}];"
+      },
+      "id": "gerar-resposta-ia",
+      "name": "Gerar Resposta IA",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.z-api.io/instances/{{$json.instanceId}}/token/SEU_TOKEN_AQUI/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{$json.phoneNumber}}"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.response}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "enviar-resposta-zapi",
+      "name": "Enviar Resposta Z-API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Notificar equipe sobre handoff\nconst data = items[0].json;\n\nconst notification = {\n  type: 'handoff_request',\n  customer: {\n    phone: data.phoneNumber,\n    name: data.fromName,\n    lastMessage: data.messageText\n  },\n  urgency: data.priority,\n  timestamp: new Date().toISOString(),\n  reason: data.intention === 'humano' ? 'Cliente solicitou atendente' : 'Situação urgente detectada'\n};\n\nreturn [{\n  json: {\n    ...data,\n    notification: notification,\n    handoffInitiated: true\n  }\n}];"
+      },
+      "id": "notificar-handoff",
+      "name": "Notificar Handoff",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        900,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://seudominio.com/api/notifications/handoff",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer SEU_TOKEN_SISTEMA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "notification",
+              "value": "={{$json.notification}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "enviar-notificacao-sistema",
+      "name": "Enviar Notificação Sistema",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://seudominio.com/api/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer SEU_TOKEN_SISTEMA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{$json.phoneNumber}}"
+            },
+            {
+              "name": "name",
+              "value": "={{$json.fromName}}"
+            },
+            {
+              "name": "source",
+              "value": "whatsapp"
+            },
+            {
+              "name": "intention",
+              "value": "={{$json.intention}}"
+            },
+            {
+              "name": "firstMessage",
+              "value": "={{$json.messageText}}"
+            },
+            {
+              "name": "priority",
+              "value": "={{$json.priority}}"
+            },
+            {
+              "name": "createdAt",
+              "value": "={{$json.timestamp}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "salvar-lead",
+      "name": "Salvar Lead no Sistema",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.intention}}",
+              "operation": "equal",
+              "value2": "pacotes"
+            }
+          ],
+          "boolean": [
+            {
+              "value1": "={{$json.isFirstContact}}",
+              "value2": true
+            }
+          ]
+        },
+        "combineOperation": "any"
+      },
+      "id": "verificar-interesse-comercial",
+      "name": "Verificar Interesse Comercial",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Agendar follow-up automático\nconst data = items[0].json;\n\n// Agendar para 2 horas se não houver resposta\nconst followUpTime = new Date();\nfollowUpTime.setHours(followUpTime.getHours() + 2);\n\n// Agendar para 1 dia se for lead qualificado\nconst longTermFollowUp = new Date();\nlongTermFollowUp.setDate(longTermFollowUp.getDate() + 1);\n\nconst followUpMessage = `🔔 Olá ${data.fromName}!\n\nVi que você teve interesse nos nossos pacotes para Caldas Novas. \n\n🤔 Ficou alguma dúvida? Posso ajudar com mais informações?\n\n💡 **OFERTA ESPECIAL HOJE:**\n🎯 15% de desconto para reservas feitas até às 18h\n⏰ Válido apenas hoje!\n\nQuer aproveitar? É só me avisar! 😊`;\n\nreturn [{\n  json: {\n    ...data,\n    followUp: {\n      scheduledFor: followUpTime.toISOString(),\n      longTermScheduledFor: longTermFollowUp.toISOString(),\n      message: followUpMessage,\n      type: 'commercial_follow_up'\n    },\n    followUpScheduled: true\n  }\n}];"
+      },
+      "id": "agendar-followup",
+      "name": "Agendar Follow-up",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://seudominio.com/api/followup/schedule",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer SEU_TOKEN_SISTEMA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "followUp",
+              "value": "={{$json.followUp}}"
+            },
+            {
+              "name": "customerData",
+              "value": "={{$json}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "salvar-followup",
+      "name": "Salvar Follow-up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Processar Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Verificar Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Handoff": {
+      "main": [
+        [
+          {
+            "node": "Notificar Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gerar Resposta IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Resposta IA": {
+      "main": [
+        [
+          {
+            "node": "Enviar Resposta Z-API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Resposta Z-API": {
+      "main": [
+        [
+          {
+            "node": "Salvar Lead no Sistema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificar Handoff": {
+      "main": [
+        [
+          {
+            "node": "Enviar Notificação Sistema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar Lead no Sistema": {
+      "main": [
+        [
+          {
+            "node": "Verificar Interesse Comercial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Interesse Comercial": {
+      "main": [
+        [
+          {
+            "node": "Agendar Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Agendar Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Salvar Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "America/Sao_Paulo"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-thermas-whatsapp",
+  "tags": ["whatsapp", "automation", "thermas", "z-api"]
+} 

@@ -1,0 +1,391 @@
+{
+  "name": "Analytics e Relatórios - Grupo Thermas",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "trigger-relatorio-diario",
+      "name": "Trigger Relatório Diário",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://seudominio.com/api/analytics/daily-stats",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer SEU_TOKEN_SISTEMA"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-dados-diarios",
+      "name": "Buscar Dados Diários",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Processar dados analytics do dia\nconst data = items[0].json;\nconst today = new Date().toISOString().split('T')[0];\n\n// Métricas principais\nconst metrics = {\n  date: today,\n  totalMessages: data.totalMessages || 0,\n  totalLeads: data.totalLeads || 0,\n  totalConversions: data.totalConversions || 0,\n  averageResponseTime: data.averageResponseTime || 0,\n  topIntentions: data.topIntentions || [],\n  hourlyDistribution: data.hourlyDistribution || [],\n  conversionRate: data.totalLeads > 0 ? (data.totalConversions / data.totalLeads * 100).toFixed(2) : 0,\n  responseRate: data.totalMessages > 0 ? (data.totalResponses / data.totalMessages * 100).toFixed(2) : 0\n};\n\n// Calcular tendências\nconst yesterday = data.yesterday || {};\nconst trends = {\n  messagesGrowth: yesterday.totalMessages ? \n    ((metrics.totalMessages - yesterday.totalMessages) / yesterday.totalMessages * 100).toFixed(2) : 0,\n  leadsGrowth: yesterday.totalLeads ? \n    ((metrics.totalLeads - yesterday.totalLeads) / yesterday.totalLeads * 100).toFixed(2) : 0,\n  conversionsGrowth: yesterday.totalConversions ? \n    ((metrics.totalConversions - yesterday.totalConversions) / yesterday.totalConversions * 100).toFixed(2) : 0\n};\n\n// Alertas automáticos\nconst alerts = [];\nif (metrics.conversionRate < 10) {\n  alerts.push({\n    type: 'warning',\n    message: `Taxa de conversão baixa: ${metrics.conversionRate}%`,\n    action: 'Revisar estratégia de follow-up'\n  });\n}\n\nif (metrics.averageResponseTime > 60) {\n  alerts.push({\n    type: 'critical',\n    message: `Tempo de resposta alto: ${metrics.averageResponseTime}s`,\n    action: 'Verificar performance do sistema'\n  });\n}\n\nif (trends.leadsGrowth < -20) {\n  alerts.push({\n    type: 'warning',\n    message: `Queda de leads: ${trends.leadsGrowth}%`,\n    action: 'Analisar campanhas de marketing'\n  });\n}\n\nreturn [{\n  json: {\n    metrics: metrics,\n    trends: trends,\n    alerts: alerts,\n    reportGenerated: true,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "processar-analytics",
+      "name": "Processar Analytics",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Gerar relatório formatado\nconst data = items[0].json;\nconst metrics = data.metrics;\nconst trends = data.trends;\nconst alerts = data.alerts;\n\n// Emojis para tendências\nconst getTrendEmoji = (value) => {\n  const num = parseFloat(value);\n  if (num > 0) return '📈';\n  if (num < 0) return '📉';\n  return '➡️';\n};\n\n// Gerar relatório em texto\nconst report = `📊 **RELATÓRIO DIÁRIO - GRUPO THERMAS**\n📅 Data: ${metrics.date}\n\n🎯 **MÉTRICAS PRINCIPAIS:**\n• 💬 Mensagens: ${metrics.totalMessages} ${getTrendEmoji(trends.messagesGrowth)} ${trends.messagesGrowth}%\n• 🎯 Leads: ${metrics.totalLeads} ${getTrendEmoji(trends.leadsGrowth)} ${trends.leadsGrowth}%\n• 💰 Conversões: ${metrics.totalConversions} ${getTrendEmoji(trends.conversionsGrowth)} ${trends.conversionsGrowth}%\n• ⚡ Tempo médio resposta: ${metrics.averageResponseTime}s\n\n📈 **PERFORMANCE:**\n• 🎯 Taxa de conversão: ${metrics.conversionRate}%\n• 📱 Taxa de resposta: ${metrics.responseRate}%\n\n🔥 **TOP INTENÇÕES:**\n${metrics.topIntentions.map((intention, index) => \n  `${index + 1}. ${intention.name}: ${intention.count} (${intention.percentage}%)`\n).join('\\n')}\n\n⏰ **DISTRIBUIÇÃO POR HORA:**\n${metrics.hourlyDistribution.map(hour => \n  `${hour.hour}h: ${hour.count} mensagens`\n).join('\\n')}\n\n${alerts.length > 0 ? `🚨 **ALERTAS:**\\n${alerts.map(alert => \n  `${alert.type === 'critical' ? '🔴' : '🟡'} ${alert.message}\\n   💡 Ação: ${alert.action}`\n).join('\\n\\n')}` : '✅ **Nenhum alerta hoje!**'}\n\n📊 **ANÁLISE:**\n${metrics.conversionRate > 15 ? '🎉 Excelente performance de conversão!' : \n  metrics.conversionRate > 10 ? '👍 Boa performance, pode melhorar.' : \n  '⚠️ Performance abaixo do esperado.'}\n\n🎯 **PRÓXIMOS PASSOS:**\n• Otimizar horários de maior movimento\n• Melhorar follow-up para intenções menos convertidas\n• Ajustar mensagens automáticas conforme tendências\n\n---\n*Relatório gerado automaticamente pelo sistema N8N*`;\n\n// Gerar dados para dashboard\nconst dashboardData = {\n  date: metrics.date,\n  kpis: [\n    { name: 'Mensagens', value: metrics.totalMessages, trend: trends.messagesGrowth },\n    { name: 'Leads', value: metrics.totalLeads, trend: trends.leadsGrowth },\n    { name: 'Conversões', value: metrics.totalConversions, trend: trends.conversionsGrowth },\n    { name: 'Taxa Conversão', value: `${metrics.conversionRate}%`, trend: 0 }\n  ],\n  charts: {\n    intentions: metrics.topIntentions,\n    hourly: metrics.hourlyDistribution\n  },\n  alerts: alerts\n};\n\nreturn [{\n  json: {\n    ...data,\n    report: report,\n    dashboardData: dashboardData,\n    reportFormatted: true\n  }\n}];"
+      },
+      "id": "gerar-relatorio",
+      "name": "Gerar Relatório",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.z-api.io/instances/SEU_INSTANCE_ID/token/SEU_TOKEN/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "5562999999999"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.report}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "enviar-relatorio-whatsapp",
+      "name": "Enviar Relatório WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://seudominio.com/api/dashboard/update",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer SEU_TOKEN_SISTEMA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dashboardData",
+              "value": "={{$json.dashboardData}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "atualizar-dashboard",
+      "name": "Atualizar Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.alerts.length}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "verificar-alertas",
+      "name": "Verificar Alertas",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Enviar alertas críticos para equipe\nconst data = items[0].json;\nconst alerts = data.alerts;\n\nconst criticalAlerts = alerts.filter(alert => alert.type === 'critical');\nconst warningAlerts = alerts.filter(alert => alert.type === 'warning');\n\nlet alertMessage = `🚨 **ALERTAS SISTEMA THERMAS**\\n📅 ${data.metrics.date}\\n\\n`;\n\nif (criticalAlerts.length > 0) {\n  alertMessage += `🔴 **CRÍTICOS:**\\n`;\n  criticalAlerts.forEach(alert => {\n    alertMessage += `• ${alert.message}\\n  💡 ${alert.action}\\n\\n`;\n  });\n}\n\nif (warningAlerts.length > 0) {\n  alertMessage += `🟡 **ATENÇÃO:**\\n`;\n  warningAlerts.forEach(alert => {\n    alertMessage += `• ${alert.message}\\n  💡 ${alert.action}\\n\\n`;\n  });\n}\n\nalertMessage += `📊 **CONTEXTO:**\\n`;\nalertMessage += `• Taxa conversão: ${data.metrics.conversionRate}%\\n`;\nalertMessage += `• Tempo resposta: ${data.metrics.averageResponseTime}s\\n`;\nalertMessage += `• Total leads: ${data.metrics.totalLeads}\\n\\n`;\nalertMessage += `🔧 **AÇÃO NECESSÁRIA:** Verificar sistema imediatamente!`;\n\nreturn [{\n  json: {\n    ...data,\n    alertMessage: alertMessage,\n    criticalCount: criticalAlerts.length,\n    warningCount: warningAlerts.length\n  }\n}];"
+      },
+      "id": "processar-alertas",
+      "name": "Processar Alertas",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.z-api.io/instances/SEU_INSTANCE_ID/token/SEU_TOKEN/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "5562888888888"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.alertMessage}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "enviar-alertas-equipe",
+      "name": "Enviar Alertas Equipe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://seudominio.com/api/reports/save",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer SEU_TOKEN_SISTEMA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "report",
+              "value": "={{$json.report}}"
+            },
+            {
+              "name": "metrics",
+              "value": "={{$json.metrics}}"
+            },
+            {
+              "name": "trends",
+              "value": "={{$json.trends}}"
+            },
+            {
+              "name": "alerts",
+              "value": "={{$json.alerts}}"
+            },
+            {
+              "name": "date",
+              "value": "={{$json.metrics.date}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "salvar-relatorio",
+      "name": "Salvar Relatório",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Trigger Relatório Diário": {
+      "main": [
+        [
+          {
+            "node": "Buscar Dados Diários",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Dados Diários": {
+      "main": [
+        [
+          {
+            "node": "Processar Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Analytics": {
+      "main": [
+        [
+          {
+            "node": "Gerar Relatório",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Relatório": {
+      "main": [
+        [
+          {
+            "node": "Enviar Relatório WhatsApp",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Atualizar Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Relatório WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Verificar Alertas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualizar Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Verificar Alertas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Alertas": {
+      "main": [
+        [
+          {
+            "node": "Processar Alertas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salvar Relatório",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Alertas": {
+      "main": [
+        [
+          {
+            "node": "Enviar Alertas Equipe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Alertas Equipe": {
+      "main": [
+        [
+          {
+            "node": "Salvar Relatório",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "America/Sao_Paulo"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-analytics-thermas",
+  "tags": ["analytics", "reports", "thermas", "automation"]
+} 
