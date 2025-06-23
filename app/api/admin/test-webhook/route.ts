@@ -188,6 +188,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         success: true,
         message: 'Teste completo realizado com sucesso!',
+        aiResponse: aiMessage, // Adiciona aiResponse para o frontend
         results: {
           userMessage: message,
           aiMessage: aiMessage,

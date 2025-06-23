@@ -135,6 +135,22 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isConfiguringWebhook, setIsConfiguringWebhook] = useState(false)
 
+  const [status, setStatus] = useState<{
+    openaiConnected: boolean
+    zapiConnected: boolean
+    qrCode: string
+  }>({
+    openaiConnected: false,
+    zapiConnected: false,
+    qrCode: ''
+  })
+
+  // Estados para simulação
+  const [simulationMode, setSimulationMode] = useState(false)
+  const [testMessage, setTestMessage] = useState('')
+  const [testConversation, setTestConversation] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: string}>>([])
+  const [isTestingAI, setIsTestingAI] = useState(false)
+
   const fetchConfig = useCallback(async () => {
     try {
       setLoading(true)
@@ -383,6 +399,75 @@ export default function AdminPage() {
     } finally {
       setIsConfiguringWebhook(false)
     }
+  }
+
+  // Função para testar IA
+  const testAIResponse = async () => {
+    if (!testMessage.trim()) return
+    
+    setIsTestingAI(true)
+    
+    // Adicionar mensagem do usuário
+    const userMessage = {
+      role: 'user' as const,
+      content: testMessage,
+      timestamp: new Date().toISOString()
+    }
+    
+    setTestConversation(prev => [...prev, userMessage])
+    setTestMessage('')
+
+    try {
+      const response = await fetch('/api/admin/test-webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phone: '5515999999999', // Número fictício para teste
+          message: testMessage
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.aiResponse) {
+        // Adicionar resposta da IA
+        const aiMessage = {
+          role: 'assistant' as const,
+          content: result.aiResponse,
+          timestamp: new Date().toISOString()
+        }
+        
+        setTestConversation(prev => [...prev, aiMessage])
+      } else {
+        // Adicionar erro como resposta
+        const errorMessage = {
+          role: 'assistant' as const,
+          content: `❌ Erro: ${result.error || 'Erro desconhecido'}`,
+          timestamp: new Date().toISOString()
+        }
+        
+        setTestConversation(prev => [...prev, errorMessage])
+      }
+    } catch (error: any) {
+      console.error('Erro ao testar IA:', error)
+      const errorMessage = {
+        role: 'assistant' as const,
+        content: `❌ Erro de conectividade: ${error.message}`,
+        timestamp: new Date().toISOString()
+      }
+      
+      setTestConversation(prev => [...prev, errorMessage])
+    }
+
+    setIsTestingAI(false)
+  }
+
+  // Limpar conversa de teste
+  const clearTestConversation = () => {
+    setTestConversation([])
+    setTestMessage('')
   }
 
   if (loading) {
@@ -905,6 +990,166 @@ export default function AdminPage() {
             {saving ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
         </div>
+
+        {/* Nova Seção: Simulação/Treinamento da IA */}
+        <Card className="p-6 mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold">🤖 Simulação & Treinamento da IA</h2>
+              <p className="text-gray-600 mt-1">Teste diferentes prompts e mensagens para treinar sua IA</p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setSimulationMode(!simulationMode)}
+                className={simulationMode ? 'bg-blue-50 border-blue-200' : ''}
+              >
+                {simulationMode ? '✓ Modo Ativo' : '▶️ Ativar Simulação'}
+              </Button>
+              {simulationMode && (
+                <Button
+                  variant="outline"
+                  onClick={clearTestConversation}
+                  className="text-gray-600 hover:text-red-600"
+                >
+                  🗑️ Limpar
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {simulationMode && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Chat de Teste */}
+              <div className="space-y-4">
+                <h3 className="font-medium">💬 Chat de Teste</h3>
+                
+                {/* Área da Conversa */}
+                <div className="border rounded-lg h-96 overflow-y-auto p-4 bg-gray-50">
+                  {testConversation.length === 0 ? (
+                    <div className="text-center text-gray-500 mt-20">
+                      <div className="text-4xl mb-2">🤖</div>
+                      <p>Envie uma mensagem para começar o teste</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {testConversation.map((msg, index) => (
+                        <div
+                          key={index}
+                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[80%] px-4 py-2 rounded-lg ${
+                              msg.role === 'user'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-white border shadow-sm'
+                            }`}
+                          >
+                            <div className="whitespace-pre-wrap">{msg.content}</div>
+                            <div className={`text-xs mt-1 ${
+                              msg.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                            }`}>
+                              {new Date(msg.timestamp).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {isTestingAI && (
+                        <div className="flex justify-start">
+                          <div className="bg-white border shadow-sm px-4 py-2 rounded-lg">
+                            <div className="flex items-center space-x-2">
+                              <div className="animate-spin w-3 h-3 border border-gray-300 border-t-blue-500 rounded-full"></div>
+                              <span className="text-gray-500 text-sm">IA pensando...</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Input da Mensagem */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={testMessage}
+                    onChange={(e) => setTestMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && !isTestingAI && testAIResponse()}
+                    placeholder="Digite sua mensagem de teste..."
+                    className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={isTestingAI}
+                  />
+                  <Button
+                    onClick={testAIResponse}
+                    disabled={!testMessage.trim() || isTestingAI}
+                    className="px-6"
+                  >
+                    {isTestingAI ? (
+                      <div className="animate-spin w-4 h-4 border border-white border-t-transparent rounded-full"></div>
+                    ) : (
+                      '📤'
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Informações e Controles */}
+              <div className="space-y-4">
+                <h3 className="font-medium">⚙️ Configurações do Teste</h3>
+                
+                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Prompt Sistema Atual:</label>
+                    <div className="mt-1 p-2 bg-white border rounded text-sm max-h-24 overflow-y-auto">
+                      {config.systemPrompt || 'Nenhum prompt configurado'}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Modelo:</span>
+                      <div className="font-medium">{config.openaiModel}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Temperatura:</span>
+                      <div className="font-medium">{config.openaiTemperature}</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2">💡 Dicas de Teste</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• Teste diferentes tipos de pergunta</li>
+                    <li>• Verifique se o tom está adequado</li>
+                    <li>• Teste cenários de agendamento</li>
+                    <li>• Experimente perguntas sobre preços</li>
+                    <li>• Teste pedidos de transferência</li>
+                  </ul>
+                </div>
+                
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-green-800 mb-2">✅ Status da Configuração</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className={`flex items-center ${config.openaiApiKey ? 'text-green-700' : 'text-red-700'}`}>
+                      <div className={`w-2 h-2 rounded-full mr-2 ${config.openaiApiKey ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      OpenAI API {config.openaiApiKey ? 'Configurada' : 'Não Configurada'}
+                    </div>
+                    <div className={`flex items-center ${config.systemPrompt ? 'text-green-700' : 'text-orange-700'}`}>
+                      <div className={`w-2 h-2 rounded-full mr-2 ${config.systemPrompt ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                      Prompt Sistema {config.systemPrompt ? 'Definido' : 'Vazio'}
+                    </div>
+                    <div className={`flex items-center ${config.zapiApiKey && config.zapiInstanceId ? 'text-green-700' : 'text-red-700'}`}>
+                      <div className={`w-2 h-2 rounded-full mr-2 ${config.zapiApiKey && config.zapiInstanceId ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      Z-API {config.zapiApiKey && config.zapiInstanceId ? 'Configurada' : 'Não Configurada'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
       </div>
     </AppLayout>
   )
