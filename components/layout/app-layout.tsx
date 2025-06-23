@@ -4,6 +4,7 @@ import * as React from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/components/auth/AuthProvider'
+import { UserManagementMenu } from '@/components/UserManagementMenu'
 import { 
   Sidebar, 
   SidebarProvider, 
@@ -166,13 +167,6 @@ function AppSidebar() {
         <SidebarGroup title="Gestão">
           <SidebarNav>
             <SidebarNavItem
-              icon={<Users className="h-4 w-4" />}
-              active={pathname === '/users'}
-              onClick={() => router.push('/users')}
-            >
-              Usuários
-            </SidebarNavItem>
-            <SidebarNavItem
               icon={<Settings className="h-4 w-4" />}
               onClick={() => router.push('/settings')}
             >
@@ -228,6 +222,7 @@ function AppSidebar() {
 
 function AppHeader() {
   const { isOpen } = useSidebar()
+  const [showUserMenu, setShowUserMenu] = React.useState(false)
 
   return (
     <motion.header
@@ -249,6 +244,18 @@ function AppHeader() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Users Management */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => setShowUserMenu(true)}
+            title="Gestão de Usuários"
+          >
+            <Users className="h-4 w-4" />
+            <span className="sr-only">Usuários</span>
+          </Button>
+
           {/* Notifications */}
           <Button
             variant="ghost"
@@ -263,6 +270,12 @@ function AppHeader() {
           <ThemeToggle />
         </div>
       </div>
+      
+      {/* User Management Menu */}
+      <UserManagementMenu 
+        isOpen={showUserMenu} 
+        onClose={() => setShowUserMenu(false)} 
+      />
     </motion.header>
   )
 }

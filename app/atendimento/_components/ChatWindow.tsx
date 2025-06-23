@@ -288,8 +288,11 @@ const MessageInput = ({
         })
         
         if (mediaResponse.ok) {
-          // Salvar mensagem no banco
-          onSendMessage(`[${type.toUpperCase()}] ${file.name}`)
+          // Salvar mensagem no banco com informações da mídia
+          const mediaMessage = type === 'image' ? 
+            `📷 Imagem: ${file.name}` : 
+            `📄 Documento: ${file.name}`
+          onSendMessage(mediaMessage)
         }
         
       } catch (error) {
@@ -321,12 +324,12 @@ const MessageInput = ({
         }
 
         recorder.onstop = async () => {
-          const audioBlob = new Blob(chunks, { type: 'audio/webm' })
+          const audioBlob = new Blob(chunks, { type: 'audio/wav' })
           
           // Upload do áudio
           try {
             const formData = new FormData()
-            formData.append('file', audioBlob, 'audio.webm')
+            formData.append('file', audioBlob, `audio_${Date.now()}.wav`)
             formData.append('type', 'audio')
             
             const uploadResponse = await fetch('/api/atendimento/upload', {
@@ -353,7 +356,9 @@ const MessageInput = ({
               })
               
               if (mediaResponse.ok) {
-                onSendMessage('[ÁUDIO] Mensagem de voz')
+                onSendMessage('🎤 Mensagem de voz')
+              } else {
+                throw new Error('Falha ao enviar áudio via Z-API')
               }
             }
             

@@ -29,7 +29,13 @@ export async function POST(request: NextRequest) {
 
     // Gerar nome único para o arquivo
     const timestamp = Date.now()
-    const extension = file.name.split('.').pop()
+    let extension = file.name.split('.').pop() || 'unknown'
+    
+    // Para áudios sem extensão, usar wav como padrão
+    if (type === 'audio' && (!extension || extension === 'unknown')) {
+      extension = 'wav'
+    }
+    
     const fileName = `${timestamp}.${extension}`
     const filePath = join(uploadDir, fileName)
 
