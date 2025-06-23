@@ -231,9 +231,15 @@ async function triggerWebhook(url: string, trigger: WebhookTrigger, context: any
     }
   } catch (error) {
     console.error('Erro ao acionar webhook:', error)
+    if (error instanceof Error) {
+      return {
+        success: false,
+        error: error.message
+      }
+    }
     return {
       success: false,
-      error: error.message
+      error: 'Erro desconhecido ao acionar webhook.'
     }
   }
 }
