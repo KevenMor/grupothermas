@@ -42,7 +42,10 @@ export async function POST(request: NextRequest) {
 
     // Garantir documento da conversa
     const convSnapshot = await conversationRef.get()
+    let conversationData = null
+    
     if (!convSnapshot.exists) {
+      console.log('Criando nova conversa para:', phone)
       await conversationRef.set({
         customerName: senderName || chatName || phone,
         customerPhone: phone,
@@ -55,13 +58,35 @@ export async function POST(request: NextRequest) {
         // Campos padrão de controle de IA
         aiEnabled: true,
         aiPaused: false,
-        conversationStatus: 'waiting',
+        conversationStatus: 'ai_active', // Nova conversa inicia com IA ativa
       })
+      conversationData = { conversationStatus: 'ai_active' }
     } else {
-      await conversationRef.update({
-        lastMessage: content,
-        timestamp
-      })
+      conversationData = convSnapshot.data()
+      const currentStatus = conversationData?.conversationStatus
+      
+      // Se a conversa estava resolvida e o cliente enviou nova mensagem, reabrir para IA
+      if (currentStatus === 'resolved') {
+        console.log('Reabrindo conversa resolvida para IA ativa')
+        await conversationRef.update({
+          lastMessage: content,
+          timestamp,
+          aiEnabled: true,
+          aiPaused: false,
+          conversationStatus: 'ai_active',
+          // Limpar campos de resolução
+          resolvedAt: null,
+          resolvedBy: null,
+          // Incrementar unread count se necessário
+          unreadCount: (conversationData.unreadCount || 0) + 1
+        })
+        conversationData = { ...conversationData, conversationStatus: 'ai_active' }
+      } else {
+        await conversationRef.update({
+          lastMessage: content,
+          timestamp
+        })
+      }
     }
 
     // Salvar na subcoleção messages
@@ -76,10 +101,9 @@ export async function POST(request: NextRequest) {
     console.log('Mensagem salva com sucesso no Firestore')
 
     // Chamar IA automaticamente se a conversa estiver ativa para IA
-    const conversationData = await conversationRef.get()
-    const chatData = conversationData.data()
+    const finalConversationData = conversationData || convSnapshot.data()
     
-    if (chatData && (chatData.conversationStatus === 'waiting' || chatData.conversationStatus === 'ai_active')) {
+    if (finalConversationData && (finalConversationData.conversationStatus === 'waiting' || finalConversationData.conversationStatus === 'ai_active')) {
       console.log('Chamando IA para responder automaticamente...')
       
       try {
@@ -106,7 +130,7 @@ export async function POST(request: NextRequest) {
         console.error('Erro ao processar resposta da IA:', error)
       }
     } else {
-      console.log('IA não está ativa para esta conversa, status:', chatData?.conversationStatus)
+      console.log('IA não está ativa para esta conversa, status:', finalConversationData?.conversationStatus)
     }
 
     return NextResponse.json({ success: true })

@@ -52,12 +52,14 @@ const ChatHeader = ({
   chat, 
   onToggleAI, 
   onAssignAgent, 
-  onMarkResolved 
+  onMarkResolved,
+  onAssumeChat 
 }: { 
   chat: Chat
   onToggleAI?: (chatId: string, enabled: boolean) => void
   onAssignAgent?: (chatId: string) => void
   onMarkResolved?: (chatId: string) => void
+  onAssumeChat?: (chatId: string) => void
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -84,8 +86,19 @@ const ChatHeader = ({
     switch (chat.conversationStatus) {
       case 'waiting':
       case 'ai_active':
-        // Conversa aguardando ou com IA - não mostrar controles no header
-        return null
+        // Conversa aguardando ou com IA - mostrar botão "Assumir Atendimento"
+        return (
+          <div className="flex items-center gap-1 mr-2 border-r border-gray-200 dark:border-gray-600 pr-2">
+            <Button 
+              onClick={() => onAssumeChat?.(chat.id)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              size="sm"
+            >
+              <User className="w-4 h-4 mr-1" />
+              Assumir Atendimento
+            </Button>
+          </div>
+        )
 
       case 'agent_assigned':
         // Conversa assumida por agente - mostrar "Voltar para IA" e "Finalizar"
@@ -160,7 +173,8 @@ const ChatHeader = ({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      
+      <div className="flex items-center gap-1">
         {/* Controles dinâmicos baseados no status */}
         {renderControls()}
         
@@ -192,29 +206,10 @@ const MessageInput = ({
     }
   }
 
-  const showAssumeButton = chat && (
-    chat.conversationStatus === 'waiting' || 
-    chat.conversationStatus === 'ai_active'
-  )
-
   return (
     <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50">
-      {/* Botão Assumir Atendimento */}
-      {showAssumeButton && (
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-          <Button 
-            onClick={onAssumeChat}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            size="sm"
-          >
-            <User className="w-4 h-4 mr-2" />
-            Assumir Atendimento
-          </Button>
-        </div>
-      )}
-      
       {/* Input de mensagem */}
-      <div className="p-4">
+      <div className="p-3">
         <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg">
           <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400"><Smile className="w-5 h-5" /></Button>
           <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400"><Paperclip className="w-5 h-5" /></Button>
@@ -271,7 +266,13 @@ export function ChatWindow({
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 bg-white dark:bg-gray-900">
-      <ChatHeader chat={chat} onToggleAI={onToggleAI} onAssignAgent={onAssignAgent} onMarkResolved={onMarkResolved} />
+      <ChatHeader 
+        chat={chat} 
+        onToggleAI={onToggleAI} 
+        onAssignAgent={onAssignAgent} 
+        onMarkResolved={onMarkResolved}
+        onAssumeChat={handleAssumeChat}
+      />
       <div className="flex-1 min-h-0 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')]">
         {isLoading && messages.length === 0 ? (
           <div className="flex justify-center items-center h-full">
@@ -300,7 +301,12 @@ export function ChatWindow({
         )}
         <div ref={messagesEndRef} />
       </div>
-      <MessageInput chat={chat} onSendMessage={onSendMessage} onAssumeChat={handleAssumeChat} />
+      
+      <MessageInput
+        chat={chat}
+        onSendMessage={onSendMessage}
+        onAssumeChat={handleAssumeChat}
+      />
     </div>
   )
 } 

@@ -167,43 +167,21 @@ async function handleMessageStatus(body: any) {
 
 async function handleMessage(message: ZAPIWebhookEvent) {
   try {
-    console.log('=== PROCESSANDO MENSAGEM ===')
+    console.log('Processando mensagem via Z-API AI Webhook:', message.messageId)
 
-    // Trava de segurança #2: Garantir que temos um objeto de texto antes de prosseguir.
-    // Esta é a correção para o erro de build `message.text is possibly 'undefined'`.
-    if (!message.text || typeof message.text.message !== 'string') {
-      console.log('Evento ignorado: não é uma mensagem de texto válida.', message.type)
-      return NextResponse.json({
-        status: 'ignored',
-        reason: 'Not a valid text message object'
-      })
-    }
-    
-    // Load admin configuration
+    // Obter configurações da IA do Firebase
     const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
     if (!configDoc.exists) {
-      console.error('Configuração administrativa não encontrada')
-      return NextResponse.json({ error: 'Configuração não encontrada' }, { status: 500 })
+      console.error('Configurações da IA não encontradas')
+      return NextResponse.json({ error: 'AI settings not configured' }, { status: 500 })
     }
 
-    const config = configDoc.data() as AdminConfig
+    const config = configDoc.data()!
 
-    // Validate required configuration
-    if (!config.zapiApiKey || !config.openaiApiKey) {
-      console.error('Configuração incompleta - API keys não configuradas')
-      return NextResponse.json({ error: 'Configuração incompleta' }, { status: 500 })
-    }
-
-    // Ignore messages sent by the bot itself
-    if (message.fromMe) {
-      console.log('Ignorando mensagem enviada pelo bot')
-      return NextResponse.json({ status: 'ignored', reason: 'message from bot' })
-    }
-
-    // Only process text messages for now
-    const isText = message.type === 'text'
+    // Trava de segurança #2: verificar se mensagem é de usuário real
     const isReceivedCallback = message.type === 'ReceivedCallback'
-    const hasMessageText = message.text?.message
+    const isText = message.type === 'text'
+    const hasMessageText = message.text?.message && message.text.message.trim() !== ''
 
     if (!hasMessageText || (!isText && !isReceivedCallback)) {
       console.log('Tipo de mensagem não suportado (Nova Lógica):', message.type)
@@ -224,6 +202,7 @@ async function handleMessage(message: ZAPIWebhookEvent) {
     
     let conversationHistory: any[] = []
     let isFirstMessage = false
+    let conversationData = null
 
     if (!conversationDoc.exists) {
       isFirstMessage = true
@@ -237,12 +216,33 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         status: 'active',
         messages: [],
         source: 'zapi',
+        // Campos de controle de IA
+        aiEnabled: true,
+        aiPaused: false,
+        conversationStatus: 'ai_active',
       }
       console.log('--- DADOS PARA CRIAR NOVA CONVERSA (set) ---', JSON.stringify(newConversationData, null, 2))
       await conversationRef.set(newConversationData)
+      conversationData = newConversationData
     } else {
-      const conversationData = conversationDoc.data()
+      conversationData = conversationDoc.data()
       conversationHistory = conversationData?.messages || []
+      
+      // Se a conversa estava resolvida e o cliente enviou nova mensagem, reabrir para IA
+      if (conversationData?.conversationStatus === 'resolved') {
+        console.log('Reabrindo conversa resolvida para IA ativa')
+        await conversationRef.update({
+          aiEnabled: true,
+          aiPaused: false,
+          conversationStatus: 'ai_active',
+          // Limpar campos de resolução
+          resolvedAt: null,
+          resolvedBy: null,
+          // Atualizar timestamp
+          updatedAt: new Date().toISOString(),
+        })
+        conversationData = { ...conversationData, conversationStatus: 'ai_active' }
+      }
     }
 
     // Add user message to history
