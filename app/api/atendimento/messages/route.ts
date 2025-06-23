@@ -27,30 +27,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([])
     }
 
-    const messages: ChatMessage[] = messagesSnapshot.docs.map(doc => {
-      const data = doc.data()
-      // Converter timestamp para ISO
-      let isoTimestamp: string
-      const rawTs = data.timestamp
-      if (!rawTs) {
-        isoTimestamp = new Date().toISOString()
-      } else if (typeof rawTs === 'string') {
-        isoTimestamp = new Date(rawTs).toISOString()
-      } else if (typeof rawTs === 'object' && typeof rawTs.toDate === 'function') {
-        // Firestore Timestamp
-        isoTimestamp = rawTs.toDate().toISOString()
-      } else {
-        isoTimestamp = new Date(rawTs).toISOString()
-      }
+    const messages: ChatMessage[] = []
+    for (const doc of messagesSnapshot.docs) {
+      try {
+        const data = doc.data()
+        let isoTimestamp: string
+        const rawTs = data.timestamp
+        if (!rawTs) {
+          isoTimestamp = new Date().toISOString()
+        } else if (typeof rawTs === 'string') {
+          const parsed = new Date(rawTs)
+          isoTimestamp = isNaN(parsed.valueOf()) ? new Date().toISOString() : parsed.toISOString()
+        } else if (typeof rawTs === 'object' && typeof rawTs.toDate === 'function') {
+          isoTimestamp = rawTs.toDate().toISOString()
+        } else {
+          const parsed = new Date(rawTs)
+          isoTimestamp = isNaN(parsed.valueOf()) ? new Date().toISOString() : parsed.toISOString()
+        }
 
-      return {
-        id: doc.id,
-        content: data.content,
-        timestamp: isoTimestamp,
-        role: data.role || data.sender || 'user',
-        status: data.status || 'sent',
+        messages.push({
+          id: doc.id,
+          content: data.content || '',
+          timestamp: isoTimestamp,
+          role: data.role || data.sender || 'user',
+          status: data.status || 'sent'
+        })
+      } catch (err) {
+        console.error('Erro ao mapear mensagem', doc.id, err)
       }
-    })
+    }
 
     return NextResponse.json(messages)
   } catch (error) {
