@@ -46,6 +46,7 @@ const ChatHeader = ({ chat }: { chat: Chat }) => (
       </Avatar>
       <div>
         <h3 className="font-semibold text-gray-800 dark:text-gray-100">{chat.customerName}</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{chat.customerPhone}</p>
         <p className="text-sm text-gray-500 dark:text-gray-400">online</p>
       </div>
     </div>

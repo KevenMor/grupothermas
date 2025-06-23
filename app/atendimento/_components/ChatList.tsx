@@ -44,7 +44,10 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
     </Avatar>
     <div className="flex-grow truncate border-b border-gray-200 dark:border-gray-700 pb-3">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate">{chat.customerName}</h3>
+        <div>
+          <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate">{chat.customerName}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{chat.customerPhone}</p>
+        </div>
         <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimestamp(chat.timestamp)}</span>
       </div>
       <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{chat.lastMessage}</p>
