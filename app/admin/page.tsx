@@ -145,7 +145,12 @@ export default function AdminPage() {
         setConnectionStatus(data.connectionStatus || 'disconnected')
         setLastStatusCheck(data.lastStatusCheck || null)
       } else {
-        toast.error(data.error || 'Falha ao carregar configurações.')
+        try {
+          const errorData = await response.json()
+          toast.error(errorData.error || 'Falha ao carregar configurações.')
+        } catch {
+          toast.error('Falha ao carregar configurações.')
+        }
         setConnectionStatus('error')
       }
     } catch (error) {
@@ -161,7 +166,11 @@ export default function AdminPage() {
     fetchConfig()
   }, [fetchConfig])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value } = e.target
     setConfig(prev => ({ ...prev, [name]: value }))
   }
