@@ -157,6 +157,14 @@ export default function AdminPage() {
   const [testConversation, setTestConversation] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: string}>>([])
   const [isTestingAI, setIsTestingAI] = useState(false)
 
+  // Estados para teste de mídia
+  const [mediaType, setMediaType] = useState<'text' | 'image' | 'audio' | 'video' | 'document'>('text')
+  const [mediaContent, setMediaContent] = useState('')
+  const [mediaUrl, setMediaUrl] = useState('')
+  const [mediaCaption, setMediaCaption] = useState('')
+  const [fileName, setFileName] = useState('')
+  const [sendingMedia, setSendingMedia] = useState(false)
+
   const fetchConfig = useCallback(async () => {
     try {
       setLoading(true)
@@ -474,6 +482,75 @@ export default function AdminPage() {
   const clearTestConversation = () => {
     setTestConversation([])
     setTestMessage('')
+  }
+
+  const sendMediaMessage = async () => {
+    if (!testPhone.trim()) {
+      toast.error('Digite o número do telefone')
+      return
+    }
+
+    if (mediaType === 'text' && !mediaContent.trim()) {
+      toast.error('Digite uma mensagem')
+      return
+    }
+
+    if (['image', 'audio', 'video', 'document'].includes(mediaType) && !mediaUrl.trim()) {
+      toast.error('Digite a URL da mídia')
+      return
+    }
+
+    setSendingMedia(true)
+
+    try {
+      const payload: any = {
+        phone: testPhone,
+        type: mediaType
+      }
+
+      if (mediaType === 'text') {
+        payload.content = mediaContent
+      } else {
+        payload.url = mediaUrl
+        if (mediaCaption && (mediaType === 'image' || mediaType === 'video')) {
+          payload.caption = mediaCaption
+        }
+        if (fileName && mediaType === 'document') {
+          payload.filename = fileName
+        }
+      }
+
+      const response = await fetch('/api/admin/send-media', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        toast.success(result.message)
+        
+        // Limpar campos após envio bem-sucedido
+        if (mediaType === 'text') {
+          setMediaContent('')
+        } else {
+          setMediaUrl('')
+          setMediaCaption('')
+          setFileName('')
+        }
+      } else {
+        toast.error(result.error || 'Erro ao enviar mídia')
+        console.error('Erro detalhado:', result)
+      }
+    } catch (error) {
+      console.error('Erro ao enviar mídia:', error)
+      toast.error('Erro de rede ao enviar mídia')
+    } finally {
+      setSendingMedia(false)
+    }
   }
 
   if (loading) {
@@ -990,18 +1067,19 @@ export default function AdminPage() {
 
           <TabsContent value="testing">
             <div className="space-y-6">
-              {/* Teste de Mensagem */}
+              {/* Teste de Mídia Completo */}
               <Card className="shadow-sm border-gray-200 dark:border-gray-700">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Send className="h-5 w-5 text-blue-600" />
-                    Teste de Mensagem
+                    Teste de Envio de Mídia
                   </CardTitle>
                   <CardDescription>
-                    Envie mensagens de teste via WhatsApp
+                    Teste envio de texto, áudio, imagem, vídeo e documentos via Z-API
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
+                  {/* Número do telefone */}
                   <div className="space-y-2">
                     <Label htmlFor="testPhone">Número do telefone</Label>
                     <Input
@@ -1015,25 +1093,112 @@ export default function AdminPage() {
                       Use o formato internacional, sem espaços ou símbolos
                     </p>
                   </div>
-                  
+
+                  {/* Seletor de tipo de mídia */}
                   <div className="space-y-2">
-                    <Label htmlFor="testMessage">Mensagem de teste</Label>
-                    <Input
-                      id="testMessage"
-                      name="testMessage"
-                      value={testMessage}
-                      onChange={(e) => setTestMessage(e.target.value)}
-                      placeholder="Sua mensagem de teste"
-                    />
+                    <Label>Tipo de Mídia</Label>
+                    <div className="grid grid-cols-5 gap-2">
+                      {[
+                        { type: 'text', label: 'Texto', icon: 'T' },
+                        { type: 'image', label: 'Imagem', icon: 'IMG' },
+                        { type: 'audio', label: 'Áudio', icon: 'MP3' },
+                        { type: 'video', label: 'Vídeo', icon: 'MP4' },
+                        { type: 'document', label: 'PDF', icon: 'PDF' }
+                      ].map(({ type, label, icon }) => (
+                        <button
+                          key={type}
+                          onClick={() => setMediaType(type as any)}
+                          className={`p-3 rounded-lg border text-center transition-all ${
+                            mediaType === type
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="text-sm font-bold mb-1 text-gray-600">{icon}</div>
+                          <div className="text-xs font-medium">{label}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Campos específicos por tipo */}
+                  {mediaType === 'text' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="textContent">Mensagem de texto</Label>
+                      <textarea
+                        id="textContent"
+                        value={mediaContent}
+                        onChange={(e) => setMediaContent(e.target.value)}
+                        placeholder="Digite sua mensagem..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                      />
+                    </div>
+                  )}
+
+                  {['image', 'audio', 'video', 'document'].includes(mediaType) && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="mediaUrl">URL da {mediaType === 'document' ? 'documento' : 'mídia'}</Label>
+                        <Input
+                          id="mediaUrl"
+                          value={mediaUrl}
+                          onChange={(e) => setMediaUrl(e.target.value)}
+                          placeholder={`https://exemplo.com/arquivo.${
+                            mediaType === 'image' ? 'jpg' :
+                            mediaType === 'audio' ? 'mp3' :
+                            mediaType === 'video' ? 'mp4' : 'pdf'
+                          }`}
+                        />
+                        <p className="text-sm text-gray-500">
+                          URL pública do arquivo {mediaType === 'document' ? 'PDF' : mediaType}
+                        </p>
+                      </div>
+
+                      {(mediaType === 'image' || mediaType === 'video') && (
+                        <div className="space-y-2">
+                          <Label htmlFor="mediaCaption">Legenda (opcional)</Label>
+                          <Input
+                            id="mediaCaption"
+                            value={mediaCaption}
+                            onChange={(e) => setMediaCaption(e.target.value)}
+                            placeholder="Adicione uma legenda..."
+                          />
+                        </div>
+                      )}
+
+                      {mediaType === 'document' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="fileName">Nome do arquivo (opcional)</Label>
+                          <Input
+                            id="fileName"
+                            value={fileName}
+                            onChange={(e) => setFileName(e.target.value)}
+                            placeholder="documento.pdf"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* URLs de exemplo */}
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <h4 className="font-medium mb-2">URLs de exemplo para teste:</h4>
+                    <div className="space-y-1 text-sm">
+                      <div><strong>Imagem:</strong> https://picsum.photos/800/600</div>
+                      <div><strong>Áudio:</strong> https://www.soundjay.com/misc/sounds/bell-ringing-05.wav</div>
+                      <div><strong>Vídeo:</strong> https://sample-videos.com/zip/10/mp4/SampleVideo_360x240_1mb.mp4</div>
+                      <div><strong>PDF:</strong> https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf</div>
+                    </div>
                   </div>
                   
-                  <Button onClick={sendTestMessage} disabled={sendingTest} className="w-full">
-                    {sendingTest ? (
+                  <Button onClick={sendMediaMessage} disabled={sendingMedia} className="w-full">
+                    {sendingMedia ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Send className="mr-2 h-4 w-4" />
                     )}
-                    Enviar Mensagem
+                    Enviar {mediaType === 'text' ? 'Mensagem' : mediaType === 'document' ? 'Documento' : 'Mídia'}
                   </Button>
                 </CardContent>
               </Card>
