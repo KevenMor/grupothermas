@@ -6,14 +6,20 @@ import { ChatMessage } from '@/lib/models'
 // Configure no painel da instância a URL: https://SEU_DOMINIO/api/zapi/webhook
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== WEBHOOK Z-API RECEBIDO ===')
+    console.log('Headers:', Object.fromEntries(request.headers.entries()))
+    
     const body = await request.json()
+    console.log('Body completo:', JSON.stringify(body, null, 2))
 
     // Z-API envia diferentes tipos de eventos; focamos em mensagens
     if (!body || !body.message || body.message.fromMe) {
+      console.log('Mensagem ignorada:', { hasBody: !!body, hasMessage: !!body?.message, fromMe: body?.message?.fromMe })
       // Ignorar mensagens enviadas por nós mesmos ou payloads sem conteúdo
       return NextResponse.json({ ignored: true })
     }
 
+    console.log('Processando mensagem de entrada...')
     const {
       messageId,
       chatId,
@@ -25,6 +31,8 @@ export async function POST(request: NextRequest) {
 
     const phone = chatId?.split('@')[0] || body.message.phone || 'unknown'
     const content = type === 'text' ? text?.message : `[${type} não suportado]`
+    
+    console.log('Dados extraídos:', { phone, content, type, messageId })
 
     // Referência da conversa (documento por telefone)
     const conversationRef = adminDB.collection('conversations').doc(phone)
@@ -58,6 +66,7 @@ export async function POST(request: NextRequest) {
     }
     await conversationRef.collection('messages').doc(messageId).set(msg)
 
+    console.log('Mensagem salva com sucesso no Firestore')
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Erro webhook Z-API:', error)
