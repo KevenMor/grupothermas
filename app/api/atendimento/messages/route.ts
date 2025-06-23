@@ -70,59 +70,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // 1. Send message via Z-API
-    const zapiInstanceId = process.env.ZAPI_INSTANCE_ID
-    const zapiToken = process.env.ZAPI_TOKEN
-    if (!zapiInstanceId || !zapiToken) {
-      return NextResponse.json({ error: 'Z-API não configurada. Verifique as variáveis de ambiente.' }, { status: 500 })
-    }
-
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (process.env.ZAPI_CLIENT_TOKEN) {
-      headers['Client-Token'] = process.env.ZAPI_CLIENT_TOKEN
-    }
-
-    const zapiResponse = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-            phone: phone,
-            message: content,
-        }),
-    });
-
-    if (!zapiResponse.ok) {
-        const errorText = await zapiResponse.text();
-        console.error('Erro Z-API:', errorText);
-        return NextResponse.json({ error: 'Erro ao enviar mensagem via Z-API', details: errorText }, { status: 500 });
-    }
-    const zapiResult = await zapiResponse.json();
-
-    // 2. Create message object to save in Firestore
-    const newMessage: Partial<ChatMessage> = {
+    // Preparar objeto de mensagem com status inicial "sending"
+    const baseMessage: Partial<ChatMessage> = {
       content,
       timestamp: new Date().toISOString(),
       role: 'agent',
-      status: 'sent', // Or 'delivered' depending on Z-API response
+      status: 'sending'
     }
 
-    // 3. Save message to Firestore subcollection
+    // Salvar primeiro para garantir persistência mesmo se Z-API falhar
     const messageRef = await adminDB
       .collection('conversations')
       .doc(chatId)
       .collection('messages')
-      .add(newMessage)
-      
-    // 4. Update the parent conversation document
-    await adminDB.collection('conversations').doc(chatId).update({
-        lastMessage: content,
-        timestamp: newMessage.timestamp
-    });
+      .add(baseMessage)
+
+    // Função auxiliar para atualizar status
+    const updateStatus = async (status: ChatMessage['status']) => {
+      await messageRef.update({ status })
+    }
+
+    try {
+      const zapiInstanceId = process.env.ZAPI_INSTANCE_ID
+      const zapiToken = process.env.ZAPI_TOKEN
+      if (!zapiInstanceId || !zapiToken) {
+        throw new Error('Z-API não configurada. Verifique as variáveis de ambiente.')
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (process.env.ZAPI_CLIENT_TOKEN) {
+        headers['Client-Token'] = process.env.ZAPI_CLIENT_TOKEN
+      }
+
+      const zapiResponse = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ phone, message: content })
+      })
+
+      if (!zapiResponse.ok) {
+        const errorText = await zapiResponse.text()
+        throw new Error(`Erro Z-API: ${errorText}`)
+      }
+
+      await updateStatus('sent')
+    } catch (err) {
+      console.error('Falha ao enviar via Z-API:', err)
+      await updateStatus('failed')
+      return NextResponse.json({ error: (err as Error).message || 'Erro ao enviar mensagem via Z-API' }, { status: 500 })
+    }
+
+    // Atualizar documento pai com último conteúdo mesmo em caso de falha
+    await adminDB.collection('conversations').doc(chatId).set({
+      lastMessage: content,
+      timestamp: baseMessage.timestamp,
+      customerPhone: phone
+    }, { merge: true })
 
     const savedMessage: ChatMessage = {
       id: messageRef.id,
-      ...newMessage,
-    } as ChatMessage
+      ...(await messageRef.get()).data() as ChatMessage
+    }
 
     return NextResponse.json(savedMessage, { status: 201 })
 
