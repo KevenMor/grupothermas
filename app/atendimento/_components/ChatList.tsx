@@ -4,10 +4,11 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Archive, ListFilter, Loader2, Search } from 'lucide-react'
+import { Archive, ListFilter, Loader2, Search, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useState } from 'react'
 
 interface ChatListProps {
   chats: Chat[]
@@ -59,19 +60,39 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
 )
 
 export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatListProps) {
+  const [showAddContact, setShowAddContact] = useState(false)
+  const [newContact, setNewContact] = useState({ name: '', phone: '' })
+  const [isSaving, setIsSaving] = useState(false)
+
   // TODO: Implement filtering logic for tabs
   const filteredChats = chats
 
+  const handleAddContact = async () => {
+    if (!newContact.name.trim() || !newContact.phone.trim()) return
+    setIsSaving(true)
+    try {
+      // Chame a API para criar o contato/conversa
+      await fetch('/api/atendimento/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newContact.name, phone: newContact.phone })
+      })
+      setShowAddContact(false)
+      setNewContact({ name: '', phone: '' })
+      // Opcional: poderia forçar um refresh dos chats aqui
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="w-[380px] border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800/50">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <Input placeholder="Inicie ou procure uma conversa" className="pl-9 pr-10 bg-white dark:bg-gray-700/50 rounded-full" />
-          <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
-            <ListFilter className="w-4 h-4 text-gray-500" />
-          </Button>
-        </div>
+      {/* Botão fixo para adicionar contato */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky top-0 z-10">
+        <span className="font-semibold text-gray-700 dark:text-gray-100 text-lg">Conversas</span>
+        <Button variant="outline" size="icon" className="border-green-600 text-green-600 hover:bg-green-50" onClick={() => setShowAddContact(true)}>
+          <Plus className="w-6 h-6" />
+        </Button>
       </div>
       
       <Tabs defaultValue="chats" className="flex-grow flex flex-col">
@@ -110,6 +131,45 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
           </Button>
         </div>
       </Tabs>
+      {/* Modal de adicionar contato */}
+      {showAddContact && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-96 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Adicionar Contato</h3>
+              <Button size="sm" variant="ghost" onClick={() => setShowAddContact(false)}>
+                X
+              </Button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nome</label>
+                <Input
+                  value={newContact.name}
+                  onChange={e => setNewContact(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Nome do contato"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Telefone</label>
+                <Input
+                  value={newContact.phone}
+                  onChange={e => setNewContact(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="Ex: 5511999999999"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleAddContact} className="flex-1" disabled={isSaving}>
+                  {isSaving ? 'Salvando...' : 'Adicionar'}
+                </Button>
+                <Button variant="outline" onClick={() => setShowAddContact(false)} className="flex-1">
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

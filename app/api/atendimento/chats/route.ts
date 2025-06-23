@@ -38,4 +38,29 @@ export async function GET() {
       { status: 500 }
     )
   }
+}
+
+// POST /api/atendimento/chats
+// Cria um novo contato/conversa manualmente
+export async function POST(request: Request) {
+  try {
+    const { name, phone } = await request.json()
+    if (!name || !phone) {
+      return NextResponse.json({ error: 'Nome e telefone são obrigatórios.' }, { status: 400 })
+    }
+    const now = new Date().toISOString()
+    await adminDB.collection('conversations').doc(phone).set({
+      customerName: name,
+      customerPhone: phone,
+      customerAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
+      lastMessage: 'Nenhuma mensagem',
+      timestamp: now,
+      unreadCount: 0,
+      status: 'open',
+    }, { merge: true })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Erro ao criar contato:', error)
+    return NextResponse.json({ error: 'Erro ao criar contato.' }, { status: 500 })
+  }
 } 

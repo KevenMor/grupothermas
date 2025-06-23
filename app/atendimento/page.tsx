@@ -14,45 +14,59 @@ export default function AtendimentoPage() {
   const [isLoadingChats, setIsLoadingChats] = useState(true)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
 
-  // Fetch all chats on component mount
-  useEffect(() => {
-    const fetchChats = async () => {
+  // Função para buscar chats
+  const fetchChats = async () => {
       setIsLoadingChats(true)
       try {
         const response = await fetch('/api/atendimento/chats')
-        if (!response.ok) throw new Error('Failed to fetch chats')
-        const data: Chat[] = await response.json()
-        setChats(data)
-        if (data.length > 0) {
-           handleSelectChat(data[0])
+      if (!response.ok) throw new Error('Failed to fetch chats')
+      const data: Chat[] = await response.json()
+      setChats(data)
+      // Se não houver chat selecionado, seleciona o primeiro
+      if (data.length > 0 && !selectedChat) {
+        handleSelectChat(data[0])
         }
       } catch (error) {
-        console.error(error)
-        toast.error('Erro ao carregar as conversas.')
+      console.error(error)
+      toast.error('Erro ao carregar as conversas.')
       } finally {
         setIsLoadingChats(false)
       }
     }
-    fetchChats()
-  }, [])
 
-  const handleSelectChat = async (chat: Chat) => {
-    if (selectedChat?.id === chat.id) return
-    
-    setSelectedChat(chat)
+  // Função para buscar mensagens do chat selecionado
+  const fetchMessages = async (chatId: string) => {
     setIsLoadingMessages(true)
     setMessages([])
     try {
-      const response = await fetch(`/api/atendimento/messages?chatId=${chat.id}`)
+      const response = await fetch(`/api/atendimento/messages?chatId=${chatId}`)
       if (!response.ok) throw new Error('Failed to fetch messages')
-      const data: ChatMessage[] = await response.json()
-      setMessages(data)
+        const data: ChatMessage[] = await response.json()
+        setMessages(data)
     } catch (error) {
       console.error(error)
-      toast.error(`Erro ao carregar mensagens de ${chat.customerName}.`)
+      toast.error('Erro ao carregar mensagens.')
     } finally {
       setIsLoadingMessages(false)
     }
+  }
+
+  // Polling para atualizar chats e mensagens a cada 5 segundos
+  useEffect(() => {
+    fetchChats()
+    const interval = setInterval(() => {
+      fetchChats()
+      if (selectedChat) {
+        fetchMessages(selectedChat.id)
+      }
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [selectedChat])
+
+  const handleSelectChat = async (chat: Chat) => {
+    if (selectedChat?.id === chat.id) return
+    setSelectedChat(chat)
+    fetchMessages(chat.id)
   }
   
   const handleSendMessage = async (content: string) => {
@@ -70,9 +84,9 @@ export default function AtendimentoPage() {
 
     try {
       const response = await fetch('/api/atendimento/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
           chatId: selectedChat.id,
           content,
           phone: selectedChat.customerPhone,
@@ -96,7 +110,7 @@ export default function AtendimentoPage() {
 
     } catch (error) {
       console.error(error)
-      toast.error('Erro ao enviar mensagem.')
+       toast.error('Erro ao enviar mensagem.')
       setMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, status: 'failed' } : msg))
     }
   }
