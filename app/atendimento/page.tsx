@@ -99,8 +99,13 @@ export default function AtendimentoPage() {
           phone: selectedChat.customerPhone,
         }),
       })
-      if (!response.ok) throw new Error('Failed to send message')
-      const sentMessage: ChatMessage = await response.json()
+
+      const responseJson = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(responseJson.error || 'Falha ao enviar mensagem')
+      }
+
+      const sentMessage: ChatMessage = responseJson
       setMessages(prev =>
         prev.map(msg => msg.id === tempId ? { ...sentMessage, status: 'sent' } : msg)
       )
@@ -109,17 +114,9 @@ export default function AtendimentoPage() {
           ? { ...chat, lastMessage: sentMessage.content, timestamp: sentMessage.timestamp }
           : chat
       ))
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      let message = 'Erro ao enviar mensagem.'
-      // Caso a API retorne detalhes no body
-      if (error instanceof Response) {
-        try {
-          const errJson = await error.json()
-          message = errJson.error || message
-        } catch (_) { /* ignore */ }
-      }
-      toast.error(message)
+      toast.error(error.message || 'Erro ao enviar mensagem.')
       setMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, status: 'failed' } : msg))
     }
   }
@@ -127,8 +124,8 @@ export default function AtendimentoPage() {
   return (
     <AppLayout>
       <Toaster richColors position="top-right" />
-      <div className="flex h-screen w-full bg-gray-50 dark:bg-gray-900 overflow-hidden">
-        <div className="flex w-full max-w-5xl h-[95vh] rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-900">
+      <div className="flex w-full h-full overflow-hidden">
+        <div className="flex w-full h-full overflow-hidden bg-white dark:bg-gray-900">
           <ChatList
             chats={chats}
             selectedChat={selectedChat}
