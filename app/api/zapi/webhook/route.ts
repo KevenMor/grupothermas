@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       
       try {
         // Chamar API da IA
-        const aiResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai/chat`, {
+        const aiResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://app.grupothermas.com.br'}/api/ai/chat`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

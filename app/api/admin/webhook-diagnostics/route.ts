@@ -83,11 +83,14 @@ export async function GET() {
     }
 
     // 2. URLs esperadas
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://app.grupothermas.com.br'
     const expectedWebhooks = {
-      aiWebhook: `${baseUrl}/api/zapi/ai-webhook`,
-      basicWebhook: `${baseUrl}/api/zapi/webhook`
+      primaryWebhook: `${baseUrl}/api/zapi/webhook`,
+      aiWebhook: `${baseUrl}/api/zapi/ai-webhook`
     }
+    
+    console.log('🌐 Base URL configurada:', baseUrl)
+    console.log('🔗 Webhooks esperados:', expectedWebhooks)
 
     // 3. Verificar webhook atual na Z-API
     const checkUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/webhook`
@@ -163,8 +166,8 @@ export async function GET() {
       webhooks: {
         expected: expectedWebhooks,
         current: currentWebhook,
-        isConfigured: currentWebhook?.webhook === expectedWebhooks.aiWebhook || currentWebhook?.webhook === expectedWebhooks.basicWebhook,
-        recommendedUrl: expectedWebhooks.aiWebhook
+        isConfigured: currentWebhook?.webhook === expectedWebhooks.primaryWebhook || currentWebhook?.webhook === expectedWebhooks.aiWebhook,
+        recommendedUrl: expectedWebhooks.primaryWebhook
       },
       
       // Status Z-API
@@ -205,10 +208,10 @@ export async function GET() {
       })
       diagnostics.recommendations.push({
         action: 'configure_webhook',
-        message: `Configure o webhook na Z-API para: ${expectedWebhooks.aiWebhook}`,
+        message: `Configure o webhook na Z-API para: ${expectedWebhooks.primaryWebhook}`,
         priority: 'high'
       })
-    } else if (currentWebhook?.webhook && currentWebhook.webhook !== expectedWebhooks.aiWebhook && currentWebhook.webhook !== expectedWebhooks.basicWebhook) {
+    } else if (currentWebhook?.webhook && currentWebhook.webhook !== expectedWebhooks.primaryWebhook && currentWebhook.webhook !== expectedWebhooks.aiWebhook) {
       diagnostics.issues.push({
         type: 'wrong_webhook',
         message: `Webhook configurado para URL incorreta: ${currentWebhook.webhook}`,
@@ -216,7 +219,7 @@ export async function GET() {
       })
       diagnostics.recommendations.push({
         action: 'update_webhook',
-        message: `Atualize o webhook para: ${expectedWebhooks.aiWebhook}`,
+        message: `Atualize o webhook para: ${expectedWebhooks.primaryWebhook}`,
         priority: 'high'
       })
     }
@@ -314,8 +317,10 @@ export async function POST(request: NextRequest) {
     }
 
     // URL correta do webhook
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const webhookUrl = `${baseUrl}/api/zapi/ai-webhook`
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://app.grupothermas.com.br'
+    const webhookUrl = `${baseUrl}/api/zapi/webhook`
+    
+    console.log('🌐 Configurando webhook para base URL:', baseUrl)
     
     // Configurar webhook na Z-API
     const url = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/webhook`

@@ -71,9 +71,23 @@ OPENAI_API_KEY=sk-your-openai-api-key
 
 ## Next.js
 ```
-NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_BASE_URL=https://app.grupothermas.com.br
+NEXTAUTH_URL=https://app.grupothermas.com.br
 NEXTAUTH_SECRET=your-nextauth-secret
 ```
+
+### 🌐 Configuração da URL Base
+
+A variável `NEXT_PUBLIC_BASE_URL` é **CRÍTICA** para o funcionamento correto dos webhooks:
+
+- **Produção**: `https://app.grupothermas.com.br`
+- **Desenvolvimento**: `http://localhost:3000`
+
+Esta URL é usada para:
+- ✅ Configuração automática de webhooks Z-API
+- ✅ Chamadas internas da API
+- ✅ Diagnóstico de webhook
+- ✅ Correção automática de configurações
 
 ## Como Configurar
 

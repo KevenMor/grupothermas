@@ -20,7 +20,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Configuração Z-API incompleta' }, { status: 400 })
     }
 
-    const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/zapi/ai-webhook`
+    const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://app.grupothermas.com.br'}/api/zapi/webhook`
     
     // Verificar webhook atual
     const checkUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/webhook`
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Configuração Z-API incompleta' }, { status: 400 })
     }
 
-    const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/zapi/ai-webhook`
+    const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://app.grupothermas.com.br'}/api/zapi/webhook`
     
     const url = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/update-webhook-received`
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }

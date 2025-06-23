@@ -77,7 +77,7 @@ INSTRUÇÕES:
 
 async function configureWebhook(config: any) {
   try {
-    const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/zapi/ai-webhook`
+          const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://app.grupothermas.com.br'}/api/zapi/webhook`
     
     const url = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/webhook`
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
