@@ -13,6 +13,8 @@ import {
   SidebarToggle,
   SidebarNav,
   SidebarNavItem,
+  SidebarNavSubmenu,
+  SidebarNavSubItem,
   SidebarGroup,
   useSidebar
 } from '@/components/ui/sidebar'
@@ -21,8 +23,6 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { 
   LayoutDashboard,
-  Users,
-  FileText,
   TrendingUp,
   Settings,
   LogOut,
@@ -30,14 +30,15 @@ import {
   Search,
   Plus,
   MessageSquare,
-  Smartphone,
-  Zap,
   MessageCircle,
-  Calendar,
-  User,
   Menu,
   X,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Kanban,
+  UserCheck,
+  Bot,
+  ShoppingCart,
+  FileText
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -49,51 +50,6 @@ function AppSidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const { signOut, user } = useAuth()
-
-  const navigation = [
-    {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      current: pathname === '/dashboard'
-    },
-    {
-      name: 'Kanban',
-      href: '/kanban',
-      icon: MessageCircle,
-      current: pathname === '/kanban'
-    },
-    {
-      name: 'Atendimento',
-      href: '/atendimento',
-      icon: HeadphonesIcon,
-      current: pathname === '/atendimento'
-    },
-    {
-      name: 'Leads',
-      href: '/leads',
-      icon: Users,
-      current: pathname === '/leads'
-    },
-    {
-      name: 'Contratos',
-      href: '/contracts',
-      icon: FileText,
-      current: pathname === '/contracts'
-    },
-    {
-      name: 'Vendas',
-      href: '/sales/new',
-      icon: TrendingUp,
-      current: pathname === '/sales/new'
-    },
-    {
-      name: 'Admin IA',
-      href: '/admin',
-      icon: Settings,
-      current: pathname === '/admin'
-    }
-  ]
 
   const handleLogout = async () => {
     try {
@@ -137,16 +93,72 @@ function AppSidebar() {
       <SidebarContent>
         <SidebarGroup title="Principal">
           <SidebarNav>
-            {navigation.map((item) => (
-              <SidebarNavItem
-                key={item.name}
-                icon={<item.icon className="h-4 w-4" />}
-                active={item.current}
-                onClick={() => router.push(item.href)}
+            {/* Dashboard */}
+            <SidebarNavItem
+              icon={<LayoutDashboard className="h-4 w-4" />}
+              active={pathname === '/dashboard'}
+              onClick={() => router.push('/dashboard')}
+            >
+              Dashboard
+            </SidebarNavItem>
+
+            {/* Atendimento com submenus */}
+            <SidebarNavSubmenu
+              title="Atendimento"
+              icon={<HeadphonesIcon className="h-4 w-4" />}
+              defaultOpen={pathname.startsWith('/atendimento') || pathname === '/kanban' || pathname === '/leads' || pathname === '/admin'}
+            >
+              <SidebarNavSubItem
+                icon={<MessageSquare className="h-4 w-4" />}
+                active={pathname === '/atendimento'}
+                onClick={() => router.push('/atendimento')}
               >
-                {item.name}
-              </SidebarNavItem>
-            ))}
+                Chat
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<Kanban className="h-4 w-4" />}
+                active={pathname === '/kanban'}
+                onClick={() => router.push('/kanban')}
+              >
+                Kanban
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<UserCheck className="h-4 w-4" />}
+                active={pathname === '/leads'}
+                onClick={() => router.push('/leads')}
+              >
+                Leads
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<Bot className="h-4 w-4" />}
+                active={pathname === '/admin'}
+                onClick={() => router.push('/admin')}
+              >
+                Admin IA
+              </SidebarNavSubItem>
+            </SidebarNavSubmenu>
+
+            {/* Vendas com submenus */}
+            <SidebarNavSubmenu
+              title="Vendas"
+              icon={<TrendingUp className="h-4 w-4" />}
+              defaultOpen={pathname.startsWith('/sales') || pathname === '/contracts'}
+            >
+              <SidebarNavSubItem
+                icon={<ShoppingCart className="h-4 w-4" />}
+                active={pathname === '/sales/new'}
+                onClick={() => router.push('/sales/new')}
+              >
+                Nova Venda
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<FileText className="h-4 w-4" />}
+                active={pathname === '/contracts'}
+                onClick={() => router.push('/contracts')}
+              >
+                Contratos
+              </SidebarNavSubItem>
+            </SidebarNavSubmenu>
           </SidebarNav>
         </SidebarGroup>
 

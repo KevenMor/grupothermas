@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface SidebarContextType {
   isOpen: boolean
@@ -194,6 +194,120 @@ export function SidebarNavItem({
     >
       {icon && (
         <span className={cn('flex-shrink-0', isOpen && 'mr-3')}>
+          {icon}
+        </span>
+      )}
+      {isOpen && children}
+    </button>
+  )
+}
+
+export function SidebarNavSubmenu({
+  title,
+  icon,
+  children,
+  defaultOpen = false,
+  className
+}: {
+  title: string
+  icon?: React.ReactNode
+  children: React.ReactNode
+  defaultOpen?: boolean
+  className?: string
+}) {
+  const { isOpen } = useSidebar()
+  const [isSubmenuOpen, setIsSubmenuOpen] = React.useState(defaultOpen)
+  
+  const toggleSubmenu = () => {
+    setIsSubmenuOpen(!isSubmenuOpen)
+  }
+  
+  if (!isOpen) {
+    return (
+      <div className="relative group">
+        <button
+          onClick={toggleSubmenu}
+          className={cn(
+            'flex w-full items-center justify-center rounded-lg px-2 py-2 text-sm font-medium transition-colors',
+            'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400',
+            className
+          )}
+        >
+          {icon && <span className="flex-shrink-0">{icon}</span>}
+        </button>
+        {/* Tooltip for collapsed sidebar */}
+        <div className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+          {title}
+        </div>
+        {/* Submenu for collapsed sidebar */}
+        {isSubmenuOpen && (
+          <div className="absolute left-full top-0 ml-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-48">
+            {children}
+          </div>
+        )}
+      </div>
+    )
+  }
+  
+  return (
+    <div className={className}>
+      <button
+        onClick={toggleSubmenu}
+        className={cn(
+          'flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+          'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
+        )}
+      >
+        {icon && (
+          <span className="flex-shrink-0 mr-3">
+            {icon}
+          </span>
+        )}
+        <span className="flex-1 text-left">{title}</span>
+        {isSubmenuOpen ? (
+          <ChevronDown className="h-4 w-4" />
+        ) : (
+          <ChevronRight className="h-4 w-4" />
+        )}
+      </button>
+      {isSubmenuOpen && (
+        <div className="mt-1 ml-4 space-y-1">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function SidebarNavSubItem({
+  children,
+  icon,
+  active = false,
+  onClick,
+  className
+}: {
+  children: React.ReactNode
+  icon?: React.ReactNode
+  active?: boolean
+  onClick?: () => void
+  className?: string
+}) {
+  const { isOpen } = useSidebar()
+  
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+        'hover:bg-gray-100 dark:hover:bg-gray-800',
+        active && 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100',
+        !active && 'text-gray-600 dark:text-gray-400',
+        !isOpen && 'px-2',
+        className
+      )}
+    >
+      {icon && (
+        <span className={cn('flex-shrink-0', isOpen ? 'mr-3' : 'mr-0')}>
           {icon}
         </span>
       )}
