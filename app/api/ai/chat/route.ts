@@ -258,15 +258,17 @@ async function saveConversation(customerId: string, userMessage: string, aiRespo
     // Adicionar mensagens
     await conversationRef.collection('messages').add({
       content: userMessage,
-      sender: 'user',
+      role: 'user',
       timestamp,
+      status: 'sent',
       processed: true
     })
 
     await conversationRef.collection('messages').add({
       content: aiResponse,
-      sender: 'ai',
+      role: 'ai',
       timestamp,
+      status: 'sent',
       webhookTriggered: webhookType || null
     })
 

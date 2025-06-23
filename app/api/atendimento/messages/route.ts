@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
         id: doc.id,
         content: data.content,
         timestamp: new Date(data.timestamp).toISOString(),
-        role: data.role,
+        role: data.role || data.sender || 'user',
         status: data.status || 'sent', // Default to sent for older messages
       }
     })
