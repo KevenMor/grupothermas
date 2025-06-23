@@ -64,20 +64,28 @@ export interface DashboardMetrics {
 }
 
 // Interfaces para o sistema de Atendimento / Chat
+export type ChatStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
+
+export interface Chat {
+  id: string
+  customerName: string
+  customerPhone: string
+  customerAvatar?: string
+  lastMessage: string
+  timestamp: string
+  unreadCount: number
+  status: 'open' | 'pending' | 'closed' | 'archived'
+  agentId?: string
+}
+
 export interface ChatMessage {
   id: string
-  role: 'user' | 'assistant' | 'agent'
+  chatId?: string
   content: string
-  sender: 'user' | 'ai' | 'agent'
-  timestamp: Date | string // string for firestore
-  webhookTriggered?: string
-  metadata?: {
-    customerName?: string
-    customerPhone?: string
-    customerEmail?: string
-    intent?: string
-    urgency?: 'low' | 'medium' | 'high'
-  }
+  timestamp: string
+  role: 'user' | 'agent' | 'system' | 'ai'
+  sender?: 'user' | 'agent' // for legacy
+  status: ChatStatus
 }
 
 export interface ChatCustomer {
