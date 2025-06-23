@@ -36,13 +36,15 @@ export default function AtendimentoPage() {
 
   // Função para buscar mensagens do chat selecionado
   const fetchMessages = async (chatId: string) => {
-    setIsLoadingMessages(true)
-    setMessages([])
+    setIsLoadingMessages(messages.length === 0)
     try {
       const response = await fetch(`/api/atendimento/messages?chatId=${chatId}`)
       if (!response.ok) throw new Error('Failed to fetch messages')
-        const data: ChatMessage[] = await response.json()
-        setMessages(data)
+      const data: ChatMessage[] = await response.json()
+      setMessages(prev => {
+        if (JSON.stringify(prev) !== JSON.stringify(data)) return data
+        return prev
+      })
     } catch (error) {
       console.error(error)
       toast.error('Erro ao carregar mensagens.')
@@ -118,7 +120,7 @@ export default function AtendimentoPage() {
   return (
     <AppLayout>
       <Toaster richColors position="top-right" />
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
         <ChatList
           chats={chats}
           selectedChat={selectedChat}
@@ -129,7 +131,7 @@ export default function AtendimentoPage() {
           chat={selectedChat}
           messages={messages}
           onSendMessage={handleSendMessage}
-          isLoading={isLoadingMessages}
+          isLoading={isLoadingMessages && messages.length === 0}
         />
       </div>
     </AppLayout>

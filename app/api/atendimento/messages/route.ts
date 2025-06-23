@@ -54,7 +54,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Send message via Z-API
-    const zapiResponse = await fetch(`https://api.z-api.io/instances/YOUR_INSTANCE_ID/token/YOUR_TOKEN/send-text`, {
+    const zapiInstanceId = process.env.ZAPI_INSTANCE_ID
+    const zapiToken = process.env.ZAPI_TOKEN
+    if (!zapiInstanceId || !zapiToken) {
+      return NextResponse.json({ error: 'Z-API não configurada. Verifique as variáveis de ambiente.' }, { status: 500 })
+    }
+    const zapiResponse = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -64,7 +69,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (!zapiResponse.ok) {
-        throw new Error('Failed to send message via Z-API');
+        const errorText = await zapiResponse.text();
+        console.error('Erro Z-API:', errorText);
+        return NextResponse.json({ error: 'Erro ao enviar mensagem via Z-API', details: errorText }, { status: 500 });
     }
     const zapiResult = await zapiResponse.json();
 

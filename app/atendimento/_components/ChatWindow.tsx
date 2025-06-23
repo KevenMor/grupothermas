@@ -106,9 +106,9 @@ export function ChatWindow({ chat, messages, onSendMessage, isLoading }: ChatWin
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-white dark:bg-gray-900">
       <ChatHeader chat={chat} />
-      <div className="flex-1 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')]">
+      <div className="flex-1 min-h-0 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')]">
         {isLoading ? (
           <div className="flex justify-center items-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
