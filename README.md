@@ -130,6 +130,4 @@ Sistema interno do Grupo Thermas. Contato: suporte@grupothermas.com.br
 
 **Sistema desenvolvido com ❤️ para o Grupo Thermas**
 
-# Grupo Thermas SaaS
-
-_Commit para forçar novo deploy no Railway._ 
+# Grupo Thermas SaaS 
