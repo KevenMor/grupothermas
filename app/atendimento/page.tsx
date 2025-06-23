@@ -46,11 +46,17 @@ export default function AtendimentoPage() {
       // Manter mensagens com erro (failed) no array
       setMessages(prev => {
         const failed = prev.filter(m => m.status === 'failed')
-        // Só atualiza se mudou
-        if (JSON.stringify(prev.filter(m => m.status !== 'failed')) !== JSON.stringify(data)) {
-          return [...data, ...failed]
-        }
-        return prev
+
+        // Combinar dados do servidor com mensagens falhadas sem duplicar IDs
+        const merged = [...data, ...failed]
+        const uniqueMap = new Map<string, boolean>()
+        const unique = merged.filter(m => {
+          if (uniqueMap.has(m.id)) return false
+          uniqueMap.set(m.id, true)
+          return true
+        })
+        // Ordenar por timestamp ascendente
+        return unique.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       })
     } catch (error) {
       console.error(error)
