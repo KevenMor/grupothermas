@@ -190,7 +190,7 @@ async function handleMessage(message: ZAPIWebhookEvent) {
       return NextResponse.json({ status: 'processed', response: 'fallback sent' })
     }
 
-    const userMessage = message.text.message
+    const userMessage = message.text!.message
     const userPhone = message.phone!
     const userName = message.senderName || message.chatName || 'Cliente'
 
