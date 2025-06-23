@@ -7,6 +7,18 @@ interface AdminConfig {
   zapiClientToken?: string
 }
 
+interface DiagnosticIssue {
+  type: string
+  message: string
+  severity: 'high' | 'medium' | 'low'
+}
+
+interface DiagnosticRecommendation {
+  action: string
+  message: string
+  priority: 'high' | 'medium' | 'low'
+}
+
 export async function GET() {
   try {
     console.log('=== DIAGNÓSTICO COMPLETO DO WEBHOOK ===')
@@ -97,10 +109,10 @@ export async function GET() {
       zapiStatus: zapiStatus,
       
       // Problemas identificados
-      issues: [],
+      issues: [] as DiagnosticIssue[],
       
       // Recomendações
-      recommendations: []
+      recommendations: [] as DiagnosticRecommendation[]
     }
 
     // Identificar problemas
