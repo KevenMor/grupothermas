@@ -124,10 +124,12 @@ export function ChatWindow({ chat, messages, onSendMessage, isLoading }: ChatWin
               const dateObj = new Date(msg.timestamp)
               const isFirstOfDay = !lastDate || !isSameDay(lastDate, dateObj)
               lastDate = dateObj
+              const isAgent = msg.role === 'agent'
               return (
                 <ChatMessageItem
                   key={msg.id}
                   message={msg}
+                  avatarUrl={!isAgent ? chat.customerAvatar : undefined}
                   showAvatar={true}
                   showName={true}
                   isFirstOfDay={isFirstOfDay}
