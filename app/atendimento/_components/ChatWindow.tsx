@@ -130,6 +130,7 @@ export function ChatWindow({ chat, messages, onSendMessage, isLoading }: ChatWin
                   key={msg.id}
                   message={msg}
                   avatarUrl={!isAgent ? chat.customerAvatar : undefined}
+                  contactName={!isAgent ? chat.customerName : undefined}
                   showAvatar={true}
                   showName={true}
                   isFirstOfDay={isFirstOfDay}

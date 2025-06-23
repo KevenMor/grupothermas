@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 interface ChatMessageItemProps {
   message: ChatMessage
   avatarUrl?: string
+  contactName?: string
   showAvatar?: boolean
   showName?: boolean
   isFirstOfDay?: boolean
@@ -36,11 +37,11 @@ const formatDate = (date: Date) => {
   return format(date, "dd/MM/yyyy", { locale: ptBR })
 }
 
-export function ChatMessageItem({ message, avatarUrl, showAvatar = true, showName = true, isFirstOfDay = false }: ChatMessageItemProps) {
+export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false }: ChatMessageItemProps) {
   const isAgent = message.role === 'agent'
   const isFailed = message.status === 'failed'
   const avatar = isAgent ? '/agent-avatar.png' : avatarUrl || '/user-avatar.png'
-  const displayName = isAgent ? 'Você' : message.senderName || 'Cliente'
+  const displayName = isAgent ? 'Você' : contactName || 'Cliente'
   const dateObj = new Date(message.timestamp)
 
   return (
