@@ -116,7 +116,7 @@ export default function AtendimentoPage() {
       ))
     } catch (error: any) {
       console.error(error)
-      toast.error(error.message || 'Erro ao enviar mensagem.')
+      toast.error(`Erro ao enviar mensagem: ${error.message || ''}`)
       setMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, status: 'failed' } : msg))
     }
   }

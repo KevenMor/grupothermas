@@ -29,12 +29,26 @@ export async function GET(request: NextRequest) {
 
     const messages: ChatMessage[] = messagesSnapshot.docs.map(doc => {
       const data = doc.data()
+      // Converter timestamp para ISO
+      let isoTimestamp: string
+      const rawTs = data.timestamp
+      if (!rawTs) {
+        isoTimestamp = new Date().toISOString()
+      } else if (typeof rawTs === 'string') {
+        isoTimestamp = new Date(rawTs).toISOString()
+      } else if (typeof rawTs === 'object' && typeof rawTs.toDate === 'function') {
+        // Firestore Timestamp
+        isoTimestamp = rawTs.toDate().toISOString()
+      } else {
+        isoTimestamp = new Date(rawTs).toISOString()
+      }
+
       return {
         id: doc.id,
         content: data.content,
-        timestamp: new Date(data.timestamp).toISOString(),
+        timestamp: isoTimestamp,
         role: data.role || data.sender || 'user',
-        status: data.status || 'sent', // Default to sent for older messages
+        status: data.status || 'sent',
       }
     })
 
