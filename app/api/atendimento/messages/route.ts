@@ -2,6 +2,9 @@ import { NextResponse, NextRequest } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
 import { ChatMessage } from '@/lib/models'
 
+// Garantir que a rota use o runtime Node.js (acesso a process.env)
+export const runtime = 'nodejs'
+
 // GET /api/atendimento/messages?chatId=[id]
 // Returns all messages for a given chat
 export async function GET(request: NextRequest) {
@@ -59,9 +62,15 @@ export async function POST(request: NextRequest) {
     if (!zapiInstanceId || !zapiToken) {
       return NextResponse.json({ error: 'Z-API não configurada. Verifique as variáveis de ambiente.' }, { status: 500 })
     }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (process.env.ZAPI_CLIENT_TOKEN) {
+      headers['Client-Token'] = process.env.ZAPI_CLIENT_TOKEN
+    }
+
     const zapiResponse = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
             phone: phone,
             message: content,

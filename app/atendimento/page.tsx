@@ -16,7 +16,10 @@ export default function AtendimentoPage() {
 
   // Função para buscar chats
   const fetchChats = async () => {
-    setIsLoadingChats(true)
+    // Exibe loader somente se ainda não há chats carregados
+    const showLoader = chats.length === 0
+    if (showLoader) setIsLoadingChats(true)
+
     try {
       const response = await fetch('/api/atendimento/chats')
       if (!response.ok) throw new Error('Failed to fetch chats')
@@ -29,7 +32,7 @@ export default function AtendimentoPage() {
       console.error(error)
       toast.error('Erro ao carregar as conversas.')
     } finally {
-      setIsLoadingChats(false)
+      if (showLoader) setIsLoadingChats(false)
     }
   }
 
@@ -108,7 +111,15 @@ export default function AtendimentoPage() {
       ))
     } catch (error) {
       console.error(error)
-      toast.error('Erro ao enviar mensagem.')
+      let message = 'Erro ao enviar mensagem.'
+      // Caso a API retorne detalhes no body
+      if (error instanceof Response) {
+        try {
+          const errJson = await error.json()
+          message = errJson.error || message
+        } catch (_) { /* ignore */ }
+      }
+      toast.error(message)
       setMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, status: 'failed' } : msg))
     }
   }
@@ -116,7 +127,7 @@ export default function AtendimentoPage() {
   return (
     <AppLayout>
       <Toaster richColors position="top-right" />
-      <div className="flex justify-center items-center h-screen w-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      <div className="flex h-screen w-full bg-gray-50 dark:bg-gray-900 overflow-hidden">
         <div className="flex w-full max-w-5xl h-[95vh] rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-900">
           <ChatList
             chats={chats}
