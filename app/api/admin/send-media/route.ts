@@ -58,6 +58,37 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Converter mídia para base64 para envio real (não link)
+    let mediaBase64 = ''
+    let fileName = ''
+    
+    if (type !== 'text' && url) {
+      try {
+        console.log(`Baixando mídia: ${url}`)
+        
+        // Baixar o arquivo da URL
+        const mediaResponse = await fetch(url)
+        if (!mediaResponse.ok) {
+          throw new Error(`Falha ao baixar mídia: ${mediaResponse.status}`)
+        }
+        
+        const arrayBuffer = await mediaResponse.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+        mediaBase64 = buffer.toString('base64')
+        
+        // Extrair nome do arquivo da URL
+        fileName = url.split('/').pop()?.split('?')[0] || 'arquivo'
+        
+        console.log(`Mídia convertida para base64. Tamanho: ${mediaBase64.length} chars`)
+      } catch (error) {
+        console.error('Erro ao processar mídia:', error)
+        return NextResponse.json({ 
+          error: 'Falha ao processar arquivo de mídia',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 400 })
+      }
+    }
+
     // Montar URL e payload baseado no tipo
     let zapiUrl = ''
     let payload: any = { phone }
@@ -70,25 +101,29 @@ export async function POST(request: NextRequest) {
 
       case 'image':
         zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-image`
-        payload.image = url
+        // Enviar como base64 para aparecer como imagem real no WhatsApp
+        payload.image = `data:image/jpeg;base64,${mediaBase64}`
         if (caption) payload.caption = caption
         break
 
       case 'audio':
         zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-audio`
-        payload.audio = url
+        // Enviar como base64 para aparecer como áudio real no WhatsApp
+        payload.audio = `data:audio/mpeg;base64,${mediaBase64}`
         break
 
       case 'video':
         zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-video`
-        payload.video = url
+        // Enviar como base64 para aparecer como vídeo real no WhatsApp
+        payload.video = `data:video/mp4;base64,${mediaBase64}`
         if (caption) payload.caption = caption
         break
 
       case 'document':
         zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-document`
-        payload.document = url
-        if (filename) payload.fileName = filename
+        // Enviar como base64 para aparecer como documento real no WhatsApp
+        payload.document = `data:application/pdf;base64,${mediaBase64}`
+        payload.fileName = filename || fileName || 'documento.pdf'
         break
 
       default:

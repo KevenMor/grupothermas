@@ -30,7 +30,13 @@ import {
   Zap,
   MessageSquare,
   Loader2,
-  BookOpen
+  BookOpen,
+  HelpCircle,
+  Package,
+  FileText,
+  Plus,
+  Trash2,
+  User
 } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { adminDB } from '@/lib/firebaseAdmin'
@@ -815,49 +821,7 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="training">
-            <div className="space-y-6">
-              {/* FAQ e Base de Conhecimento */}
-              <Card className="shadow-sm border-gray-200 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <BookOpen className="h-5 w-5 text-orange-600" />
-                    FAQ e Base de Conhecimento
-                  </CardTitle>
-                  <CardDescription>
-                    Configure perguntas frequentes e informações específicas do negócio
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="text-center py-12 text-gray-500">
-                    <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <h3 className="text-lg font-medium mb-2">Seção em Desenvolvimento</h3>
-                    <p className="mb-4">Em breve você poderá configurar:</p>
-                    <div className="text-left max-w-md mx-auto space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span>FAQ personalizada</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span>Catálogo de produtos/serviços</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span>Políticas da empresa</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span>Scripts de vendas</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span>Configuração de personalidade</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <TrainingSection />
           </TabsContent>
 
           <TabsContent value="integration">
@@ -1503,6 +1467,423 @@ export default function AdminPage() {
         </div>
       </div>
     </AppLayout>
+  )
+}
+
+// Componente de Treinamento da IA
+const TrainingSection = () => {
+  const [activeTrainingTab, setActiveTrainingTab] = React.useState<'faq' | 'products' | 'policies' | 'personality'>('faq')
+  const [faqItems, setFaqItems] = React.useState<Array<{id: string, question: string, answer: string}>>([])
+  const [products, setProducts] = React.useState<Array<{id: string, name: string, description: string, price: string}>>([])
+  const [policies, setPolicies] = React.useState<Array<{id: string, title: string, content: string}>>([])
+  const [personality, setPersonality] = React.useState({
+    tone: 'professional',
+    style: 'helpful',
+    greeting: 'Olá! Como posso ajudá-lo hoje?',
+    signature: 'Atenciosamente, Equipe Grupo Thermas'
+  })
+  const [loadingTraining, setLoadingTraining] = React.useState(true)
+
+  // Carregar dados de treinamento ao montar o componente
+  React.useEffect(() => {
+    const loadTrainingData = async () => {
+      try {
+        setLoadingTraining(true)
+        const response = await fetch('/api/admin/training')
+        if (response.ok) {
+          const data = await response.json()
+          setFaqItems(data.faq || [])
+          setProducts(data.products || [])
+          setPolicies(data.policies || [])
+          setPersonality(data.personality || {
+            tone: 'professional',
+            style: 'helpful',
+            greeting: 'Olá! Como posso ajudá-lo hoje?',
+            signature: 'Atenciosamente, Equipe Grupo Thermas'
+          })
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados de treinamento:', error)
+        toast.error('Erro ao carregar dados de treinamento')
+      } finally {
+        setLoadingTraining(false)
+      }
+    }
+    
+    loadTrainingData()
+  }, [])
+
+  // FAQ Functions
+  const addFaqItem = () => {
+    const newFaq = {
+      id: Date.now().toString(),
+      question: '',
+      answer: ''
+    }
+    setFaqItems([...faqItems, newFaq])
+  }
+
+  const updateFaqItem = (id: string, field: 'question' | 'answer', value: string) => {
+    setFaqItems(faqItems.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ))
+  }
+
+  const removeFaqItem = (id: string) => {
+    setFaqItems(faqItems.filter(item => item.id !== id))
+  }
+
+  // Products Functions
+  const addProduct = () => {
+    const newProduct = {
+      id: Date.now().toString(),
+      name: '',
+      description: '',
+      price: ''
+    }
+    setProducts([...products, newProduct])
+  }
+
+  const updateProduct = (id: string, field: 'name' | 'description' | 'price', value: string) => {
+    setProducts(products.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ))
+  }
+
+  const removeProduct = (id: string) => {
+    setProducts(products.filter(item => item.id !== id))
+  }
+
+  // Policies Functions
+  const addPolicy = () => {
+    const newPolicy = {
+      id: Date.now().toString(),
+      title: '',
+      content: ''
+    }
+    setPolicies([...policies, newPolicy])
+  }
+
+  const updatePolicy = (id: string, field: 'title' | 'content', value: string) => {
+    setPolicies(policies.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ))
+  }
+
+  const removePolicy = (id: string) => {
+    setPolicies(policies.filter(item => item.id !== id))
+  }
+
+  // Save Training Data
+  const saveTrainingData = async () => {
+    try {
+      const trainingData = {
+        faq: faqItems,
+        products,
+        policies,
+        personality,
+        updatedAt: new Date().toISOString()
+      }
+
+      const response = await fetch('/api/admin/training', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trainingData)
+      })
+
+      if (response.ok) {
+        toast.success('Dados de treinamento salvos com sucesso!')
+      } else {
+        throw new Error('Falha ao salvar')
+      }
+    } catch (error) {
+      toast.error('Erro ao salvar dados de treinamento')
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Treinamento da IA
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Configure o conhecimento e personalidade da IA
+          </p>
+        </div>
+        <Button onClick={saveTrainingData} className="bg-blue-600 hover:bg-blue-700">
+          <Save className="mr-2 h-4 w-4" />
+          Salvar Treinamento
+        </Button>
+      </div>
+
+      {/* Training Tabs */}
+      <Card className="shadow-sm border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+            {[
+              { id: 'faq', label: 'FAQ', icon: HelpCircle },
+              { id: 'products', label: 'Produtos', icon: Package },
+              { id: 'policies', label: 'Políticas', icon: FileText },
+              { id: 'personality', label: 'Personalidade', icon: User }
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTrainingTab(id as any)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTrainingTab === id
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* FAQ Tab */}
+          {activeTrainingTab === 'faq' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Perguntas Frequentes</h3>
+                <Button onClick={addFaqItem} variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar FAQ
+                </Button>
+              </div>
+              
+              {faqItems.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <HelpCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>Nenhuma pergunta frequente cadastrada</p>
+                  <p className="text-sm">Clique em "Adicionar FAQ" para começar</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {faqItems.map((item) => (
+                    <Card key={item.id} className="border border-gray-200">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 space-y-3">
+                            <Input
+                              placeholder="Digite a pergunta..."
+                              value={item.question}
+                              onChange={(e) => updateFaqItem(item.id, 'question', e.target.value)}
+                            />
+                            <textarea
+                              placeholder="Digite a resposta..."
+                              value={item.answer}
+                              onChange={(e) => updateFaqItem(item.id, 'answer', e.target.value)}
+                              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 min-h-[100px] resize-vertical"
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeFaqItem(item.id)}
+                            className="text-red-600 hover:text-red-700 ml-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Products Tab */}
+          {activeTrainingTab === 'products' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Catálogo de Produtos/Serviços</h3>
+                <Button onClick={addProduct} variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar Produto
+                </Button>
+              </div>
+              
+              {products.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Package className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>Nenhum produto cadastrado</p>
+                  <p className="text-sm">Clique em "Adicionar Produto" para começar</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {products.map((item) => (
+                    <Card key={item.id} className="border border-gray-200">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 space-y-3">
+                            <Input
+                              placeholder="Nome do produto/serviço..."
+                              value={item.name}
+                              onChange={(e) => updateProduct(item.id, 'name', e.target.value)}
+                            />
+                            <textarea
+                              placeholder="Descrição detalhada..."
+                              value={item.description}
+                              onChange={(e) => updateProduct(item.id, 'description', e.target.value)}
+                              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 min-h-[80px] resize-vertical"
+                            />
+                            <Input
+                              placeholder="Preço (ex: R$ 199,90)"
+                              value={item.price}
+                              onChange={(e) => updateProduct(item.id, 'price', e.target.value)}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeProduct(item.id)}
+                            className="text-red-600 hover:text-red-700 ml-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Policies Tab */}
+          {activeTrainingTab === 'policies' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Políticas da Empresa</h3>
+                <Button onClick={addPolicy} variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar Política
+                </Button>
+              </div>
+              
+              {policies.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>Nenhuma política cadastrada</p>
+                  <p className="text-sm">Clique em "Adicionar Política" para começar</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {policies.map((item) => (
+                    <Card key={item.id} className="border border-gray-200">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 space-y-3">
+                            <Input
+                              placeholder="Título da política..."
+                              value={item.title}
+                              onChange={(e) => updatePolicy(item.id, 'title', e.target.value)}
+                            />
+                            <textarea
+                              placeholder="Conteúdo da política..."
+                              value={item.content}
+                              onChange={(e) => updatePolicy(item.id, 'content', e.target.value)}
+                              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 min-h-[120px] resize-vertical"
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removePolicy(item.id)}
+                            className="text-red-600 hover:text-red-700 ml-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Personality Tab */}
+          {activeTrainingTab === 'personality' && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold">Configuração de Personalidade</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Tom de Voz</Label>
+                    <select
+                      value={personality.tone}
+                      onChange={(e) => setPersonality(prev => ({ ...prev, tone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                    >
+                      <option value="professional">Profissional</option>
+                      <option value="friendly">Amigável</option>
+                      <option value="casual">Casual</option>
+                      <option value="formal">Formal</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Estilo de Atendimento</Label>
+                    <select
+                      value={personality.style}
+                      onChange={(e) => setPersonality(prev => ({ ...prev, style: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                    >
+                      <option value="helpful">Prestativo</option>
+                      <option value="consultative">Consultivo</option>
+                      <option value="direct">Direto</option>
+                      <option value="empathetic">Empático</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Mensagem de Saudação</Label>
+                    <textarea
+                      value={personality.greeting}
+                      onChange={(e) => setPersonality(prev => ({ ...prev, greeting: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 min-h-[80px] resize-vertical"
+                      placeholder="Como a IA deve cumprimentar os clientes..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Assinatura</Label>
+                    <Input
+                      value={personality.signature}
+                      onChange={(e) => setPersonality(prev => ({ ...prev, signature: e.target.value }))}
+                      placeholder="Como a IA deve se despedir..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                  Prévia da Personalidade
+                </h4>
+                <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                  <p><strong>Tom:</strong> {personality.tone}</p>
+                  <p><strong>Estilo:</strong> {personality.style}</p>
+                  <p><strong>Saudação:</strong> "{personality.greeting}"</p>
+                  <p><strong>Assinatura:</strong> "{personality.signature}"</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
