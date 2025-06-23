@@ -28,6 +28,7 @@ import {
   Info
 } from 'lucide-react'
 import { ChatMessageItem } from './ChatMessageItem'
+import { EmojiPicker } from './EmojiPicker'
 import { isSameDay } from 'date-fns'
 
 interface ChatWindowProps {
@@ -211,23 +212,177 @@ const MessageInput = ({
   const [message, setMessage] = useState('')
   const [showAttachments, setShowAttachments] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   
   const handleSend = () => {
-    if (message.trim()) {
+    if (message.trim() && canInteract()) {
       onSendMessage(message.trim())
       setMessage('')
     }
   }
 
-  const handleAttachment = (type: string) => {
-    setShowAttachments(false)
-    // TODO: Implementar envio de anexos
-    console.log('Anexo tipo:', type)
+  // Verificar se pode interagir com o chat
+  const canInteract = () => {
+    if (!chat) return false
+    // Permitir interação apenas se o chat estiver assumido por um agente
+    return chat.conversationStatus === 'agent_assigned'
   }
 
-  const toggleRecording = () => {
-    setIsRecording(!isRecording)
-    // TODO: Implementar gravação de áudio
+  const handleAttachment = (type: string) => {
+    setShowAttachments(false)
+    
+    // Criar input de arquivo
+    const input = document.createElement('input')
+    input.type = 'file'
+    
+    // Configurar tipos aceitos baseado no tipo
+    switch (type) {
+      case 'image':
+        input.accept = 'image/*'
+        break
+      case 'camera':
+        input.accept = 'image/*'
+        input.capture = 'environment'
+        break
+      case 'document':
+        input.accept = '.pdf,.doc,.docx,.txt'
+        break
+      case 'contact':
+        // Implementar seleção de contato
+        alert('Funcionalidade de contato em desenvolvimento')
+        return
+    }
+    
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file || !chat) return
+      
+      try {
+        // Upload do arquivo
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('type', type === 'camera' ? 'image' : type)
+        
+        const uploadResponse = await fetch('/api/atendimento/upload', {
+          method: 'POST',
+          body: formData
+        })
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Erro no upload')
+        }
+        
+        const uploadResult = await uploadResponse.json()
+        
+        // Enviar via Z-API usando a API de mídia
+        const mediaResponse = await fetch('/api/admin/send-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: chat.customerPhone,
+            type: type === 'camera' ? 'image' : type,
+            url: `${window.location.origin}${uploadResult.fileUrl}`,
+            caption: `Arquivo enviado: ${file.name}`,
+            filename: file.name
+          })
+        })
+        
+        if (mediaResponse.ok) {
+          // Salvar mensagem no banco
+          onSendMessage(`[${type.toUpperCase()}] ${file.name}`)
+        }
+        
+      } catch (error) {
+        console.error('Erro ao enviar anexo:', error)
+        alert('Erro ao enviar arquivo. Tente novamente.')
+      }
+    }
+    
+    input.click()
+  }
+
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([])
+
+  const toggleRecording = async () => {
+    if (!canInteract()) return
+
+    if (!isRecording) {
+      // Iniciar gravação
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        const recorder = new MediaRecorder(stream)
+        const chunks: Blob[] = []
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunks.push(e.data)
+          }
+        }
+
+        recorder.onstop = async () => {
+          const audioBlob = new Blob(chunks, { type: 'audio/webm' })
+          
+          // Upload do áudio
+          try {
+            const formData = new FormData()
+            formData.append('file', audioBlob, 'audio.webm')
+            formData.append('type', 'audio')
+            
+            const uploadResponse = await fetch('/api/atendimento/upload', {
+              method: 'POST',
+              body: formData
+            })
+            
+            if (!uploadResponse.ok) {
+              throw new Error('Erro no upload do áudio')
+            }
+            
+            const uploadResult = await uploadResponse.json()
+            
+            // Enviar áudio via Z-API
+            if (chat) {
+              const mediaResponse = await fetch('/api/admin/send-media', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  phone: chat.customerPhone,
+                  type: 'audio',
+                  url: `${window.location.origin}${uploadResult.fileUrl}`
+                })
+              })
+              
+              if (mediaResponse.ok) {
+                onSendMessage('[ÁUDIO] Mensagem de voz')
+              }
+            }
+            
+          } catch (error) {
+            console.error('Erro ao enviar áudio:', error)
+            alert('Erro ao enviar áudio. Tente novamente.')
+          }
+          
+          // Limpar stream
+          stream.getTracks().forEach(track => track.stop())
+        }
+
+        setMediaRecorder(recorder)
+        setAudioChunks(chunks)
+        recorder.start()
+        setIsRecording(true)
+
+      } catch (error) {
+        console.error('Erro ao acessar microfone:', error)
+        alert('Erro ao acessar microfone. Verifique as permissões.')
+      }
+    } else {
+      // Parar gravação
+      if (mediaRecorder) {
+        mediaRecorder.stop()
+        setIsRecording(false)
+        setMediaRecorder(null)
+      }
+    }
   }
 
   return (
@@ -279,17 +434,47 @@ const MessageInput = ({
         </div>
       )}
 
+      {/* Aviso quando chat não está assumido */}
+      {!canInteract() && chat && (
+        <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border-t border-yellow-200 dark:border-yellow-800">
+          <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+            <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
+            <span className="text-sm font-medium">
+              Clique em "Assumir Atendimento" para interagir com o cliente
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Input de mensagem */}
       <div className="p-3">
-        <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            title="Emojis"
-          >
-            <Smile className="w-5 h-5" />
-          </Button>
+        <div className={`flex items-center gap-2 p-2 rounded-lg transition-opacity ${
+          canInteract() 
+            ? 'bg-gray-50 dark:bg-gray-700' 
+            : 'bg-gray-100 dark:bg-gray-800 opacity-50 cursor-not-allowed'
+        }`}>
+          <div className="relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              title="Emojis"
+              disabled={!canInteract()}
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            >
+              <Smile className="w-5 h-5" />
+            </Button>
+            
+            {showEmojiPicker && (
+              <EmojiPicker
+                onEmojiSelect={(emoji) => {
+                  setMessage(prev => prev + emoji)
+                  setShowEmojiPicker(false)
+                }}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+            )}
+          </div>
           
           <Button 
             variant="ghost" 
@@ -297,22 +482,24 @@ const MessageInput = ({
             className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             onClick={() => setShowAttachments(!showAttachments)}
             title="Anexos"
+            disabled={!canInteract()}
           >
             <Paperclip className="w-5 h-5" />
           </Button>
           
           <Input
             type="text"
-            placeholder="Digite uma mensagem..."
+            placeholder={canInteract() ? "Digite uma mensagem..." : "Assuma o atendimento para enviar mensagens"}
             value={message}
             onChange={e => setMessage(e.target.value)}
             onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && canInteract()) {
                 e.preventDefault();
                 handleSend();
               }
             }}
             className="flex-grow bg-transparent border-none focus:ring-0 h-10 px-2 text-gray-900 dark:text-gray-100"
+            disabled={!canInteract()}
           />
           
           {message.trim() ? (
@@ -321,6 +508,7 @@ const MessageInput = ({
               size="icon" 
               className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10"
               title="Enviar mensagem"
+              disabled={!canInteract()}
             >
               <Send className="w-5 h-5" />
             </Button>
@@ -331,6 +519,7 @@ const MessageInput = ({
               className={`rounded-full w-10 h-10 ${isRecording ? 'bg-red-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
               onClick={toggleRecording}
               title={isRecording ? "Parar gravação" : "Gravar áudio"}
+              disabled={!canInteract()}
             >
               <Mic className="w-5 h-5" />
             </Button>
@@ -371,6 +560,115 @@ export function ChatWindow({
     }
   }
 
+  // Implementar funções das mensagens
+  const handleReplyMessage = async (message: ChatMessage) => {
+    if (!chat) return
+    
+    const replyContent = prompt('Digite sua resposta:')
+    if (!replyContent) return
+
+    try {
+      const response = await fetch('/api/atendimento/message-actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reply',
+          chatId: chat.id,
+          messageId: message.id,
+          content: replyContent,
+          phone: chat.customerPhone
+        })
+      })
+
+      if (response.ok) {
+        // Recarregar mensagens ou usar callback
+        if (onReplyMessage) onReplyMessage(message)
+      }
+    } catch (error) {
+      console.error('Erro ao responder mensagem:', error)
+    }
+  }
+
+  const handleEditMessage = async (message: ChatMessage) => {
+    if (!chat) return
+    
+    const newContent = prompt('Editar mensagem:', message.content)
+    if (!newContent || newContent === message.content) return
+
+    try {
+      const response = await fetch('/api/atendimento/message-actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'edit',
+          chatId: chat.id,
+          messageId: message.id,
+          content: newContent
+        })
+      })
+
+      if (response.ok) {
+        if (onEditMessage) onEditMessage(message)
+      }
+    } catch (error) {
+      console.error('Erro ao editar mensagem:', error)
+    }
+  }
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!chat) return
+    
+    if (!confirm('Tem certeza que deseja excluir esta mensagem?')) return
+
+    try {
+      const response = await fetch('/api/atendimento/message-actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete',
+          chatId: chat.id,
+          messageId
+        })
+      })
+
+      if (response.ok) {
+        if (onDeleteMessage) onDeleteMessage(messageId)
+      }
+    } catch (error) {
+      console.error('Erro ao excluir mensagem:', error)
+    }
+  }
+
+  const handleMessageInfo = async (message: ChatMessage) => {
+    if (!chat) return
+
+    try {
+      const response = await fetch('/api/atendimento/message-actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'info',
+          chatId: chat.id,
+          messageId: message.id
+        })
+      })
+
+      if (response.ok) {
+        const info = await response.json()
+        alert(`Informações da Mensagem:
+ID: ${info.id}
+Conteúdo: ${info.content}
+Enviado em: ${new Date(info.timestamp).toLocaleString('pt-BR')}
+Tipo: ${info.role === 'agent' ? 'Agente' : info.role === 'ai' ? 'IA' : 'Cliente'}
+Status: ${info.status}
+${info.edited ? `Editado em: ${new Date(info.editedAt).toLocaleString('pt-BR')}` : ''}
+${info.agentName ? `Agente: ${info.agentName}` : ''}`)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar informações da mensagem:', error)
+    }
+  }
+
   // Agrupar mensagens por data
   let lastDate: Date | null = null
 
@@ -404,10 +702,10 @@ export function ChatWindow({
                   showAvatar={true}
                   showName={true}
                   isFirstOfDay={isFirstOfDay}
-                  onReply={onReplyMessage}
-                  onEdit={onEditMessage}
-                  onDelete={onDeleteMessage}
-                  onInfo={onMessageInfo}
+                  onReply={handleReplyMessage}
+                  onEdit={handleEditMessage}
+                  onDelete={handleDeleteMessage}
+                  onInfo={handleMessageInfo}
                 />
               )
             })}
