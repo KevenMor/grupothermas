@@ -206,6 +206,15 @@ export async function POST(request: NextRequest) {
       console.log('Salvando mensagem no Firebase...')
       
       const conversationRef = adminDB.collection('conversations').doc(phone)
+      let mediaUrlToSave = mediaUrl
+      if (type === 'document') {
+        // Para documentos, sempre usar a URL pública da Z-API
+        if (zapiResult.url) {
+          mediaUrlToSave = zapiResult.url
+        } else {
+          mediaUrlToSave = 'ERRO: Documento não possui URL pública da Z-API.'
+        }
+      }
       const messageData: MessageData = {
         content: `[${type.toUpperCase()}]`,
         role: 'agent',
@@ -217,10 +226,10 @@ export async function POST(request: NextRequest) {
 
       // Adicionar informações de mídia
       messageData.mediaType = type
-      messageData.mediaUrl = mediaUrl
+      messageData.mediaUrl = mediaUrlToSave
       messageData.mediaInfo = {
         type: type,
-        url: mediaUrl,
+        url: mediaUrlToSave,
         filename: filename || localPath?.split('/').pop(),
         ...(caption && { caption })
       }
