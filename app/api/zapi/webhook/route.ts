@@ -32,13 +32,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se já processamos esta mensagem (evitar duplicatas)
-    const messageId = body.messageId
-    if (messageId) {
+    if (body.messageId) {
       const conversationRef = adminDB.collection('conversations').doc(body.phone)
-      const existingMessage = await conversationRef.collection('messages').doc(messageId).get()
+      const existingMessage = await conversationRef.collection('messages').doc(body.messageId).get()
       
       if (existingMessage.exists) {
-        console.log('Mensagem já processada:', messageId)
+        console.log('Mensagem já processada:', body.messageId)
         return NextResponse.json({ ignored: true, reason: 'already_processed' })
       }
     }
