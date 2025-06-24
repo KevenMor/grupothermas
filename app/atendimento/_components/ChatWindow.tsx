@@ -213,9 +213,21 @@ const MessageInput = ({
   const [showAttachments, setShowAttachments] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null)
+  const [showSendConfirmation, setShowSendConfirmation] = useState(false)
   
   const handleSend = () => {
     if (message.trim() && canInteract()) {
+      // Mostrar confirmação para mensagens importantes ou enviar direto
+      const shouldConfirm = message.length > 100 // Confirmar mensagens longas
+      
+      if (shouldConfirm) {
+        const confirmed = confirm(`Enviar mensagem: "${message.substring(0, 50)}..."?`)
+        if (!confirmed) return
+      }
+      
       onSendMessage(message.trim())
       setMessage('')
     }
@@ -282,17 +294,15 @@ const MessageInput = ({
             phone: chat.customerPhone,
             type: type === 'camera' ? 'image' : type,
             localPath: uploadResult.fileUrl, // Caminho local do arquivo
-            caption: `Arquivo enviado: ${file.name}`,
+            // Não enviar caption para não aparecer texto desnecessário
             filename: file.name
           })
         })
         
         if (mediaResponse.ok) {
-          // Salvar mensagem no banco com informações da mídia
-          const mediaMessage = type === 'image' || type === 'camera' ? 
-            `📷 Imagem: ${file.name}` : 
-            `📄 Documento: ${file.name}`
-          onSendMessage(mediaMessage)
+          // Não salvar mensagem de texto, apenas enviar a mídia
+          // A mídia será salva automaticamente pelo endpoint
+          console.log('Mídia enviada com sucesso:', mediaResponse)
         } else {
           const errorResult = await mediaResponse.json()
           throw new Error(errorResult.error || 'Erro ao enviar mídia')
@@ -328,47 +338,15 @@ const MessageInput = ({
 
         recorder.onstop = async () => {
           const audioBlob = new Blob(chunks, { type: 'audio/wav' })
+          setRecordedAudio(audioBlob)
+          setShowSendConfirmation(true)
           
-          // Upload do áudio
-          try {
-            const formData = new FormData()
-            formData.append('file', audioBlob, `audio_${Date.now()}.wav`)
-            formData.append('type', 'audio')
-            
-            const uploadResponse = await fetch('/api/atendimento/upload', {
-              method: 'POST',
-              body: formData
-            })
-            
-            if (!uploadResponse.ok) {
-              throw new Error('Erro no upload do áudio')
-            }
-            
-            const uploadResult = await uploadResponse.json()
-            
-            // Enviar áudio via Z-API usando nova API local
-            if (chat) {
-              const mediaResponse = await fetch('/api/atendimento/send-media', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  phone: chat.customerPhone,
-                  type: 'audio',
-                  localPath: uploadResult.fileUrl // Caminho local do arquivo
-                })
-              })
-              
-              if (mediaResponse.ok) {
-                onSendMessage('🎤 Mensagem de voz')
-              } else {
-                throw new Error('Falha ao enviar áudio via Z-API')
-              }
-            }
-            
-          } catch (error) {
-            console.error('Erro ao enviar áudio:', error)
-            alert('Erro ao enviar áudio. Tente novamente.')
+          // Parar timer
+          if (recordingInterval) {
+            clearInterval(recordingInterval)
+            setRecordingInterval(null)
           }
+          setRecordingTime(0)
           
           // Limpar stream
           stream.getTracks().forEach(track => track.stop())
@@ -378,6 +356,12 @@ const MessageInput = ({
         setAudioChunks(chunks)
         recorder.start()
         setIsRecording(true)
+        
+        // Iniciar timer
+        const interval = setInterval(() => {
+          setRecordingTime(prev => prev + 1)
+        }, 1000)
+        setRecordingInterval(interval)
 
       } catch (error) {
         console.error('Erro ao acessar microfone:', error)
@@ -391,6 +375,65 @@ const MessageInput = ({
         setMediaRecorder(null)
       }
     }
+  }
+
+  // Função para confirmar envio do áudio
+  const confirmSendAudio = async () => {
+    if (!recordedAudio || !chat) return
+    
+    try {
+      // Upload do áudio
+      const formData = new FormData()
+      formData.append('file', recordedAudio, `audio_${Date.now()}.wav`)
+      formData.append('type', 'audio')
+      
+      const uploadResponse = await fetch('/api/atendimento/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Erro no upload do áudio')
+      }
+      
+      const uploadResult = await uploadResponse.json()
+      
+      // Enviar áudio via Z-API usando nova API local
+      const mediaResponse = await fetch('/api/atendimento/send-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: chat.customerPhone,
+          type: 'audio',
+          localPath: uploadResult.fileUrl
+        })
+      })
+      
+      if (mediaResponse.ok) {
+        console.log('Áudio enviado com sucesso')
+        setShowSendConfirmation(false)
+        setRecordedAudio(null)
+      } else {
+        throw new Error('Falha ao enviar áudio via Z-API')
+      }
+      
+    } catch (error) {
+      console.error('Erro ao enviar áudio:', error)
+      alert('Erro ao enviar áudio. Tente novamente.')
+    }
+  }
+
+  // Função para cancelar envio do áudio
+  const cancelSendAudio = () => {
+    setShowSendConfirmation(false)
+    setRecordedAudio(null)
+  }
+
+  // Função para formatar tempo de gravação
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   return (
@@ -454,6 +497,48 @@ const MessageInput = ({
         </div>
       )}
       
+      {/* Status de gravação */}
+      {isRecording && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800">
+          <div className="flex items-center justify-center gap-3 text-red-600 dark:text-red-400">
+            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium">
+              Gravando áudio... {formatRecordingTime(recordingTime)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmação de envio de áudio */}
+      {showSendConfirmation && recordedAudio && (
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <Mic className="w-4 h-4" />
+              <span className="text-sm font-medium">Áudio gravado</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={cancelSendAudio}
+                variant="outline"
+                size="sm"
+                className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={confirmSendAudio}
+                size="sm"
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                <Send className="w-4 h-4 mr-1" />
+                Enviar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Input de mensagem */}
       <div className="p-3">
         <div className={`flex items-center gap-2 p-2 rounded-lg transition-opacity ${

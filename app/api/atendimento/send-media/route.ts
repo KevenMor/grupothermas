@@ -164,6 +164,29 @@ export async function POST(request: NextRequest) {
 
     console.log('Sucesso Z-API:', zapiResult)
 
+    // Salvar mensagem no Firebase
+    try {
+      const conversationRef = adminDB.collection('conversations').doc(phone)
+      await conversationRef.collection('messages').add({
+        content: type === 'text' ? content : `[${type.toUpperCase()}]`,
+        role: 'agent',
+        timestamp: new Date().toISOString(),
+        status: 'sent',
+        mediaType: type !== 'text' ? type as 'image' | 'audio' | 'video' | 'document' : undefined,
+        mediaUrl: type !== 'text' ? localPath : undefined,
+        zapiMessageId: zapiResult.messageId || null,
+        agentName: 'Sistema' // TODO: Pegar nome do agente logado
+      })
+      
+      // Atualizar última mensagem da conversa
+      await conversationRef.update({
+        lastMessage: type === 'text' ? content : `[${type.toUpperCase()}] enviado`,
+        timestamp: new Date().toISOString()
+      })
+    } catch (saveError) {
+      console.warn('Erro ao salvar mensagem no Firebase:', saveError)
+    }
+
     return NextResponse.json({ 
       success: true,
       message: `${type.charAt(0).toUpperCase() + type.slice(1)} enviado com sucesso!`,

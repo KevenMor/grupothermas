@@ -173,7 +173,21 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                     src={message.mediaUrl} 
                     alt={message.mediaInfo?.caption || 'Imagem'} 
                     className="max-w-48 max-h-48 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => window.open(message.mediaUrl, '_blank')}
+                    onClick={() => {
+                      // Criar popup para visualizar imagem
+                      const popup = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes')
+                      if (popup) {
+                        popup.document.write(`
+                          <html>
+                            <head><title>Visualizar Imagem</title></head>
+                            <body style="margin:0; padding:20px; background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh;">
+                              <img src="${message.mediaUrl}" style="max-width:100%; max-height:100%; object-fit:contain;" />
+                            </body>
+                          </html>
+                        `)
+                        popup.document.close()
+                      }
+                    }}
                   />
                   {message.mediaInfo?.caption && (
                     <p className="text-xs text-gray-600 dark:text-gray-400">

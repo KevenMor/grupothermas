@@ -22,13 +22,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ignored: true })
     }
 
-    // Aceitar diferentes tipos de callback de mensagem
-    if (body.type !== 'ReceivedCallback' && !body.messageId) {
-      console.log('Não é uma mensagem recebida:', { 
+    // Aceitar apenas mensagens recebidas de clientes
+    if (body.type !== 'ReceivedCallback') {
+      console.log('Não é uma mensagem recebida do cliente:', { 
         type: body?.type,
-        hasMessageId: !!body.messageId
+        fromMe: body?.fromMe
       })
       return NextResponse.json({ ignored: true })
+    }
+
+    // Verificar se já processamos esta mensagem (evitar duplicatas)
+    const messageId = body.messageId
+    if (messageId) {
+      const conversationRef = adminDB.collection('conversations').doc(body.phone)
+      const existingMessage = await conversationRef.collection('messages').doc(messageId).get()
+      
+      if (existingMessage.exists) {
+        console.log('Mensagem já processada:', messageId)
+        return NextResponse.json({ ignored: true, reason: 'already_processed' })
+      }
     }
 
     console.log('Processando mensagem de entrada...')
