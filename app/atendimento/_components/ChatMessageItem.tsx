@@ -118,9 +118,9 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
         </div>
       )}
       
-      {'replyToContent' in message && message.replyToContent && (
+      {(message as any).replyToContent && (
         <div className="mb-1 px-2 py-1 rounded bg-blue-100 border-l-4 border-blue-400 text-xs text-blue-900">
-          <span className="font-semibold">Respondendo:</span> {message.replyToContent}
+          <span className="font-semibold">Respondendo:</span> {(message as any).replyToContent}
         </div>
       )}
       
