@@ -284,9 +284,13 @@ export default function KanbanPage() {
                           
                           <div className="flex items-center space-x-1 flex-shrink-0">
                             {chat.aiEnabled && !chat.aiPaused ? (
-                              <Bot className="w-4 h-4 text-purple-500" title="IA Ativa" />
+                              <span title="IA Ativa">
+                                <Bot className="w-4 h-4 text-purple-500" />
+                              </span>
                             ) : (
-                              <User className="w-4 h-4 text-blue-500" title="Atendimento Humano" />
+                              <span title="Atendimento Humano">
+                                <User className="w-4 h-4 text-blue-500" />
+                              </span>
                             )}
                           </div>
                         </div>
