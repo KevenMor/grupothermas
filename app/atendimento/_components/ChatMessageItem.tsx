@@ -193,4 +193,15 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                 <div className="space-y-1">
                   <video controls className="max-w-48 max-h-48 rounded-lg">
                     <source 
-                      src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`
+                      src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+                    />
+                  </video>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
