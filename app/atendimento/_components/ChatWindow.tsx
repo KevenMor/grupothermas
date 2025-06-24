@@ -228,16 +228,8 @@ const MessageInput = ({
 
   const handleSend = (data: { content: string, replyTo?: string, replyToContent?: string }) => {
     if (!chat) return
-    
-    // Validar se é uma mensagem longa
-    if (data.content.length > 100) {
-      setPendingMessage(data.content)
-      setShowLongMessageConfirmation(true)
-      return
-    }
-    
     onSendMessage(data)
-    setMessage('')
+    setReplyMessage(null)
   }
 
   const confirmSendLongMessage = () => {
@@ -823,16 +815,8 @@ export function ChatWindow({
   // Função para enviar mensagem (adaptar para incluir reply)
   const handleSend = (data: { content: string, replyTo?: string, replyToContent?: string }) => {
     if (!chat) return
-    
-    // Validar se é uma mensagem longa
-    if (data.content.length > 100) {
-      setPendingMessage(data.content)
-      setShowLongMessageConfirmation(true)
-      return
-    }
-    
     onSendMessage(data)
-    setMessage('')
+    setReplyMessage(null)
   }
 
   // Implementar funções das mensagens
