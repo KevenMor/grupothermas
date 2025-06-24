@@ -63,7 +63,7 @@ export interface DashboardMetrics {
   contractsOpen: number
 }
 
-// Interfaces para o sistema de Atendimento / Chat
+// Tipos para o sistema de Atendimento / Chat
 export type ChatStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
 export type ConversationStatus = 'waiting' | 'ai_active' | 'agent_assigned' | 'resolved'
 
