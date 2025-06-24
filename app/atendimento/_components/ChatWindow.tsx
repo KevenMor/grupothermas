@@ -228,7 +228,16 @@ const MessageInput = ({
 
   const handleSend = (data: { content: string, replyTo?: string, replyToContent?: string }) => {
     if (!chat) return
-    onSendMessage(data)
+    if (replyMessage) {
+      onSendMessage({
+        ...data,
+        replyTo: replyMessage.id,
+        replyToContent: replyMessage.content
+      })
+      setReplyMessage(null)
+    } else {
+      onSendMessage(data)
+    }
   }
 
   const confirmSendLongMessage = () => {
@@ -817,7 +826,16 @@ export function ChatWindow({
   // Função para enviar mensagem (adaptar para incluir reply)
   const handleSend = (data: { content: string, replyTo?: string, replyToContent?: string }) => {
     if (!chat) return
-    onSendMessage(data)
+    if (replyMessage) {
+      onSendMessage({
+        ...data,
+        replyTo: replyMessage.id,
+        replyToContent: replyMessage.content
+      })
+      setReplyMessage(null)
+    } else {
+      onSendMessage(data)
+    }
   }
 
   // Implementar funções das mensagens

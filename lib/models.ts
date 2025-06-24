@@ -153,6 +153,9 @@ export interface ChatMessage {
     address?: string
     pageCount?: number
   }
+  // Campos para reply
+  replyTo?: string
+  replyToContent?: string
 }
 
 export interface ChatCustomer {

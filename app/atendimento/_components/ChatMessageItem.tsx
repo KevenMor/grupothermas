@@ -152,6 +152,19 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
             onMouseEnter={() => setShowActions(true)}
             onMouseLeave={() => setShowActions(false)}
           >
+            {/* Menu de ações */}
+            {showActions && (
+              <div className={`absolute top-1 ${isFromAgent ? 'right-2' : 'left-2'} flex gap-1 z-20 bg-white/80 dark:bg-gray-800/80 rounded shadow p-1`}>
+                <Button size="icon" variant="ghost" onClick={() => onReply && onReply(message)} title="Responder"><Reply className="w-4 h-4" /></Button>
+                {isFromAgent && (
+                  <Button size="icon" variant="ghost" onClick={() => onEdit && onEdit(message)} title="Editar"><Edit className="w-4 h-4" /></Button>
+                )}
+                {isFromAgent && (
+                  <Button size="icon" variant="ghost" onClick={() => onDelete && onDelete(message.id)} title="Excluir"><Trash2 className="w-4 h-4" /></Button>
+                )}
+                <Button size="icon" variant="ghost" onClick={() => onInfo && onInfo(message)} title="Info"><Info className="w-4 h-4" /></Button>
+              </div>
+            )}
             {/* Conteúdo da mensagem */}
             <div className="space-y-2">
               {/* Imagem */}
@@ -198,6 +211,17 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   </div>
                 </div>
               )}
+              {/* Áudio */}
+              {message.mediaType === 'audio' && message.mediaUrl && (
+                <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                  <audio controls src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+                    className="max-w-full"
+                  >
+                    Seu navegador não suporta o elemento de áudio.
+                  </audio>
+                  <span className="text-xs text-gray-400 ml-1">Áudio enviado</span>
+                </div>
+              )}
               {/* Conteúdo textual */}
               <div>
                 {message.content && !message.mediaType ? message.content : null}
@@ -208,6 +232,13 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                 {message.mediaType === 'audio' && <span className="text-xs text-gray-400 ml-1">Áudio enviado</span>}
                 {message.mediaType === 'video' && <span className="text-xs text-gray-400 ml-1">Vídeo enviado</span>}
               </div>
+            </div>
+            {/* Status da mensagem */}
+            <div className="flex justify-end mt-1">
+              <span className="text-xs text-gray-300 dark:text-gray-500 flex items-center gap-1">
+                <MessageStatus status={message.status} />
+                {formatTime(message.timestamp)}
+              </span>
             </div>
           </div>
         </div>
