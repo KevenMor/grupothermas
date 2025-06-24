@@ -12,6 +12,23 @@ interface MediaMessage {
   filename?: string // Para documentos
 }
 
+interface MessageData {
+  content: string
+  role: string
+  timestamp: string
+  status: string
+  zapiMessageId: any
+  agentName: string
+  mediaType?: 'image' | 'audio' | 'video' | 'document'
+  mediaUrl?: string
+  mediaInfo?: {
+    type: string
+    url: string
+    filename?: string
+    caption?: string
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { phone, type, content, localPath, caption, filename }: MediaMessage = await request.json()
@@ -186,8 +203,8 @@ export async function POST(request: NextRequest) {
       console.log('Salvando mensagem no Firebase...')
       
       const conversationRef = adminDB.collection('conversations').doc(phone)
-      const messageData = {
-        content: type === 'text' ? content : `[${type.toUpperCase()}]`,
+      const messageData: MessageData = {
+        content: type === 'text' ? content || '' : `[${type.toUpperCase()}]`,
         role: 'agent',
         timestamp: new Date().toISOString(),
         status: 'sent',
@@ -197,7 +214,7 @@ export async function POST(request: NextRequest) {
 
       // Adicionar informações de mídia se não for texto
       if (type !== 'text') {
-        messageData.mediaType = type
+        messageData.mediaType = type as 'image' | 'audio' | 'video' | 'document'
         messageData.mediaUrl = mediaUrl
         messageData.mediaInfo = {
           type: type,
