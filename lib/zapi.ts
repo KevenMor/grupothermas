@@ -140,7 +140,8 @@ export async function replyMessage(
     // Incluir nome do atendente na mensagem para o cliente
     const messageWithAgent = agentName ? `*${agentName}:*\n${message}` : message;
     
-    const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/message/reply-message`;
+    // Corrigido para usar o endpoint correto e os parâmetros esperados pela Z-API
+    const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-reply`;
     
     console.log('Enviando reply para Z-API:', {
       url: zapiUrl,
@@ -149,14 +150,17 @@ export async function replyMessage(
       message: messageWithAgent
     });
 
+    // Corrigido para usar o formato esperado pela Z-API
+    const payload = {
+      phone,
+      messageId: quotedMsgId,  // ID da mensagem a ser respondida
+      text: messageWithAgent   // Texto da resposta
+    };
+
     const zapiResponse = await fetch(zapiUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ 
-        chatId: phone, 
-        quotedMsgId, 
-        message: messageWithAgent 
-      })
+      body: JSON.stringify(payload)
     });
 
     const zapiResultText = await zapiResponse.text();
@@ -380,14 +384,19 @@ export async function sendDocument(
       ? base64 
       : `data:${mimeType};base64,${base64}`;
     
+    // Corrigido para usar os parâmetros corretos esperados pela Z-API
     const payload: any = { 
       phone, 
       document: documentBase64,
       fileName,
-      public_url: true // Importante: gera URL pública para o documento
+      // Garantir que o documento tenha URL pública
+      public_url: true
     };
     
-    if (replyTo) payload.messageId = replyTo;
+    // Adicionar messageId para resposta, se fornecido
+    if (replyTo) {
+      payload.messageId = replyTo;
+    }
     
     console.log('Enviando documento para Z-API:', {
       url: zapiUrl,
@@ -395,7 +404,8 @@ export async function sendDocument(
       fileName,
       mimeType,
       hasDocument: !!base64,
-      replyTo
+      replyTo,
+      payload
     });
 
     const zapiResponse = await fetch(zapiUrl, {
@@ -422,12 +432,12 @@ export async function sendDocument(
       role: 'agent',
       status: 'sent',
       mediaType: 'document',
-      mediaUrl: zapiResult.url || base64,
+      mediaUrl: zapiResult.url || '',
       mediaInfo: {
         type: 'document',
         filename: fileName,
         mimeType,
-        url: zapiResult.url
+        url: zapiResult.url || ''
       },
       replyTo
     };

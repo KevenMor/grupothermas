@@ -50,6 +50,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   const [showActions, setShowActions] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const [audioLoaded, setAudioLoaded] = useState(false)
 
   const isUser = message.role === 'user'
   const isAgent = message.role === 'agent'
@@ -72,15 +73,22 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
     })
   }
 
+  // Obter URL completa para mídia
+  const getFullUrl = (url?: string) => {
+    if (!url) return ''
+    if (url.startsWith('data:')) return url
+    return url.startsWith('http') ? url : `${window.location.origin}${url}`
+  }
+
   // Auto-play do áudio quando for enviado pelo atendente
   useEffect(() => {
-    if (message.mediaType === 'audio' && message.role === 'agent' && audioRef.current) {
+    if (message.mediaType === 'audio' && message.role === 'agent' && audioRef.current && audioLoaded) {
       // Tentar reproduzir automaticamente se o áudio foi enviado pelo atendente
       audioRef.current.play().catch(err => {
         console.log('Autoplay não permitido:', err)
       })
     }
-  }, [message.mediaType, message.role])
+  }, [message.mediaType, message.role, audioLoaded])
 
   const handleImageClick = () => {
     if (message.mediaType === 'image' && message.mediaUrl) {
@@ -99,10 +107,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
         setShowDocumentPopup(true)
       } else {
         // Para outros tipos de documentos, abrir em nova aba
-        const fullUrl = message.mediaUrl.startsWith('http') 
-          ? message.mediaUrl 
-          : `${window.location.origin}${message.mediaUrl}`
-        window.open(fullUrl, '_blank')
+        window.open(getFullUrl(message.mediaUrl), '_blank')
       }
     }
   }
@@ -129,12 +134,6 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   }
   
   const dateObj = new Date(message.timestamp)
-
-  // Obter URL completa para mídia
-  const getFullUrl = (url?: string) => {
-    if (!url) return ''
-    return url.startsWith('http') ? url : `${window.location.origin}${url}`
-  }
 
   return (
     <>
@@ -284,6 +283,10 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                     controls 
                     src={getFullUrl(message.mediaUrl)}
                     className="max-w-full"
+                    onLoadedData={() => setAudioLoaded(true)}
+                    onError={(e) => {
+                      console.error('Erro ao carregar áudio:', message.mediaUrl, e);
+                    }}
                   >
                     Seu navegador não suporta o elemento de áudio.
                   </audio>

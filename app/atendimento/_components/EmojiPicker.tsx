@@ -28,7 +28,7 @@ export function EmojiPicker({ onEmojiSelect, onClose }: EmojiPickerProps) {
   const [selectedCategory, setSelectedCategory] = useState('all')
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 w-80 z-50">
+    <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 w-64 z-50">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
           Emojis
@@ -43,12 +43,12 @@ export function EmojiPicker({ onEmojiSelect, onClose }: EmojiPickerProps) {
         </Button>
       </div>
       
-      <div className="grid grid-cols-10 gap-1 max-h-48 overflow-y-auto">
+      <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
         {emojis.map((emoji, index) => (
           <button
             key={index}
             onClick={() => onEmojiSelect(emoji)}
-            className="w-8 h-8 text-lg hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex items-center justify-center"
+            className="w-6 h-6 text-base hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex items-center justify-center"
             title={emoji}
           >
             {emoji}

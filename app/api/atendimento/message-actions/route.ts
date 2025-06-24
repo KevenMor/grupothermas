@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
         // Excluir via Z-API se tiver messageId da Z-API
         const zapiMessageId = deleteData?.zapiMessageId
-        if (zapiMessageId) {
+        if (zapiMessageId && phone) {
           try {
             // Buscar configurações da Z-API do Firebase
             const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
@@ -130,18 +130,30 @@ export async function POST(request: NextRequest) {
                   headers['Client-Token'] = config.zapiClientToken.trim()
                 }
 
-                // Deletar via Z-API
-                const deleteUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/messages?messageId=${zapiMessageId}&phone=${phone}&owner=true`
+                // Correção do endpoint para deletar mensagem na Z-API
+                // A Z-API espera um DELETE para /messages com parâmetros de query
+                const deleteUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/messages/${zapiMessageId}`
                 
+                console.log('Tentando excluir mensagem na Z-API:', {
+                  url: deleteUrl,
+                  messageId: zapiMessageId,
+                  phone
+                })
+
                 const zapiResponse = await fetch(deleteUrl, {
                   method: 'DELETE',
-                  headers
+                  headers,
+                  body: JSON.stringify({
+                    phone,
+                    messageId: zapiMessageId
+                  })
                 })
 
                 if (zapiResponse.ok) {
                   console.log('Mensagem excluída do WhatsApp via Z-API')
                 } else {
-                  console.warn('Erro ao excluir mensagem do WhatsApp:', await zapiResponse.text())
+                  const errorText = await zapiResponse.text()
+                  console.warn('Erro ao excluir mensagem do WhatsApp:', errorText)
                 }
               }
             }
@@ -149,6 +161,8 @@ export async function POST(request: NextRequest) {
             console.warn('Erro ao tentar excluir via Z-API:', error)
             // Continua com a exclusão local mesmo se falhar na Z-API
           }
+        } else {
+          console.warn('Não foi possível excluir mensagem no WhatsApp: faltando zapiMessageId ou phone')
         }
 
         // Marcar como excluída no sistema
