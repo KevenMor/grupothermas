@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
+import { existsSync } from 'fs'
 
 interface MediaMessage {
   phone: string
@@ -82,8 +83,21 @@ export async function POST(request: NextRequest) {
     } else if (localPath) {
       // Ler arquivo local e converter para base64
       try {
-        const fullPath = join(process.cwd(), 'public', localPath)
+        // Remover barra inicial se existir para join funcionar corretamente
+        const cleanPath = localPath.startsWith('/') ? localPath.substring(1) : localPath
+        const fullPath = join(process.cwd(), 'public', cleanPath)
         console.log('Lendo arquivo:', fullPath)
+        console.log('Caminho limpo:', cleanPath)
+        console.log('Caminho completo:', fullPath)
+        
+        // Verificar se o arquivo existe
+        if (!existsSync(fullPath)) {
+          console.error('Arquivo não encontrado:', fullPath)
+          return NextResponse.json({ 
+            error: 'Arquivo não encontrado no servidor',
+            details: { requestedPath: localPath, fullPath }
+          }, { status: 404 })
+        }
         
         const fileBuffer = await readFile(fullPath)
         const base64Data = fileBuffer.toString('base64')
@@ -91,7 +105,7 @@ export async function POST(request: NextRequest) {
         console.log(`Arquivo convertido para base64. Tamanho: ${base64Data.length} chars`)
 
         // Salvar URL para o Firebase (caminho público)
-        mediaUrl = localPath
+        mediaUrl = localPath.startsWith('/') ? localPath : `/${localPath}`
 
         switch (type) {
           case 'image':
