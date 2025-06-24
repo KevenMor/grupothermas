@@ -50,7 +50,8 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
 
   const isUser = message.role === 'user'
   const isAgent = message.role === 'agent'
-  const isAI = message.role === 'ai' || message.role === 'assistant'
+  const isAI = message.role === 'ai'
+  const isSystem = message.role === 'system'
   
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString('pt-BR', {
@@ -118,7 +119,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
           <Avatar className="w-8 h-8 flex-shrink-0">
             <AvatarImage src={avatar} />
             <AvatarFallback className="text-xs">
-              {isAI ? '🤖' : (contactName?.charAt(0) || '?')}
+              {isAI ? '🤖' : isSystem ? '⚙️' : (contactName?.charAt(0) || '?')}
             </AvatarFallback>
           </Avatar>
         )}
@@ -126,7 +127,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
         <div className={`max-w-[70%] ${isUser ? 'order-first' : ''}`}>
           {!isUser && showName && (
             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 px-1">
-              {isAI ? 'IA Assistente' : isAgent ? 'Atendente' : contactName}
+              {isAI ? 'IA Assistente' : isAgent ? 'Atendente' : isSystem ? 'Sistema' : contactName}
             </div>
           )}
           
