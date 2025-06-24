@@ -136,6 +136,22 @@ export interface ChatMessage {
   agentId?: string
   agentName?: string
   userName?: string // Nome do usuário logado que enviou a mensagem
+  // Campos para mídia
+  mediaType?: 'image' | 'audio' | 'video' | 'document' | 'contact' | 'location'
+  mediaUrl?: string
+  mediaInfo?: {
+    type: string
+    url?: string
+    caption?: string
+    title?: string
+    mimeType?: string
+    displayName?: string
+    vcard?: string
+    latitude?: number
+    longitude?: number
+    address?: string
+    pageCount?: number
+  }
 }
 
 export interface ChatCustomer {

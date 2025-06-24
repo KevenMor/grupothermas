@@ -102,9 +102,18 @@ export async function POST(request: NextRequest) {
       return handleConnectionUpdate(body)
     }
     
-    // Apenas mensagens recebidas de usuários com texto devem ser processadas
-    if (type === 'ReceivedCallback' && body.text?.message) {
+    // Processar mensagens recebidas de usuários (texto e mídia)
+    if (type === 'ReceivedCallback') {
       console.log('Processando mensagem REAL do usuário com ID:', body.messageId)
+      console.log('Tipo de conteúdo:', {
+        hasText: !!body.text?.message,
+        hasImage: !!body.image,
+        hasAudio: !!body.audio,
+        hasVideo: !!body.video,
+        hasDocument: !!body.document,
+        hasContact: !!body.contact,
+        hasLocation: !!body.location
+      })
       return handleMessage(body)
     }
 
@@ -181,19 +190,83 @@ async function handleMessage(message: ZAPIWebhookEvent) {
 
     const config = configDoc.data()!
 
-    // Trava de segurança #2: verificar se mensagem é de usuário real
-    const isReceivedCallback = message.type === 'ReceivedCallback'
-    const isText = message.type === 'text'
-    const hasMessageText = message.text?.message && message.text.message.trim() !== ''
+    // Processar diferentes tipos de conteúdo
+    let userMessage = ''
+    let mediaInfo = null
 
-    if (!hasMessageText || (!isText && !isReceivedCallback)) {
-      console.log('Tipo de mensagem não suportado (Nova Lógica):', message.type)
-      // Apenas responda, não salve nada se o tipo não for suportado
+    // Identificar tipo de conteúdo e extrair informações
+    if (message.text?.message) {
+      userMessage = message.text.message
+    } else if (message.image) {
+      userMessage = `📷 Imagem enviada${message.image.caption ? `: ${message.image.caption}` : ''}`
+      mediaInfo = {
+        type: 'image',
+        url: message.image.imageUrl,
+        caption: message.image.caption,
+        mimeType: message.image.mimeType
+      }
+      // Usar URL local para proxy de mídia
+      if (message.image.imageUrl) {
+        mediaInfo.url = `/api/media/${encodeURIComponent(message.image.imageUrl)}`
+      }
+    } else if (message.audio) {
+      userMessage = '🎤 Áudio enviado'
+      mediaInfo = {
+        type: 'audio',
+        url: message.audio.audioUrl,
+        mimeType: message.audio.mimeType
+      }
+      // Usar URL local para proxy de mídia
+      if (message.audio.audioUrl) {
+        mediaInfo.url = `/api/media/${encodeURIComponent(message.audio.audioUrl)}`
+      }
+    } else if (message.video) {
+      userMessage = `🎬 Vídeo enviado${message.video.caption ? `: ${message.video.caption}` : ''}`
+      mediaInfo = {
+        type: 'video',
+        url: message.video.videoUrl,
+        caption: message.video.caption,
+        mimeType: message.video.mimeType
+      }
+      // Usar URL local para proxy de mídia
+      if (message.video.videoUrl) {
+        mediaInfo.url = `/api/media/${encodeURIComponent(message.video.videoUrl)}`
+      }
+    } else if (message.document) {
+      userMessage = `📄 Documento enviado: ${message.document.title || 'arquivo'}`
+      mediaInfo = {
+        type: 'document',
+        url: message.document.documentUrl,
+        title: message.document.title,
+        mimeType: message.document.mimeType,
+        pageCount: message.document.pageCount
+      }
+      // Usar URL local para proxy de mídia
+      if (message.document.documentUrl) {
+        mediaInfo.url = `/api/media/${encodeURIComponent(message.document.documentUrl)}`
+      }
+    } else if (message.contact) {
+      userMessage = `👤 Contato compartilhado: ${message.contact.displayName}`
+      mediaInfo = {
+        type: 'contact',
+        displayName: message.contact.displayName,
+        vcard: message.contact.vcard
+      }
+    } else if (message.location) {
+      userMessage = `📍 Localização compartilhada${message.location.address ? `: ${message.location.address}` : ''}`
+      mediaInfo = {
+        type: 'location',
+        latitude: message.location.latitude,
+        longitude: message.location.longitude,
+        address: message.location.address,
+        url: message.location.url
+      }
+    } else {
+      console.log('Tipo de mensagem não suportado:', message)
       await sendMessage(config, message.phone!, config.fallbackMessage)
       return NextResponse.json({ status: 'processed', response: 'fallback sent' })
     }
 
-    const userMessage = message.text!.message
     const userPhone = message.phone!
     const userName = message.senderName || message.chatName || 'Cliente'
 
@@ -255,7 +328,13 @@ async function handleMessage(message: ZAPIWebhookEvent) {
       content: userMessage,
       timestamp: new Date(message.momment! * 1000).toISOString(),
       phone: userPhone,
-      name: userName
+      name: userName,
+      // Adicionar informações de mídia se houver
+      ...(mediaInfo && { 
+        mediaType: mediaInfo.type,
+        mediaUrl: mediaInfo.url,
+        mediaInfo: mediaInfo 
+      })
     }
 
     conversationHistory.push(userMessageData)

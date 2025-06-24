@@ -54,7 +54,11 @@ export async function GET(request: NextRequest) {
           // Incluir informações do agente se disponíveis
           userName: data.userName,
           agentId: data.agentId,
-          agentName: data.agentName
+          agentName: data.agentName,
+          // Incluir informações de mídia se disponíveis
+          mediaType: data.mediaType,
+          mediaUrl: data.mediaUrl,
+          mediaInfo: data.mediaInfo
         })
       } catch (err) {
         console.error('Erro ao mapear mensagem', doc.id, err)
@@ -130,7 +134,13 @@ export async function POST(request: NextRequest) {
         throw new Error(`Erro Z-API: ${errorText}`)
       }
 
-      await updateStatus('sent')
+      const zapiResult = await zapiResponse.json()
+      
+      // Salvar messageId da Z-API para poder excluir depois
+      await messageRef.update({ 
+        status: 'sent',
+        zapiMessageId: zapiResult.messageId || null
+      })
     } catch (err) {
       console.error('Falha ao enviar via Z-API:', err)
       await updateStatus('failed')

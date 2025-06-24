@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     console.log('Body completo:', JSON.stringify(body, null, 2))
 
     // Z-API envia diferentes tipos de eventos; focamos em mensagens recebidas
-    if (!body || body.fromMe || body.type !== 'ReceivedCallback') {
+    if (!body || body.fromMe) {
       console.log('Mensagem ignorada:', { 
         hasBody: !!body, 
         fromMe: body?.fromMe, 
@@ -22,7 +22,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ignored: true })
     }
 
+    // Aceitar diferentes tipos de callback de mensagem
+    if (body.type !== 'ReceivedCallback' && !body.messageId) {
+      console.log('Não é uma mensagem recebida:', { 
+        type: body?.type,
+        hasMessageId: !!body.messageId
+      })
+      return NextResponse.json({ ignored: true })
+    }
+
     console.log('Processando mensagem de entrada...')
+    console.log('Estrutura completa do body:', JSON.stringify(body, null, 2))
+    
     const {
       messageId,
       phone,
@@ -32,7 +43,92 @@ export async function POST(request: NextRequest) {
       chatName
     } = body
 
-    const content = text?.message || '[Mensagem sem texto]'
+    // Processar diferentes tipos de conteúdo
+    let content = ''
+    let mediaInfo = null
+
+    console.log('Verificando tipos de conteúdo:', {
+      hasText: !!text?.message,
+      hasImage: !!body.image,
+      hasAudio: !!body.audio,
+      hasVideo: !!body.video,
+      hasDocument: !!body.document,
+      hasContact: !!body.contact,
+      hasLocation: !!body.location
+    })
+
+    if (text?.message) {
+      content = text.message
+      console.log('Processando texto:', content)
+    } else if (body.image) {
+      console.log('Processando imagem:', body.image)
+      content = `📷 Imagem enviada${body.image.caption ? `: ${body.image.caption}` : ''}`
+      mediaInfo = {
+        type: 'image',
+        url: body.image.imageUrl,
+        caption: body.image.caption,
+        mimeType: body.image.mimeType
+      }
+      // Usar URL local para proxy de mídia
+      if (body.image.imageUrl) {
+        mediaInfo.url = `/api/media/${encodeURIComponent(body.image.imageUrl)}`
+      }
+    } else if (body.audio) {
+      console.log('Processando áudio:', body.audio)
+      content = '🎤 Áudio enviado'
+      mediaInfo = {
+        type: 'audio',
+        url: body.audio.audioUrl,
+        mimeType: body.audio.mimeType
+      }
+      // Usar URL local para proxy de mídia
+      if (body.audio.audioUrl) {
+        mediaInfo.url = `/api/media/${encodeURIComponent(body.audio.audioUrl)}`
+      }
+    } else if (body.video) {
+      console.log('Processando vídeo:', body.video)
+      content = `🎬 Vídeo enviado${body.video.caption ? `: ${body.video.caption}` : ''}`
+      mediaInfo = {
+        type: 'video',
+        url: body.video.videoUrl,
+        caption: body.video.caption,
+        mimeType: body.video.mimeType
+      }
+      // Usar URL local para proxy de mídia
+      if (body.video.videoUrl) {
+        mediaInfo.url = `/api/media/${encodeURIComponent(body.video.videoUrl)}`
+      }
+    } else if (body.document) {
+      console.log('Processando documento:', body.document)
+      content = `📄 Documento enviado: ${body.document.title || 'arquivo'}`
+      mediaInfo = {
+        type: 'document',
+        url: body.document.documentUrl,
+        title: body.document.title,
+        mimeType: body.document.mimeType
+      }
+      // Usar URL local para proxy de mídia
+      if (body.document.documentUrl) {
+        mediaInfo.url = `/api/media/${encodeURIComponent(body.document.documentUrl)}`
+      }
+    } else if (body.contact) {
+      content = `👤 Contato compartilhado: ${body.contact.displayName}`
+      mediaInfo = {
+        type: 'contact',
+        displayName: body.contact.displayName,
+        vcard: body.contact.vcard
+      }
+    } else if (body.location) {
+      content = `📍 Localização compartilhada${body.location.address ? `: ${body.location.address}` : ''}`
+      mediaInfo = {
+        type: 'location',
+        latitude: body.location.latitude,
+        longitude: body.location.longitude,
+        address: body.location.address
+      }
+    } else {
+      content = '[Mensagem sem texto]'
+    }
     const timestamp = momment ? new Date(momment).toISOString() : new Date().toISOString()
     
     console.log('Dados extraídos:', { phone, content, messageId, senderName })
@@ -94,7 +190,13 @@ export async function POST(request: NextRequest) {
       content,
       role: 'user',
       timestamp,
-      status: 'sent'
+      status: 'sent',
+      // Adicionar informações de mídia se houver
+      ...(mediaInfo && { 
+        mediaType: mediaInfo.type,
+        mediaUrl: mediaInfo.url,
+        mediaInfo: mediaInfo 
+      })
     }
     await conversationRef.collection('messages').doc(messageId).set(msg)
 

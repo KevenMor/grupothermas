@@ -274,14 +274,14 @@ const MessageInput = ({
         
         const uploadResult = await uploadResponse.json()
         
-        // Enviar via Z-API usando a API de mídia
-        const mediaResponse = await fetch('/api/admin/send-media', {
+        // Enviar via Z-API usando a nova API de mídia local
+        const mediaResponse = await fetch('/api/atendimento/send-media', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             phone: chat.customerPhone,
             type: type === 'camera' ? 'image' : type,
-            url: `${window.location.origin}${uploadResult.fileUrl}`,
+            localPath: uploadResult.fileUrl, // Caminho local do arquivo
             caption: `Arquivo enviado: ${file.name}`,
             filename: file.name
           })
@@ -289,10 +289,13 @@ const MessageInput = ({
         
         if (mediaResponse.ok) {
           // Salvar mensagem no banco com informações da mídia
-          const mediaMessage = type === 'image' ? 
+          const mediaMessage = type === 'image' || type === 'camera' ? 
             `📷 Imagem: ${file.name}` : 
             `📄 Documento: ${file.name}`
           onSendMessage(mediaMessage)
+        } else {
+          const errorResult = await mediaResponse.json()
+          throw new Error(errorResult.error || 'Erro ao enviar mídia')
         }
         
       } catch (error) {
@@ -343,15 +346,15 @@ const MessageInput = ({
             
             const uploadResult = await uploadResponse.json()
             
-            // Enviar áudio via Z-API
+            // Enviar áudio via Z-API usando nova API local
             if (chat) {
-              const mediaResponse = await fetch('/api/admin/send-media', {
+              const mediaResponse = await fetch('/api/atendimento/send-media', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   phone: chat.customerPhone,
                   type: 'audio',
-                  url: `${window.location.origin}${uploadResult.fileUrl}`
+                  localPath: uploadResult.fileUrl // Caminho local do arquivo
                 })
               })
               
@@ -450,7 +453,7 @@ const MessageInput = ({
           </div>
         </div>
       )}
-
+      
       {/* Input de mensagem */}
       <div className="p-3">
         <div className={`flex items-center gap-2 p-2 rounded-lg transition-opacity ${
@@ -515,8 +518,8 @@ const MessageInput = ({
               title="Enviar mensagem"
               disabled={!canInteract()}
             >
-              <Send className="w-5 h-5" />
-            </Button>
+            <Send className="w-5 h-5" />
+          </Button>
           ) : (
             <Button 
               variant="ghost" 

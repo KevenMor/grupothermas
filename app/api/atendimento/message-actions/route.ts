@@ -111,6 +111,40 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Só é possível excluir mensagens da empresa' }, { status: 403 })
         }
 
+        // Excluir via Z-API se tiver messageId da Z-API
+        const zapiMessageId = deleteData?.zapiMessageId
+        if (zapiMessageId) {
+          try {
+            const zapiInstanceId = process.env.ZAPI_INSTANCE_ID
+            const zapiToken = process.env.ZAPI_TOKEN
+            
+            if (zapiInstanceId && zapiToken) {
+              const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+              if (process.env.ZAPI_CLIENT_TOKEN) {
+                headers['Client-Token'] = process.env.ZAPI_CLIENT_TOKEN
+              }
+
+              // Deletar via Z-API
+              const deleteUrl = `https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/messages?messageId=${zapiMessageId}&phone=${phone}&owner=true`
+              
+              const zapiResponse = await fetch(deleteUrl, {
+                method: 'DELETE',
+                headers
+              })
+
+              if (zapiResponse.ok) {
+                console.log('Mensagem excluída do WhatsApp via Z-API')
+              } else {
+                console.warn('Erro ao excluir mensagem do WhatsApp:', await zapiResponse.text())
+              }
+            }
+          } catch (error) {
+            console.warn('Erro ao tentar excluir via Z-API:', error)
+            // Continua com a exclusão local mesmo se falhar na Z-API
+          }
+        }
+
+        // Marcar como excluída no sistema
         await messageRef.update({
           deleted: true,
           deletedAt: new Date().toISOString(),

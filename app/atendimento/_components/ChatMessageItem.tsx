@@ -163,9 +163,127 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
             </div>
           )}
           
-          <p className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>
-            {message.content}
-          </p>
+          {/* Renderizar conteúdo baseado no tipo */}
+          {message.mediaType ? (
+            <div className="space-y-2">
+              {/* Renderizar mídia baseado no tipo */}
+              {message.mediaType === 'image' && message.mediaUrl && (
+                <div className="space-y-1">
+                  <img 
+                    src={message.mediaUrl} 
+                    alt={message.mediaInfo?.caption || 'Imagem'} 
+                    className="max-w-48 max-h-48 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => window.open(message.mediaUrl, '_blank')}
+                  />
+                  {message.mediaInfo?.caption && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {message.mediaInfo.caption}
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {message.mediaType === 'audio' && message.mediaUrl && (
+                <div className="space-y-1">
+                  <audio controls className="max-w-48">
+                    <source src={message.mediaUrl} type={message.mediaInfo?.mimeType || 'audio/mpeg'} />
+                    Seu navegador não suporta áudio.
+                  </audio>
+                </div>
+              )}
+              
+              {message.mediaType === 'video' && message.mediaUrl && (
+                <div className="space-y-1">
+                  <video controls className="max-w-48 max-h-48 rounded-lg">
+                    <source src={message.mediaUrl} type={message.mediaInfo?.mimeType || 'video/mp4'} />
+                    Seu navegador não suporta vídeo.
+                  </video>
+                  {message.mediaInfo?.caption && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {message.mediaInfo.caption}
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {message.mediaType === 'document' && message.mediaUrl && (
+                <div className="flex items-center gap-2 p-2 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                  <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded flex items-center justify-center">
+                    <span className="text-xs font-bold text-red-600 dark:text-red-400">PDF</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {message.mediaInfo?.title || 'Documento'}
+                    </p>
+                    {message.mediaInfo?.mimeType && (
+                      <p className="text-xs text-gray-500">
+                        {message.mediaInfo.mimeType}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(message.mediaUrl, '_blank')}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Abrir
+                  </Button>
+                </div>
+              )}
+              
+              {message.mediaType === 'contact' && message.mediaInfo && (
+                <div className="flex items-center gap-2 p-2 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                    <span className="text-sm">👤</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {message.mediaInfo.displayName}
+                    </p>
+                    <p className="text-xs text-gray-500">Contato compartilhado</p>
+                  </div>
+                </div>
+              )}
+              
+              {message.mediaType === 'location' && message.mediaInfo && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 p-2 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                    <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                      <span className="text-sm">📍</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Localização</p>
+                      {message.mediaInfo.address && (
+                        <p className="text-xs text-gray-500">{message.mediaInfo.address}</p>
+                      )}
+                    </div>
+                    {message.mediaInfo.latitude && message.mediaInfo.longitude && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(`https://maps.google.com/?q=${message.mediaInfo?.latitude},${message.mediaInfo?.longitude}`, '_blank')}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        Ver no Maps
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Texto da mensagem (se houver) */}
+              {message.content && !message.content.startsWith('📷') && !message.content.startsWith('🎤') && !message.content.startsWith('🎬') && !message.content.startsWith('📄') && !message.content.startsWith('👤') && !message.content.startsWith('📍') && (
+                <p className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>
+                  {message.content}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>
+              {message.content}
+            </p>
+          )}
           
           <div className="flex items-center justify-end gap-2 mt-1">
             <span className={cn(
