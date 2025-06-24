@@ -144,6 +144,7 @@ export interface ChatMessage {
     url?: string
     caption?: string
     title?: string
+    filename?: string
     mimeType?: string
     displayName?: string
     vcard?: string
