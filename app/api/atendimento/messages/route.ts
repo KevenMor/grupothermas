@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('POST /api/atendimento/messages - Body recebido:', body)
     const { chatId, content, phone, userName, agentId, replyTo, replyToContent } = body
 
     if (!chatId || !content || !phone) {
@@ -112,12 +113,15 @@ export async function POST(request: NextRequest) {
       const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
       
       if (!configDoc.exists) {
+        console.error('Configuração Z-API não encontrada no Firebase!')
         throw new Error('Configurações não encontradas no Firebase')
       }
 
       const config = configDoc.data()!
+      console.log('Configuração Z-API carregada:', config)
 
       if (!config.zapiApiKey || !config.zapiInstanceId) {
+        console.error('Z-API não configurada no Admin IA:', config)
         throw new Error('Z-API não configurada no Admin IA')
       }
 
@@ -130,18 +134,26 @@ export async function POST(request: NextRequest) {
       const agentName = userName || 'Atendente'
       const messageWithAgent = `*${agentName}:*\n${content}`
 
+      console.log('Enviando para Z-API:', {
+        url: `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`,
+        headers,
+        body: { phone, message: messageWithAgent }
+      })
+
       const zapiResponse = await fetch(`https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ phone, message: messageWithAgent })
       })
 
-      if (!zapiResponse.ok) {
-        const errorText = await zapiResponse.text()
-        throw new Error(`Erro Z-API: ${errorText}`)
-      }
+      const zapiResultText = await zapiResponse.text()
+      let zapiResult: any = {}
+      try { zapiResult = JSON.parse(zapiResultText) } catch { zapiResult = zapiResultText }
+      console.log('Resposta da Z-API:', zapiResult)
 
-      const zapiResult = await zapiResponse.json()
+      if (!zapiResponse.ok) {
+        throw new Error(`Erro Z-API: ${zapiResultText}`)
+      }
       
       // Salvar messageId da Z-API para poder excluir depois
       await messageRef.update({ 
