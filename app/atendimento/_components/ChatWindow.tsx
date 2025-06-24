@@ -363,10 +363,7 @@ const MessageInput = ({
         }
         
         // Adicionar mensagem à lista imediatamente
-        if (onSendMessage) {
-          // Simular o envio para atualizar a UI
-          window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
-        }
+        window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
         
         // Limpar preview
         setPreviewFile(null)
@@ -516,9 +513,7 @@ const MessageInput = ({
         }
         
         // Adicionar mensagem à lista imediatamente
-        if (onSendMessage) {
-          window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
-        }
+        window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
         
         setShowSendConfirmation(false)
         setRecordedAudio(null)
