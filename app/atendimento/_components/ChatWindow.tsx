@@ -226,18 +226,10 @@ const MessageInput = ({
   const [previewType, setPreviewType] = useState<string>('')
   const [previewUrl, setPreviewUrl] = useState<string>('')
 
-  const handleSend = (data: { content: string, replyTo?: string, replyToContent?: string }) => {
-    if (!chat) return
-    if (replyMessage) {
-      onSendMessage({
-        ...data,
-        replyTo: replyMessage.id,
-        replyToContent: replyMessage.content
-      })
-      setReplyMessage(null)
-    } else {
-      onSendMessage(data)
-    }
+  const handleSend = () => {
+    if (!chat) return;
+    onSendMessage({ content: message });
+    setMessage('');
   }
 
   const confirmSendLongMessage = () => {
@@ -635,7 +627,7 @@ const MessageInput = ({
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  handleSend({ content: message })
+                  handleSend()
                 }
               }}
               className="pr-10"
@@ -676,7 +668,7 @@ const MessageInput = ({
             </Button>
 
             <Button
-              onClick={() => handleSend({ content: message })}
+              onClick={handleSend}
               disabled={!message.trim() || !canInteract()}
               size="icon"
               className="bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 dark:disabled:bg-gray-600"
