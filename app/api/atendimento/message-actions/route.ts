@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
+import { replyMessage } from '@/lib/zapi'
 
 export const runtime = 'nodejs'
 
@@ -50,31 +51,29 @@ export async function POST(request: NextRequest) {
 
         // Enviar via Z-API com contexto de resposta
         try {
-          // Buscar configurações da Z-API do Firebase
-          const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
+          // Usar a nova função replyMessage
+          const result = await replyMessage(
+            phone, 
+            messageId, 
+            content, 
+            body.userName || 'Atendente'
+          )
           
-          if (configDoc.exists) {
-            const config = configDoc.data()!
-            
-            if (config.zapiApiKey && config.zapiInstanceId) {
-              const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-              if (config.zapiClientToken && config.zapiClientToken.trim()) {
-                headers['Client-Token'] = config.zapiClientToken.trim()
-              }
-
-              const replyText = `📝 Respondendo: "${originalMessage.data()?.content?.substring(0, 50)}..."\n\n${content}`
-
-              await fetch(`https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ phone, message: replyText })
-              })
-
-              await replyRef.update({ status: 'sent' })
-            }
+          if (result.success) {
+            await replyRef.update({ 
+              status: 'sent',
+              zapiMessageId: result.messageId || null
+            })
+          } else {
+            throw new Error(result.error || 'Erro ao enviar resposta')
           }
         } catch (error) {
+          console.error('Erro ao enviar resposta:', error)
           await replyRef.update({ status: 'failed' })
+          return NextResponse.json({ 
+            error: 'Falha ao enviar resposta',
+            details: error instanceof Error ? error.message : 'Erro desconhecido'
+          }, { status: 500 })
         }
 
         return NextResponse.json({ success: true, messageId: replyRef.id })
@@ -119,27 +118,31 @@ export async function POST(request: NextRequest) {
         const zapiMessageId = deleteData?.zapiMessageId
         if (zapiMessageId) {
           try {
-            const zapiInstanceId = process.env.ZAPI_INSTANCE_ID
-            const zapiToken = process.env.ZAPI_TOKEN
+            // Buscar configurações da Z-API do Firebase
+            const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
             
-            if (zapiInstanceId && zapiToken) {
-              const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-              if (process.env.ZAPI_CLIENT_TOKEN) {
-                headers['Client-Token'] = process.env.ZAPI_CLIENT_TOKEN
-              }
-
-              // Deletar via Z-API
-              const deleteUrl = `https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/messages?messageId=${zapiMessageId}&phone=${phone}&owner=true`
+            if (configDoc.exists) {
+              const config = configDoc.data()!
               
-              const zapiResponse = await fetch(deleteUrl, {
-                method: 'DELETE',
-                headers
-              })
+              if (config.zapiApiKey && config.zapiInstanceId) {
+                const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+                if (config.zapiClientToken && config.zapiClientToken.trim()) {
+                  headers['Client-Token'] = config.zapiClientToken.trim()
+                }
 
-              if (zapiResponse.ok) {
-                console.log('Mensagem excluída do WhatsApp via Z-API')
-              } else {
-                console.warn('Erro ao excluir mensagem do WhatsApp:', await zapiResponse.text())
+                // Deletar via Z-API
+                const deleteUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/messages?messageId=${zapiMessageId}&phone=${phone}&owner=true`
+                
+                const zapiResponse = await fetch(deleteUrl, {
+                  method: 'DELETE',
+                  headers
+                })
+
+                if (zapiResponse.ok) {
+                  console.log('Mensagem excluída do WhatsApp via Z-API')
+                } else {
+                  console.warn('Erro ao excluir mensagem do WhatsApp:', await zapiResponse.text())
+                }
               }
             }
           } catch (error) {

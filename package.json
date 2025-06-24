@@ -54,6 +54,7 @@
     "sonner": "^2.0.5",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
+    "twemoji": "^14.0.2",
     "use-debounce": "^9.0.4",
     "whatsapp-web.js": "^1.30.0"
   },

@@ -5,7 +5,8 @@ import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import twemoji from 'twemoji'
 
 interface ChatMessageItemProps {
   message: ChatMessage
@@ -45,8 +46,10 @@ const formatDate = (date: Date) => {
 
 export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo }: ChatMessageItemProps) {
   const [showImagePopup, setShowImagePopup] = useState(false)
+  const [showDocumentPopup, setShowDocumentPopup] = useState(false)
   const [showActions, setShowActions] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   const isUser = message.role === 'user'
   const isAgent = message.role === 'agent'
@@ -69,6 +72,16 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
     })
   }
 
+  // Auto-play do áudio quando for enviado pelo atendente
+  useEffect(() => {
+    if (message.mediaType === 'audio' && message.role === 'agent' && audioRef.current) {
+      // Tentar reproduzir automaticamente se o áudio foi enviado pelo atendente
+      audioRef.current.play().catch(err => {
+        console.log('Autoplay não permitido:', err)
+      })
+    }
+  }, [message.mediaType, message.role])
+
   const handleImageClick = () => {
     if (message.mediaType === 'image' && message.mediaUrl) {
       setShowImagePopup(true)
@@ -77,11 +90,20 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
 
   const handleDocumentClick = () => {
     if (message.mediaType === 'document' && message.mediaUrl) {
-      // Abrir documento em nova aba
-      const fullUrl = message.mediaUrl.startsWith('http') 
-        ? message.mediaUrl 
-        : `${window.location.origin}${message.mediaUrl}`
-      window.open(fullUrl, '_blank')
+      // Verificar se é um PDF para mostrar no iframe
+      const fileName = message.mediaInfo?.filename?.toLowerCase() || ''
+      const isPdf = fileName.endsWith('.pdf') || 
+                   (message.mediaInfo?.mimeType && message.mediaInfo.mimeType.includes('pdf'))
+      
+      if (isPdf) {
+        setShowDocumentPopup(true)
+      } else {
+        // Para outros tipos de documentos, abrir em nova aba
+        const fullUrl = message.mediaUrl.startsWith('http') 
+          ? message.mediaUrl 
+          : `${window.location.origin}${message.mediaUrl}`
+        window.open(fullUrl, '_blank')
+      }
     }
   }
 
@@ -108,6 +130,12 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   
   const dateObj = new Date(message.timestamp)
 
+  // Obter URL completa para mídia
+  const getFullUrl = (url?: string) => {
+    if (!url) return ''
+    return url.startsWith('http') ? url : `${window.location.origin}${url}`
+  }
+
   return (
     <>
       {isFirstOfDay && (
@@ -118,9 +146,9 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
         </div>
       )}
       
-      {(message as any).replyToContent && (
-        <div className="mb-1 px-2 py-1 rounded bg-blue-100 border-l-4 border-blue-400 text-xs text-blue-900">
-          <span className="font-semibold">Respondendo:</span> {(message as any).replyToContent}
+      {message.replyTo && message.replyToContent && (
+        <div className={`mb-1 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 border-l-4 border-blue-400 text-xs ${isFromAgent ? 'ml-auto max-w-[70%]' : 'mr-auto max-w-[70%]'}`}>
+          <span className="font-semibold">Respondendo:</span> {message.replyToContent}
         </div>
       )}
       
@@ -171,7 +199,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
               {message.mediaType === 'image' && message.mediaUrl && (
                 <div className="space-y-1">
                   <img 
-                    src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+                    src={getFullUrl(message.mediaUrl)}
                     alt="Imagem enviada"
                     className="max-w-48 max-h-48 rounded-lg cursor-pointer hover:opacity-90 transition-opacity border border-gray-300"
                     onClick={handleImageClick}
@@ -189,7 +217,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   {showImagePopup && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70" onClick={() => setShowImagePopup(false)}>
                       <img
-                        src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+                        src={getFullUrl(message.mediaUrl)}
                         alt="Imagem ampliada"
                         className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-lg border-4 border-white"
                         onClick={e => e.stopPropagation()}
@@ -206,15 +234,55 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                 <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" onClick={handleDocumentClick}>
                   <FileText className="w-6 h-6 text-gray-500" />
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm text-blue-700 underline">{message.mediaInfo?.filename || 'Documento'}</span>
+                    <span className="font-medium text-sm text-blue-700 dark:text-blue-300 underline">
+                      {message.mediaInfo?.filename || 'Documento'}
+                    </span>
                     <span className="text-xs text-gray-500">Clique para abrir</span>
+                  </div>
+                </div>
+              )}
+              {/* Popup de documento (PDF) */}
+              {showDocumentPopup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70" onClick={() => setShowDocumentPopup(false)}>
+                  <div className="bg-white rounded-lg shadow-lg w-[90vw] h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between p-3 border-b">
+                      <h3 className="font-semibold text-gray-800">
+                        {message.mediaInfo?.filename || 'Documento'}
+                      </h3>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => window.open(getFullUrl(message.mediaUrl), '_blank')}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-1" /> Abrir
+                        </Button>
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          onClick={() => setShowDocumentPopup(false)}
+                        >
+                          <X className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex-1 bg-gray-100">
+                      <iframe 
+                        src={getFullUrl(message.mediaUrl)} 
+                        className="w-full h-full"
+                        title={message.mediaInfo?.filename || 'Documento'}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
               {/* Áudio */}
               {message.mediaType === 'audio' && message.mediaUrl && (
-                <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">
-                  <audio controls src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+                <div className="flex flex-col items-start gap-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                  <audio 
+                    ref={audioRef}
+                    controls 
+                    src={getFullUrl(message.mediaUrl)}
                     className="max-w-full"
                   >
                     Seu navegador não suporta o elemento de áudio.
@@ -223,15 +291,15 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                 </div>
               )}
               {/* Conteúdo textual */}
-              <div>
-                {message.content && !message.mediaType ? message.content : null}
-                {!message.content && !message.mediaType ? <span style={{color: 'red'}}>[Sem conteúdo]</span> : null}
-                {/* Para mídia, mostrar label amigável */}
-                {message.mediaType === 'image' && <span className="text-xs text-gray-400 ml-1">Imagem enviada</span>}
-                {message.mediaType === 'document' && <span className="text-xs text-gray-400 ml-1">Documento enviado</span>}
-                {message.mediaType === 'audio' && <span className="text-xs text-gray-400 ml-1">Áudio enviado</span>}
-                {message.mediaType === 'video' && <span className="text-xs text-gray-400 ml-1">Vídeo enviado</span>}
-              </div>
+              {message.content && !message.mediaType && (
+                <div 
+                  className="break-words"
+                  dangerouslySetInnerHTML={{ 
+                    __html: twemoji.parse(message.content) 
+                  }}
+                />
+              )}
+              {!message.content && !message.mediaType ? <span style={{color: 'red'}}>[Sem conteúdo]</span> : null}
             </div>
             {/* Status da mensagem */}
             <div className="flex justify-end mt-1">
@@ -245,4 +313,4 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
       </div>
     </>
   )
-}
+} 

@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
 import { ChatMessage } from '@/lib/models'
+import { replyMessage, sendTextMessage } from '@/lib/zapi'
 
 // Garantir que a rota use o runtime Node.js (acesso a process.env)
 export const runtime = 'nodejs'
@@ -58,7 +59,10 @@ export async function GET(request: NextRequest) {
           // Incluir informações de mídia se disponíveis
           mediaType: data.mediaType,
           mediaUrl: data.mediaUrl,
-          mediaInfo: data.mediaInfo
+          mediaInfo: data.mediaInfo,
+          // Incluir informações de resposta se disponíveis
+          replyTo: data.replyTo,
+          replyToContent: data.replyToContent
         })
       } catch (err) {
         console.error('Erro ao mapear mensagem', doc.id, err)
@@ -109,57 +113,40 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Buscar configurações da Z-API do Firebase
-      const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
+      let zapiResult;
       
-      if (!configDoc.exists) {
-        console.error('Configuração Z-API não encontrada no Firebase!')
-        throw new Error('Configurações não encontradas no Firebase')
+      // Verificar se é uma resposta ou mensagem normal
+      if (replyTo && replyToContent) {
+        console.log('Enviando resposta via Z-API para mensagem:', replyTo);
+        
+        // Enviar como resposta
+        zapiResult = await replyMessage(
+          phone, 
+          replyTo, 
+          content, 
+          userName || 'Atendente'
+        );
+      } else {
+        console.log('Enviando mensagem normal via Z-API');
+        
+        // Enviar como mensagem normal
+        zapiResult = await sendTextMessage(
+          phone, 
+          content, 
+          userName || 'Atendente'
+        );
       }
-
-      const config = configDoc.data()!
-      console.log('Configuração Z-API carregada:', config)
-
-      if (!config.zapiApiKey || !config.zapiInstanceId) {
-        console.error('Z-API não configurada no Admin IA:', config)
-        throw new Error('Z-API não configurada no Admin IA')
-      }
-
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (config.zapiClientToken && config.zapiClientToken.trim()) {
-        headers['Client-Token'] = config.zapiClientToken.trim()
-      }
-
-      // Incluir nome do atendente na mensagem para o cliente
-      const agentName = userName || 'Atendente'
-      const messageWithAgent = `*${agentName}:*\n${content}`
-
-      console.log('Enviando para Z-API:', {
-        url: `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`,
-        headers,
-        body: { phone, message: messageWithAgent }
-      })
-
-      const zapiResponse = await fetch(`https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ phone, message: messageWithAgent })
-      })
-
-      const zapiResultText = await zapiResponse.text()
-      let zapiResult: any = {}
-      try { zapiResult = JSON.parse(zapiResultText) } catch { zapiResult = zapiResultText }
-      console.log('Resposta da Z-API:', zapiResult)
-
-      if (!zapiResponse.ok) {
-        throw new Error(`Erro Z-API: ${zapiResultText}`)
+      
+      if (!zapiResult.success) {
+        throw new Error(zapiResult.error || 'Erro ao enviar mensagem via Z-API');
       }
       
       // Salvar messageId da Z-API para poder excluir depois
       await messageRef.update({ 
         status: 'sent',
         zapiMessageId: zapiResult.messageId || null
-      })
+      });
+      
     } catch (err) {
       console.error('Falha ao enviar via Z-API:', err)
       await updateStatus('failed')
