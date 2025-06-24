@@ -39,8 +39,11 @@ export async function GET() {
 
   } catch (error) {
     console.error('Erro ao buscar conversas:', error)
+    if (error instanceof Error) {
+      console.error('Stack trace:', error.stack)
+    }
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error', stack: error instanceof Error ? error.stack : undefined },
       { status: 500 }
     )
   }
