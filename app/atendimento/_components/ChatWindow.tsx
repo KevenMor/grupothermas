@@ -791,6 +791,9 @@ export function ChatWindow({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Adicionar log de depuração das mensagens
+  console.log('Mensagens recebidas:', messages);
+
   if (!chat) {
     return <WelcomeScreen />
   }
@@ -917,7 +920,6 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
           </div>
         ) : (
           <div className="space-y-2">
-            {console.log('Mensagens recebidas:', messages)}
             {messages.map((msg, idx) => {
               const dateObj = new Date(msg.timestamp)
               const isFirstOfDay = !lastDate || !isSameDay(lastDate, dateObj)
