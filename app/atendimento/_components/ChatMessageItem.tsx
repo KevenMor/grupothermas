@@ -160,7 +160,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   <img 
                     src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
                     alt="Imagem enviada"
-                    className="max-w-48 max-h-48 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    className="max-w-48 max-h-48 rounded-lg cursor-pointer hover:opacity-90 transition-opacity border border-gray-300"
                     onClick={handleImageClick}
                     onError={(e) => {
                       console.error('Erro ao carregar imagem:', message.mediaUrl)
@@ -172,35 +172,41 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                       {message.mediaInfo.caption}
                     </p>
                   )}
+                  {/* Popup de imagem */}
+                  {showImagePopup && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70" onClick={() => setShowImagePopup(false)}>
+                      <img
+                        src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+                        alt="Imagem ampliada"
+                        className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-lg border-4 border-white"
+                        onClick={e => e.stopPropagation()}
+                      />
+                      <Button className="absolute top-4 right-4 z-60" size="icon" variant="ghost" onClick={() => setShowImagePopup(false)}>
+                        <X className="w-6 h-6 text-white" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
-              
-              {/* Áudio */}
-              {message.mediaType === 'audio' && message.mediaUrl && (
-                <div className="space-y-1">
-                  <audio controls className="max-w-48">
-                    <source 
-                      src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
-                      type={message.mediaInfo?.mimeType || 'audio/mpeg'} 
-                    />
-                    Seu navegador não suporta áudio.
-                  </audio>
-                </div>
-              )}
-              
-              {/* Vídeo */}
-              {message.mediaType === 'video' && message.mediaUrl && (
-                <div className="space-y-1">
-                  <video controls className="max-w-48 max-h-48 rounded-lg">
-                    <source 
-                      src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
-                    />
-                  </video>
+              {/* Documento */}
+              {message.mediaType === 'document' && message.mediaUrl && (
+                <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" onClick={handleDocumentClick}>
+                  <FileText className="w-6 h-6 text-gray-500" />
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm text-blue-700 underline">{message.mediaInfo?.filename || 'Documento'}</span>
+                    <span className="text-xs text-gray-500">Clique para abrir</span>
+                  </div>
                 </div>
               )}
               {/* Conteúdo textual */}
               <div>
-                {message.content ? message.content : <span style={{color: 'red'}}>[Sem conteúdo]</span>}
+                {message.content && !message.mediaType ? message.content : null}
+                {!message.content && !message.mediaType ? <span style={{color: 'red'}}>[Sem conteúdo]</span> : null}
+                {/* Para mídia, mostrar label amigável */}
+                {message.mediaType === 'image' && <span className="text-xs text-gray-400 ml-1">Imagem enviada</span>}
+                {message.mediaType === 'document' && <span className="text-xs text-gray-400 ml-1">Documento enviado</span>}
+                {message.mediaType === 'audio' && <span className="text-xs text-gray-400 ml-1">Áudio enviado</span>}
+                {message.mediaType === 'video' && <span className="text-xs text-gray-400 ml-1">Vídeo enviado</span>}
               </div>
             </div>
           </div>

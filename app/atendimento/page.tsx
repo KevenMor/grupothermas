@@ -66,7 +66,7 @@ export default function AtendimentoPage() {
     }
   }
 
-  // Polling para atualizar chats e mensagens a cada 3 segundos (reduzido delay)
+  // Polling para atualizar chats e mensagens a cada 1 segundo (mais fluido)
   useEffect(() => {
     fetchChats()
     const interval = setInterval(() => {
@@ -74,7 +74,7 @@ export default function AtendimentoPage() {
       if (selectedChat) {
         fetchMessages(selectedChat.id)
       }
-    }, 3000) // Reduzido de 5000 para 3000ms
+    }, 1000) // Reduzido para 1 segundo
     return () => clearInterval(interval)
   }, [selectedChat])
 
