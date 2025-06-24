@@ -23,15 +23,15 @@ interface ChatMessageItemProps {
 const MessageStatus = ({ status }: { status: ChatStatus }) => {
   switch (status) {
     case 'sending':
-      return <Clock className="w-4 h-4 text-gray-400" />
+      return <Clock className="w-3 h-3 text-gray-400" />
     case 'sent':
-      return <Check className="w-4 h-4 text-gray-400" />
+      return <Check className="w-3 h-3 text-gray-400" />
     case 'delivered':
-      return <CheckCheck className="w-4 h-4 text-gray-400" />
+      return <CheckCheck className="w-3 h-3 text-gray-400" />
     case 'read':
-      return <CheckCheck className="w-4 h-4 text-blue-500" />
+      return <CheckCheck className="w-3 h-3 text-blue-500" />
     case 'failed':
-      return <AlertCircle className="w-4 h-4 text-red-500" />
+      return <AlertCircle className="w-3 h-3 text-red-500" />
     default:
       return null
   }
@@ -40,7 +40,7 @@ const MessageStatus = ({ status }: { status: ChatStatus }) => {
 const formatDate = (date: Date) => {
   if (isToday(date)) return 'Hoje'
   if (isYesterday(date)) return 'Ontem'
-  return format(date, "dd/MM/yyyy", { locale: ptBR })
+  return format(date, 'dd/MM/yyyy', { locale: ptBR })
 }
 
 export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo }: ChatMessageItemProps) {
@@ -60,8 +60,9 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
     })
   }
 
-  const formatDate = (timestamp: string) => {
-    return new Date(timestamp).toLocaleDateString('pt-BR', {
+  const formatDateString = (timestamp: string) => {
+    const date = new Date(timestamp)
+    return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -91,12 +92,15 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   const isFailed = message.status === 'failed'
   
   // Avatar e nome baseado no tipo de mensagem
-  const avatar = isFromCompany ? (isAI ? '/bot-avatar.png' : '/agent-avatar.png') : (avatarUrl || '/user-avatar.png')
-  
-  // Nome a ser exibido
+  let avatar = avatarUrl
   let displayName = contactName || 'Cliente'
-  if (isAI) {
-    displayName = '🤖 Assistente IA'
+  
+  if (isFromCustomer) {
+    // Para clientes, usar o avatar e nome fornecidos
+    displayName = contactName || 'Cliente'
+  } else if (isAI) {
+    // Para IA, usar avatar padrão e nome específico
+    displayName = 'IA Assistente'
   } else if (isAgent) {
     // Para agentes humanos, mostrar o nome do usuário se disponível
     displayName = message.agentName || message.userName || 'Atendente'
