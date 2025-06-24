@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Criar mensagem de resposta
-        const replyMessage = {
+        const newReplyMessage = {
           content,
           timestamp: new Date().toISOString(),
           role: 'agent',
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
           .collection('conversations')
           .doc(chatId)
           .collection('messages')
-          .add(replyMessage)
+          .add(newReplyMessage)
 
         // Enviar via Z-API com contexto de resposta
         try {
