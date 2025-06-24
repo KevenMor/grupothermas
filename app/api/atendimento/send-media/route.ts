@@ -93,9 +93,17 @@ export async function POST(request: NextRequest) {
         // Verificar se o arquivo existe
         if (!existsSync(fullPath)) {
           console.error('Arquivo não encontrado:', fullPath)
+          console.error('Diretório atual:', process.cwd())
+          console.error('Lista do diretório public:', existsSync(join(process.cwd(), 'public')) ? 'existe' : 'não existe')
+          
           return NextResponse.json({ 
             error: 'Arquivo não encontrado no servidor',
-            details: { requestedPath: localPath, fullPath }
+            details: { 
+              requestedPath: localPath, 
+              fullPath,
+              currentDir: process.cwd(),
+              publicExists: existsSync(join(process.cwd(), 'public'))
+            }
           }, { status: 404 })
         }
         

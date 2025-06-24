@@ -108,22 +108,29 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const zapiInstanceId = process.env.ZAPI_INSTANCE_ID
-      const zapiToken = process.env.ZAPI_TOKEN
-      if (!zapiInstanceId || !zapiToken) {
-        throw new Error('Z-API não configurada. Verifique as variáveis de ambiente.')
+      // Buscar configurações da Z-API do Firebase
+      const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
+      
+      if (!configDoc.exists) {
+        throw new Error('Configurações não encontradas no Firebase')
+      }
+
+      const config = configDoc.data()!
+
+      if (!config.zapiApiKey || !config.zapiInstanceId) {
+        throw new Error('Z-API não configurada no Admin IA')
       }
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (process.env.ZAPI_CLIENT_TOKEN) {
-        headers['Client-Token'] = process.env.ZAPI_CLIENT_TOKEN
+      if (config.zapiClientToken && config.zapiClientToken.trim()) {
+        headers['Client-Token'] = config.zapiClientToken.trim()
       }
 
       // Incluir nome do atendente na mensagem para o cliente
       const agentName = userName || 'Atendente'
       const messageWithAgent = `*${agentName}:*\n${content}`
 
-      const zapiResponse = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
+      const zapiResponse = await fetch(`https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ phone, message: messageWithAgent })

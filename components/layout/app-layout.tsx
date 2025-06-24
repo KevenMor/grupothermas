@@ -108,7 +108,7 @@ function AppSidebar() {
             <SidebarNavSubmenu
               title="Atendimento"
               icon={<HeadphonesIcon className="h-4 w-4" />}
-              defaultOpen={pathname.startsWith('/atendimento') || pathname === '/kanban' || pathname === '/leads' || pathname === '/admin'}
+              defaultOpen={pathname.startsWith('/atendimento') || pathname === '/kanban' || pathname === '/admin'}
             >
               <SidebarNavSubItem
                 icon={<MessageSquare className="h-4 w-4" />}
@@ -123,13 +123,6 @@ function AppSidebar() {
                 onClick={() => router.push('/kanban')}
               >
                 Kanban
-              </SidebarNavSubItem>
-              <SidebarNavSubItem
-                icon={<UserCheck className="h-4 w-4" />}
-                active={pathname === '/leads'}
-                onClick={() => router.push('/leads')}
-              >
-                Leads
               </SidebarNavSubItem>
               <SidebarNavSubItem
                 icon={<Bot className="h-4 w-4" />}

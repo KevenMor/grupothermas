@@ -50,24 +50,28 @@ export async function POST(request: NextRequest) {
 
         // Enviar via Z-API com contexto de resposta
         try {
-          const zapiInstanceId = process.env.ZAPI_INSTANCE_ID
-          const zapiToken = process.env.ZAPI_TOKEN
+          // Buscar configurações da Z-API do Firebase
+          const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
           
-          if (zapiInstanceId && zapiToken) {
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-            if (process.env.ZAPI_CLIENT_TOKEN) {
-              headers['Client-Token'] = process.env.ZAPI_CLIENT_TOKEN
+          if (configDoc.exists) {
+            const config = configDoc.data()!
+            
+            if (config.zapiApiKey && config.zapiInstanceId) {
+              const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+              if (config.zapiClientToken && config.zapiClientToken.trim()) {
+                headers['Client-Token'] = config.zapiClientToken.trim()
+              }
+
+              const replyText = `📝 Respondendo: "${originalMessage.data()?.content?.substring(0, 50)}..."\n\n${content}`
+
+              await fetch(`https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ phone, message: replyText })
+              })
+
+              await replyRef.update({ status: 'sent' })
             }
-
-            const replyText = `📝 Respondendo: "${originalMessage.data()?.content?.substring(0, 50)}..."\n\n${content}`
-
-            await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ phone, message: replyText })
-            })
-
-            await replyRef.update({ status: 'sent' })
           }
         } catch (error) {
           await replyRef.update({ status: 'failed' })

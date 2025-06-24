@@ -188,24 +188,28 @@ Responda de forma natural e útil, considerando o contexto da conversa.
 // Função para enviar mensagem via Z-API
 async function sendMessageViaZAPI(phone: string, message: string) {
   try {
-    const ZAPI_INSTANCE_ID = process.env.ZAPI_INSTANCE_ID
-    const ZAPI_TOKEN = process.env.ZAPI_TOKEN
-    const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN
+    // Buscar configurações da Z-API do Firebase
+    const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
+    
+    if (!configDoc.exists) {
+      throw new Error('Configurações não encontradas no Firebase')
+    }
 
-    if (!ZAPI_INSTANCE_ID || !ZAPI_TOKEN) {
-      throw new Error('Credenciais Z-API não configuradas')
+    const config = configDoc.data()!
+
+    if (!config.zapiApiKey || !config.zapiInstanceId) {
+      throw new Error('Z-API não configurada no Admin IA')
     }
 
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${ZAPI_TOKEN}`,
       'Content-Type': 'application/json'
     }
 
-    if (ZAPI_CLIENT_TOKEN) {
-      headers['Client-Token'] = ZAPI_CLIENT_TOKEN
+    if (config.zapiClientToken && config.zapiClientToken.trim()) {
+      headers['Client-Token'] = config.zapiClientToken.trim()
     }
 
-    const response = await fetch(`https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}/send-text`, {
+    const response = await fetch(`https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
