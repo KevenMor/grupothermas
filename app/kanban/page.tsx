@@ -377,16 +377,16 @@ export default function KanbanPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-yellow-100 text-sm">Com Agente</p>
+                  <p className="text-blue-100 text-sm">Com Agente</p>
                   <p className="text-2xl font-bold">
                     {getChatsByStatus('agent_assigned').length}
                   </p>
                 </div>
-                <UserCheck className="w-8 h-8 text-yellow-200" />
+                <UserCheck className="w-8 h-8 text-blue-200" />
               </div>
             </CardContent>
           </Card>

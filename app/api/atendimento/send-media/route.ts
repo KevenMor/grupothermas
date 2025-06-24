@@ -108,8 +108,21 @@ export async function POST(request: NextRequest) {
         }
         
         const fileBuffer = await readFile(fullPath)
-        const base64Data = fileBuffer.toString('base64')
+        const fileSizeBytes = fileBuffer.length
+        const fileSizeMB = fileSizeBytes / (1024 * 1024)
         
+        console.log(`Arquivo lido. Tamanho: ${fileSizeBytes} bytes (${fileSizeMB.toFixed(2)} MB)`)
+        
+        // Verificar tamanho do arquivo (limite de 16MB para Z-API)
+        if (fileSizeMB > 16) {
+          console.error('Arquivo muito grande:', fileSizeMB, 'MB')
+          return NextResponse.json({ 
+            error: 'Arquivo muito grande. Limite máximo: 16MB',
+            details: { fileSize: `${fileSizeMB.toFixed(2)} MB` }
+          }, { status: 413 })
+        }
+        
+        const base64Data = fileBuffer.toString('base64')
         console.log(`Arquivo convertido para base64. Tamanho: ${base64Data.length} chars`)
 
         // Salvar URL para o Firebase (caminho público)
@@ -197,7 +210,10 @@ export async function POST(request: NextRequest) {
     console.log('Enviando para Z-API:', { 
       url: zapiUrl, 
       payloadKeys: Object.keys(payload),
-      hasBase64: Object.values(payload).some(v => typeof v === 'string' && v.includes('base64'))
+      hasBase64: Object.values(payload).some(v => typeof v === 'string' && v.includes('base64')),
+      payloadSize: JSON.stringify(payload).length,
+      phone: payload.phone,
+      type: type
     })
 
     // Enviar via Z-API

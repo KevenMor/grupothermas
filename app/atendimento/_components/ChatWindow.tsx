@@ -340,7 +340,34 @@ const MessageInput = ({
       })
       
       if (mediaResponse.ok) {
-        console.log('Mídia enviada com sucesso')
+        const mediaResult = await mediaResponse.json()
+        console.log('Mídia enviada com sucesso:', mediaResult)
+        
+        // Criar mensagem otimista para mostrar imediatamente
+        const optimisticMessage: ChatMessage = {
+          id: `temp-media-${Date.now()}`,
+          content: `[${previewType.toUpperCase()}] ${previewFile.name}`,
+          role: 'agent',
+          timestamp: new Date().toISOString(),
+          status: 'sent',
+          userName: 'Você',
+          agentId: 'current-agent',
+          agentName: 'Você',
+          mediaType: previewType as 'image' | 'audio' | 'video' | 'document',
+          mediaUrl: uploadResult.fileUrl,
+          mediaInfo: {
+            type: previewType,
+            url: uploadResult.fileUrl,
+            filename: previewFile.name
+          }
+        }
+        
+        // Adicionar mensagem à lista imediatamente
+        if (onSendMessage) {
+          // Simular o envio para atualizar a UI
+          window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
+        }
+        
         // Limpar preview
         setPreviewFile(null)
         setPreviewType('')
@@ -349,8 +376,8 @@ const MessageInput = ({
           setPreviewUrl('')
         }
         
-        // Recarregar mensagens para mostrar a mídia enviada
-        window.location.reload()
+        // Não recarregar a página - a mensagem já foi adicionada
+        console.log('Mídia adicionada à conversa sem reload')
       } else {
         const errorResult = await mediaResponse.json()
         throw new Error(errorResult.error || 'Erro ao enviar mídia')
@@ -466,11 +493,36 @@ const MessageInput = ({
       })
       
       if (mediaResponse.ok) {
-        console.log('Áudio enviado com sucesso')
+        const mediaResult = await mediaResponse.json()
+        console.log('Áudio enviado com sucesso:', mediaResult)
+        
+        // Criar mensagem otimista para mostrar imediatamente
+        const optimisticMessage: ChatMessage = {
+          id: `temp-audio-${Date.now()}`,
+          content: '[ÁUDIO] Mensagem de voz',
+          role: 'agent',
+          timestamp: new Date().toISOString(),
+          status: 'sent',
+          userName: 'Você',
+          agentId: 'current-agent',
+          agentName: 'Você',
+          mediaType: 'audio',
+          mediaUrl: uploadResult.fileUrl,
+          mediaInfo: {
+            type: 'audio',
+            url: uploadResult.fileUrl,
+            filename: `audio_${Date.now()}.wav`
+          }
+        }
+        
+        // Adicionar mensagem à lista imediatamente
+        if (onSendMessage) {
+          window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
+        }
+        
         setShowSendConfirmation(false)
         setRecordedAudio(null)
-        // Recarregar para mostrar áudio enviado
-        window.location.reload()
+        console.log('Áudio adicionado à conversa sem reload')
       } else {
         throw new Error('Falha ao enviar áudio via Z-API')
       }

@@ -29,7 +29,7 @@ const MessageStatus = ({ status }: { status: ChatStatus }) => {
     case 'delivered':
       return <CheckCheck className="w-3 h-3 text-white/80" />
     case 'read':
-      return <CheckCheck className="w-3 h-3 text-green-200" />
+      return <CheckCheck className="w-3 h-3 text-blue-200" />
     case 'failed':
       return <AlertCircle className="w-3 h-3 text-red-300" />
     default:
@@ -138,7 +138,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
           <div 
             className={`relative group rounded-2xl px-3 py-2 max-w-full ${
               isFromAgent 
-                ? 'bg-green-500 text-white rounded-br-md' 
+                ? 'bg-blue-500 text-white rounded-br-md' 
                 : isFromCustomer
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-md'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-md'
@@ -265,7 +265,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
             </div>
             
             {/* Timestamp */}
-            <div className={`text-xs mt-1 flex items-center justify-end gap-1 ${isFromAgent ? 'text-green-100' : 'opacity-60'}`}>
+            <div className={`text-xs mt-1 flex items-center justify-end gap-1 ${isFromAgent ? 'text-blue-100' : 'opacity-60'}`}>
               <span>{formatTime(message.timestamp)}</span>
               {isFromAgent && (
                 <MessageStatus status={message.status} />

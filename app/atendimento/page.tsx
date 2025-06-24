@@ -66,7 +66,7 @@ export default function AtendimentoPage() {
     }
   }
 
-  // Polling para atualizar chats e mensagens a cada 5 segundos
+  // Polling para atualizar chats e mensagens a cada 3 segundos (reduzido delay)
   useEffect(() => {
     fetchChats()
     const interval = setInterval(() => {
@@ -74,9 +74,20 @@ export default function AtendimentoPage() {
       if (selectedChat) {
         fetchMessages(selectedChat.id)
       }
-    }, 5000)
+    }, 3000) // Reduzido de 5000 para 3000ms
     return () => clearInterval(interval)
   }, [selectedChat])
+
+  // Escutar eventos de novas mensagens de mídia
+  useEffect(() => {
+    const handleNewMessage = (event: CustomEvent) => {
+      const newMessage = event.detail
+      setMessages(prev => [...prev, newMessage])
+    }
+
+    window.addEventListener('newMessage', handleNewMessage as EventListener)
+    return () => window.removeEventListener('newMessage', handleNewMessage as EventListener)
+  }, [])
 
   const handleSelectChat = async (chat: Chat) => {
     if (selectedChat?.id === chat.id) return
