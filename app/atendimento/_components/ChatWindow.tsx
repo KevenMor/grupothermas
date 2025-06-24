@@ -603,10 +603,13 @@ const MessageInput = ({
             
             {showEmojiPicker && (
               <div className="absolute bottom-full right-0 mb-2 z-50">
-                <EmojiPicker onEmojiSelect={(emoji) => {
-                  setMessage(prev => prev + emoji)
-                  setShowEmojiPicker(false)
-                }} />
+                <EmojiPicker 
+                  onEmojiSelect={(emoji) => {
+                    setMessage(prev => prev + emoji)
+                    setShowEmojiPicker(false)
+                  }}
+                  onClose={() => setShowEmojiPicker(false)}
+                />
               </div>
             )}
           </div>
