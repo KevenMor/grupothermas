@@ -118,6 +118,12 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
         </div>
       )}
       
+      {message.replyToContent && (
+        <div className="mb-1 px-2 py-1 rounded bg-blue-100 border-l-4 border-blue-400 text-xs text-blue-900">
+          <span className="font-semibold">Respondendo:</span> {message.replyToContent}
+        </div>
+      )}
+      
       <div className={`flex gap-2 mb-3 ${isFromAgent ? 'justify-end' : 'justify-start'}`}>
         {!isFromAgent && showAvatar && (
           <Avatar className="w-8 h-8 flex-shrink-0">

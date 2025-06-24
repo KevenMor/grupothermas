@@ -95,23 +95,22 @@ export default function AtendimentoPage() {
     fetchMessages(chat.id)
   }
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (data: { content: string, replyTo?: string, replyToContent?: string }) => {
     if (!selectedChat) return
     const tempId = `temp-${Date.now()}`
-    
-    // TODO: Pegar nome do usuário logado do contexto de autenticação
-    const currentUserName = 'Keven Moreira' // Temporário - substituir por dados reais
-    const currentUserId = 'user-001' // Temporário - substituir por dados reais
-    
+    const currentUserName = 'Keven Moreira' // Temporário
+    const currentUserId = 'user-001' // Temporário
+
     const optimisticMessage: ChatMessage = {
       id: tempId,
-      content,
+      content: data.content,
       role: 'agent',
       timestamp: new Date().toISOString(),
       status: 'sending',
       userName: currentUserName,
       agentId: currentUserId,
-      agentName: currentUserName
+      agentName: currentUserName,
+      ...(data.replyTo ? { replyTo: data.replyTo, replyToContent: data.replyToContent } : {})
     }
     setMessages(prev => [...prev, optimisticMessage])
     try {
@@ -120,10 +119,11 @@ export default function AtendimentoPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chatId: selectedChat.id,
-          content,
+          content: data.content,
           phone: selectedChat.customerPhone,
           userName: currentUserName,
           agentId: currentUserId,
+          ...(data.replyTo ? { replyTo: data.replyTo, replyToContent: data.replyToContent } : {})
         }),
       })
 

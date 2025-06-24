@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { chatId, content, phone, userName, agentId } = body
+    const { chatId, content, phone, userName, agentId, replyTo, replyToContent } = body
 
     if (!chatId || !content || !phone) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -89,10 +89,10 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
       role: 'agent',
       status: 'sending',
-      // Adicionar informações do agente
       userName: userName || 'Atendente',
       agentId: agentId,
-      agentName: userName || 'Atendente'
+      agentName: userName || 'Atendente',
+      ...(replyTo ? { replyTo, replyToContent } : {})
     }
 
     // Salvar primeiro para garantir persistência mesmo se Z-API falhar

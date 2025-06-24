@@ -35,7 +35,7 @@ import { isSameDay } from 'date-fns'
 interface ChatWindowProps {
   chat: Chat | null
   messages: ChatMessage[]
-  onSendMessage: (content: string) => void
+  onSendMessage: (data: { content: string, replyTo?: string, replyToContent?: string }) => void
   isLoading: boolean
   onToggleAI?: (chatId: string, enabled: boolean) => void
   onAssignAgent?: (chatId: string) => void
@@ -207,7 +207,7 @@ const MessageInput = ({
   onAssumeChat 
 }: { 
   chat: Chat | null
-  onSendMessage: (content: string) => void
+  onSendMessage: (data: { content: string, replyTo?: string, replyToContent?: string }) => void
   onAssumeChat?: () => void
 }) => {
   const [message, setMessage] = useState('')
@@ -235,12 +235,12 @@ const MessageInput = ({
       return
     }
 
-    onSendMessage(message)
+    onSendMessage({ content: message })
     setMessage('')
   }
 
   const confirmSendLongMessage = () => {
-    onSendMessage(pendingMessage)
+    onSendMessage({ content: pendingMessage })
     setMessage('')
     setPendingMessage('')
     setShowLongMessageConfirmation(false)
@@ -827,7 +827,7 @@ export function ChatWindow({
       onSendMessage({ content, replyTo: replyMessage.id, replyToContent: replyMessage.content })
       setReplyMessage(null)
     } else {
-      onSendMessage(content)
+      onSendMessage({ content })
     }
   }
 
