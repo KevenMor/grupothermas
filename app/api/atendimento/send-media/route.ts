@@ -16,6 +16,14 @@ export async function POST(request: NextRequest) {
   try {
     const { phone, type, content, localPath, caption, filename }: MediaMessage = await request.json()
     
+    console.log(`=== RECEBIDO PEDIDO DE ENVIO ===`)
+    console.log('Phone:', phone)
+    console.log('Type:', type)
+    console.log('Content:', content)
+    console.log('LocalPath:', localPath)
+    console.log('Caption:', caption)
+    console.log('Filename:', filename)
+    
     if (!phone || !type) {
       return NextResponse.json({ 
         error: 'Phone e type são obrigatórios'
@@ -28,6 +36,7 @@ export async function POST(request: NextRequest) {
     const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
     
     if (!configDoc.exists) {
+      console.error('Configurações não encontradas no Firebase')
       return NextResponse.json({ 
         error: 'Configurações não encontradas' 
       }, { status: 500 })
@@ -36,6 +45,10 @@ export async function POST(request: NextRequest) {
     const config = configDoc.data()!
 
     if (!config.zapiApiKey || !config.zapiInstanceId) {
+      console.error('Z-API não configurada:', { 
+        hasApiKey: !!config.zapiApiKey, 
+        hasInstanceId: !!config.zapiInstanceId 
+      })
       return NextResponse.json({ 
         error: 'Z-API não configurada' 
       }, { status: 500 })
@@ -44,6 +57,7 @@ export async function POST(request: NextRequest) {
     // Montar URL e payload baseado no tipo
     let zapiUrl = ''
     let payload: any = { phone }
+    let mediaUrl = '' // Para salvar no Firebase
 
     if (type === 'text') {
       zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`
@@ -58,6 +72,9 @@ export async function POST(request: NextRequest) {
         const base64Data = fileBuffer.toString('base64')
         
         console.log(`Arquivo convertido para base64. Tamanho: ${base64Data.length} chars`)
+
+        // Salvar URL para o Firebase (caminho público)
+        mediaUrl = localPath
 
         switch (type) {
           case 'image':
@@ -164,27 +181,46 @@ export async function POST(request: NextRequest) {
 
     console.log('Sucesso Z-API:', zapiResult)
 
-    // Salvar mensagem no Firebase
+    // Salvar mensagem no Firebase com informações completas
     try {
+      console.log('Salvando mensagem no Firebase...')
+      
       const conversationRef = adminDB.collection('conversations').doc(phone)
-      await conversationRef.collection('messages').add({
+      const messageData = {
         content: type === 'text' ? content : `[${type.toUpperCase()}]`,
         role: 'agent',
         timestamp: new Date().toISOString(),
         status: 'sent',
-        mediaType: type !== 'text' ? type as 'image' | 'audio' | 'video' | 'document' : undefined,
-        mediaUrl: type !== 'text' ? localPath : undefined,
         zapiMessageId: zapiResult.messageId || null,
         agentName: 'Sistema' // TODO: Pegar nome do agente logado
-      })
+      }
+
+      // Adicionar informações de mídia se não for texto
+      if (type !== 'text') {
+        messageData.mediaType = type
+        messageData.mediaUrl = mediaUrl
+        messageData.mediaInfo = {
+          type: type,
+          url: mediaUrl,
+          filename: filename || localPath?.split('/').pop(),
+          ...(caption && { caption })
+        }
+      }
+
+      console.log('Dados da mensagem para salvar:', messageData)
+      
+      await conversationRef.collection('messages').add(messageData)
       
       // Atualizar última mensagem da conversa
       await conversationRef.update({
         lastMessage: type === 'text' ? content : `[${type.toUpperCase()}] enviado`,
         timestamp: new Date().toISOString()
       })
+
+      console.log('Mensagem salva com sucesso no Firebase')
     } catch (saveError) {
-      console.warn('Erro ao salvar mensagem no Firebase:', saveError)
+      console.error('Erro ao salvar mensagem no Firebase:', saveError)
+      // Não falhar o envio por causa disso, mas logar o erro
     }
 
     return NextResponse.json({ 
@@ -197,12 +233,13 @@ export async function POST(request: NextRequest) {
         content,
         localPath,
         caption,
-        filename
+        filename,
+        mediaUrl
       }
     })
 
   } catch (error) {
-    console.error('Erro geral:', error)
+    console.error('Erro geral no endpoint send-media:', error)
     return NextResponse.json({ 
       error: 'Erro interno do servidor',
       details: error instanceof Error ? error.message : 'Unknown error'

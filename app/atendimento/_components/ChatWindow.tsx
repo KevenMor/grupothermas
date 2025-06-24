@@ -210,111 +210,167 @@ const MessageInput = ({
   onAssumeChat?: () => void
 }) => {
   const [message, setMessage] = useState('')
-  const [showAttachments, setShowAttachments] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null)
+  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null)
   const [showSendConfirmation, setShowSendConfirmation] = useState(false)
+  const [showLongMessageConfirmation, setShowLongMessageConfirmation] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState('')
   
+  // Estados para preview de mídia
+  const [showMediaPreview, setShowMediaPreview] = useState(false)
+  const [previewFile, setPreviewFile] = useState<File | null>(null)
+  const [previewType, setPreviewType] = useState<string>('')
+  const [previewUrl, setPreviewUrl] = useState<string>('')
+
   const handleSend = () => {
-    if (message.trim() && canInteract()) {
-      // Mostrar confirmação para mensagens importantes ou enviar direto
-      const shouldConfirm = message.length > 100 // Confirmar mensagens longas
-      
-      if (shouldConfirm) {
-        const confirmed = confirm(`Enviar mensagem: "${message.substring(0, 50)}..."?`)
-        if (!confirmed) return
-      }
-      
-      onSendMessage(message.trim())
-      setMessage('')
+    if (!message.trim() || !chat) return
+
+    if (message.length > 100) {
+      setPendingMessage(message)
+      setShowLongMessageConfirmation(true)
+      return
     }
+
+    onSendMessage(message)
+    setMessage('')
   }
 
-  // Verificar se pode interagir com o chat
+  const confirmSendLongMessage = () => {
+    onSendMessage(pendingMessage)
+    setMessage('')
+    setPendingMessage('')
+    setShowLongMessageConfirmation(false)
+  }
+
+  const cancelSendLongMessage = () => {
+    setPendingMessage('')
+    setShowLongMessageConfirmation(false)
+  }
+
   const canInteract = () => {
-    if (!chat) return false
-    // Permitir interação apenas se o chat estiver assumido por um agente
-    return chat.conversationStatus === 'agent_assigned'
+    return chat?.conversationStatus === 'agent_assigned'
   }
 
   const handleAttachment = (type: string) => {
-    setShowAttachments(false)
-    
-    // Criar input de arquivo
+    if (!canInteract()) {
+      alert('Você precisa assumir o atendimento para enviar arquivos.')
+      return
+    }
+
     const input = document.createElement('input')
     input.type = 'file'
     
-    // Configurar tipos aceitos baseado no tipo
+    // Definir tipos aceitos baseado no tipo
     switch (type) {
       case 'image':
-        input.accept = 'image/*'
-        break
       case 'camera':
         input.accept = 'image/*'
-        input.capture = 'environment'
+        if (type === 'camera') {
+          input.setAttribute('capture', 'environment')
+        }
+        break
+      case 'audio':
+        input.accept = 'audio/*'
+        break
+      case 'video':
+        input.accept = 'video/*'
         break
       case 'document':
         input.accept = '.pdf,.doc,.docx,.txt'
         break
-      case 'contact':
-        // Implementar seleção de contato
-        alert('Funcionalidade de contato em desenvolvimento')
-        return
     }
     
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file || !chat) return
+      if (!file) return
+
+      // Mostrar preview antes de enviar
+      setPreviewFile(file)
+      setPreviewType(type === 'camera' ? 'image' : type)
       
-      try {
-        // Upload do arquivo
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('type', type === 'camera' ? 'image' : type)
-        
-        const uploadResponse = await fetch('/api/atendimento/upload', {
-          method: 'POST',
-          body: formData
-        })
-        
-        if (!uploadResponse.ok) {
-          throw new Error('Erro no upload')
-        }
-        
-        const uploadResult = await uploadResponse.json()
-        
-        // Enviar via Z-API usando a nova API de mídia local
-        const mediaResponse = await fetch('/api/atendimento/send-media', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone: chat.customerPhone,
-            type: type === 'camera' ? 'image' : type,
-            localPath: uploadResult.fileUrl, // Caminho local do arquivo
-            // Não enviar caption para não aparecer texto desnecessário
-            filename: file.name
-          })
-        })
-        
-        if (mediaResponse.ok) {
-          // Não salvar mensagem de texto, apenas enviar a mídia
-          // A mídia será salva automaticamente pelo endpoint
-          console.log('Mídia enviada com sucesso:', mediaResponse)
-        } else {
-          const errorResult = await mediaResponse.json()
-          throw new Error(errorResult.error || 'Erro ao enviar mídia')
-        }
-        
-      } catch (error) {
-        console.error('Erro ao enviar anexo:', error)
-        alert('Erro ao enviar arquivo. Tente novamente.')
+      // Criar URL para preview
+      if (type === 'image' || type === 'camera') {
+        setPreviewUrl(URL.createObjectURL(file))
+      } else if (type === 'document') {
+        setPreviewUrl('') // Para documentos, só mostramos o nome
       }
+      
+      setShowMediaPreview(true)
     }
     
     input.click()
+  }
+
+  // Função para confirmar envio da mídia
+  const confirmSendMedia = async () => {
+    if (!previewFile || !chat) return
+    
+    try {
+      setShowMediaPreview(false)
+      
+      // Upload do arquivo
+      const formData = new FormData()
+      formData.append('file', previewFile)
+      formData.append('type', previewType)
+      
+      const uploadResponse = await fetch('/api/atendimento/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Erro no upload')
+      }
+      
+      const uploadResult = await uploadResponse.json()
+      
+      // Enviar via Z-API usando a nova API de mídia local
+      const mediaResponse = await fetch('/api/atendimento/send-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: chat.customerPhone,
+          type: previewType,
+          localPath: uploadResult.fileUrl, // Caminho local do arquivo
+          filename: previewFile.name
+        })
+      })
+      
+      if (mediaResponse.ok) {
+        console.log('Mídia enviada com sucesso')
+        // Limpar preview
+        setPreviewFile(null)
+        setPreviewType('')
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl)
+          setPreviewUrl('')
+        }
+        
+        // Recarregar mensagens para mostrar a mídia enviada
+        window.location.reload()
+      } else {
+        const errorResult = await mediaResponse.json()
+        throw new Error(errorResult.error || 'Erro ao enviar mídia')
+      }
+      
+    } catch (error) {
+      console.error('Erro ao enviar anexo:', error)
+      alert('Erro ao enviar arquivo. Tente novamente.')
+    }
+  }
+
+  // Função para cancelar envio da mídia
+  const cancelSendMedia = () => {
+    setShowMediaPreview(false)
+    setPreviewFile(null)
+    setPreviewType('')
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+      setPreviewUrl('')
+    }
   }
 
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
@@ -413,6 +469,8 @@ const MessageInput = ({
         console.log('Áudio enviado com sucesso')
         setShowSendConfirmation(false)
         setRecordedAudio(null)
+        // Recarregar para mostrar áudio enviado
+        window.location.reload()
       } else {
         throw new Error('Falha ao enviar áudio via Z-API')
       }
@@ -436,102 +494,186 @@ const MessageInput = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  if (!chat) {
+    return null
+  }
+
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      {/* Menu de anexos */}
-      {showAttachments && (
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-          <div className="grid grid-cols-4 gap-3 max-w-xs">
-            <button
-              onClick={() => handleAttachment('image')}
-              className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-2">
-                <Image className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+    <>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        {/* Indicador de gravação */}
+        {isRecording && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-red-700 dark:text-red-300 font-medium">Gravando áudio</span>
+                <span className="text-red-600 dark:text-red-400 font-mono">
+                  {formatRecordingTime(recordingTime)}
+                </span>
               </div>
-              <span className="text-xs text-gray-600 dark:text-gray-400">Imagem</span>
-            </button>
-            
-            <button
-              onClick={() => handleAttachment('camera')}
-              className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-2">
-                <Camera className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <span className="text-xs text-gray-600 dark:text-gray-400">Câmera</span>
-            </button>
-            
-            <button
-              onClick={() => handleAttachment('document')}
-              className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
-                <FileText className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-              <span className="text-xs text-gray-600 dark:text-gray-400">Documento</span>
-            </button>
-            
-            <button
-              onClick={() => handleAttachment('contact')}
-              className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mb-2">
-                <User className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-              </div>
-              <span className="text-xs text-gray-600 dark:text-gray-400">Contato</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Aviso quando chat não está assumido */}
-      {!canInteract() && chat && (
-        <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border-t border-yellow-200 dark:border-yellow-800">
-          <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-            <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
-            <span className="text-sm font-medium">
-              Clique em "Assumir Atendimento" para interagir com o cliente
-            </span>
-          </div>
-        </div>
-      )}
-      
-      {/* Status de gravação */}
-      {isRecording && (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800">
-          <div className="flex items-center justify-center gap-3 text-red-600 dark:text-red-400">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">
-              Gravando áudio... {formatRecordingTime(recordingTime)}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmação de envio de áudio */}
-      {showSendConfirmation && recordedAudio && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-              <Mic className="w-4 h-4" />
-              <span className="text-sm font-medium">Áudio gravado</span>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={cancelSendAudio}
+              <Button 
+                onClick={toggleRecording}
                 variant="outline"
                 size="sm"
-                className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                className="border-red-300 text-red-700 hover:bg-red-100 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
               >
+                Parar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!canInteract() && (
+          <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <p className="text-yellow-700 dark:text-yellow-300 text-sm">
+                Para interagir com este chat, você precisa assumir o atendimento.
+              </p>
+              <Button 
+                onClick={onAssumeChat}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Assumir Atendimento
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => handleAttachment('image')}
+              disabled={!canInteract()}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              title="Enviar imagem"
+            >
+              <Image className="w-5 h-5" />
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => handleAttachment('camera')}
+              disabled={!canInteract()}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              title="Tirar foto"
+            >
+              <Camera className="w-5 h-5" />
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => handleAttachment('document')}
+              disabled={!canInteract()}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              title="Enviar documento"
+            >
+              <FileText className="w-5 h-5" />
+            </Button>
+          </div>
+
+          <div className="flex-1 relative">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={canInteract() ? "Digite uma mensagem..." : "Assuma o atendimento para enviar mensagens"}
+              disabled={!canInteract()}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSend()
+                }
+              }}
+              className="pr-10"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              disabled={!canInteract()}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            >
+              <Smile className="w-5 h-5" />
+            </Button>
+            
+            {showEmojiPicker && (
+              <div className="absolute bottom-full right-0 mb-2 z-50">
+                <EmojiPicker onEmojiSelect={(emoji) => {
+                  setMessage(prev => prev + emoji)
+                  setShowEmojiPicker(false)
+                }} />
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleRecording}
+              disabled={!canInteract()}
+              className={`${isRecording ? 'text-red-500 bg-red-50 dark:bg-red-900/20' : 'text-gray-500 dark:text-gray-400'} hover:text-gray-700 dark:hover:text-gray-200`}
+              title={isRecording ? "Parar gravação" : "Gravar áudio"}
+            >
+              <Mic className="w-5 h-5" />
+            </Button>
+
+            <Button
+              onClick={handleSend}
+              disabled={!message.trim() || !canInteract()}
+              size="icon"
+              className="bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 dark:disabled:bg-gray-600"
+            >
+              <Send className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de Preview de Mídia */}
+      {showMediaPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirmar envio</h3>
+            
+            {previewType === 'image' && previewUrl && (
+              <div className="mb-4">
+                <img 
+                  src={previewUrl} 
+                  alt="Preview" 
+                  className="max-w-full max-h-64 mx-auto rounded-lg"
+                />
+              </div>
+            )}
+            
+            {previewType === 'document' && previewFile && (
+              <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-8 h-8 text-gray-500" />
+                  <div>
+                    <p className="font-medium">{previewFile.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {(previewFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Deseja enviar este {previewType === 'image' ? 'imagem' : 'documento'}?
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={cancelSendMedia}>
                 Cancelar
               </Button>
-              <Button
-                onClick={confirmSendAudio}
-                size="sm"
-                className="bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                <Send className="w-4 h-4 mr-1" />
+              <Button onClick={confirmSendMedia} className="bg-blue-600 hover:bg-blue-700 text-white">
                 Enviar
               </Button>
             </div>
@@ -539,89 +681,51 @@ const MessageInput = ({
         </div>
       )}
 
-      {/* Input de mensagem */}
-      <div className="p-3">
-        <div className={`flex items-center gap-2 p-2 rounded-lg transition-opacity ${
-          canInteract() 
-            ? 'bg-gray-50 dark:bg-gray-700' 
-            : 'bg-gray-100 dark:bg-gray-800 opacity-50 cursor-not-allowed'
-        }`}>
-          <div className="relative">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              title="Emojis"
-              disabled={!canInteract()}
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            >
-              <Smile className="w-5 h-5" />
-            </Button>
-            
-            {showEmojiPicker && (
-              <EmojiPicker
-                onEmojiSelect={(emoji) => {
-                  setMessage(prev => prev + emoji)
-                  setShowEmojiPicker(false)
-                }}
-                onClose={() => setShowEmojiPicker(false)}
-              />
-            )}
+      {/* Modal de Confirmação de Áudio */}
+      {showSendConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Áudio gravado</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Deseja enviar este áudio?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={cancelSendAudio}>
+                Cancelar
+              </Button>
+              <Button onClick={confirmSendAudio} className="bg-blue-600 hover:bg-blue-700 text-white">
+                Enviar
+              </Button>
+            </div>
           </div>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            onClick={() => setShowAttachments(!showAttachments)}
-            title="Anexos"
-            disabled={!canInteract()}
-          >
-            <Paperclip className="w-5 h-5" />
-          </Button>
-          
-          <Input
-            type="text"
-            placeholder={canInteract() ? "Digite uma mensagem..." : "Assuma o atendimento para enviar mensagens"}
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey && canInteract()) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            className="flex-grow bg-transparent border-none focus:ring-0 h-10 px-2 text-gray-900 dark:text-gray-100"
-            disabled={!canInteract()}
-          />
-          
-          {message.trim() ? (
-            <Button 
-              onClick={handleSend} 
-              size="icon" 
-              className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10"
-              title="Enviar mensagem"
-              disabled={!canInteract()}
-            >
-            <Send className="w-5 h-5" />
-          </Button>
-          ) : (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className={`rounded-full w-10 h-10 ${isRecording ? 'bg-red-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-              onClick={toggleRecording}
-              title={isRecording ? "Parar gravação" : "Gravar áudio"}
-              disabled={!canInteract()}
-            >
-              <Mic className="w-5 h-5" />
-            </Button>
-          )}
         </div>
-      </div>
-    </div>
-  );
-};
+      )}
+
+      {/* Modal de Confirmação de Mensagem Longa */}
+      {showLongMessageConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Mensagem longa</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Sua mensagem tem mais de 100 caracteres. Deseja enviar mesmo assim?
+            </p>
+            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded mb-6 max-h-32 overflow-y-auto">
+              <p className="text-sm">{pendingMessage}</p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={cancelSendLongMessage}>
+                Cancelar
+              </Button>
+              <Button onClick={confirmSendLongMessage} className="bg-blue-600 hover:bg-blue-700 text-white">
+                Enviar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
 
 export function ChatWindow({ 
   chat, 

@@ -1,6 +1,6 @@
 import { ChatMessage, ChatStatus } from '@/lib/models'
 import { cn } from '@/lib/utils'
-import { Check, CheckCheck, Clock, AlertCircle, Reply, Edit, Trash2, Info, MoreVertical } from 'lucide-react'
+import { Check, CheckCheck, Clock, AlertCircle, Reply, Edit, Trash2, Info, MoreVertical, FileText, ExternalLink, User, MapPin, X } from 'lucide-react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -44,12 +44,48 @@ const formatDate = (date: Date) => {
 }
 
 export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo }: ChatMessageItemProps) {
+  const [showImagePopup, setShowImagePopup] = useState(false)
   const [showActions, setShowActions] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
+
+  const isUser = message.role === 'user'
+  const isAgent = message.role === 'agent'
+  const isAI = message.role === 'ai' || message.role === 'assistant'
+  
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const formatDate = (timestamp: string) => {
+    return new Date(timestamp).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+
+  const handleImageClick = () => {
+    if (message.mediaType === 'image' && message.mediaUrl) {
+      setShowImagePopup(true)
+    }
+  }
+
+  const handleDocumentClick = () => {
+    if (message.mediaType === 'document' && message.mediaUrl) {
+      // Abrir documento em nova aba
+      const fullUrl = message.mediaUrl.startsWith('http') 
+        ? message.mediaUrl 
+        : `${window.location.origin}${message.mediaUrl}`
+      window.open(fullUrl, '_blank')
+    }
+  }
+
   // Mensagens da empresa (IA ou agente) ficam do lado esquerdo
   const isFromCompany = message.role === 'agent' || message.role === 'ai'
   const isFromCustomer = message.role === 'user'
-  const isAI = message.role === 'ai'
-  const isAgent = message.role === 'agent'
   
   const isFailed = message.status === 'failed'
   
@@ -70,259 +106,263 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   return (
     <>
       {isFirstOfDay && (
-        <div className="flex justify-center my-2">
-          <span className="bg-gray-200 dark:bg-gray-700 text-xs text-gray-600 dark:text-gray-300 rounded-full px-3 py-1">
+        <div className="flex justify-center my-4">
+          <div className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-3 py-1 rounded-full">
             {formatDate(dateObj)}
-          </span>
+          </div>
         </div>
       )}
-      <div className={cn(
-        "flex items-end gap-2",
-        isFromCustomer ? "justify-start" : "justify-end"
-      )}>
-        {/* Avatar do lado esquerdo para cliente */}
-        {isFromCustomer && showAvatar && (
-          <Avatar className="w-8 h-8">
+      
+      <div className={`flex gap-2 mb-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+        {!isUser && showAvatar && (
+          <Avatar className="w-8 h-8 flex-shrink-0">
             <AvatarImage src={avatar} />
-            <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
+            <AvatarFallback className="text-xs">
+              {isAI ? '🤖' : (contactName?.charAt(0) || '?')}
+            </AvatarFallback>
           </Avatar>
         )}
         
-        <div 
-          className={cn(
-            "rounded-lg px-3 py-2 max-w-lg lg:max-w-xl shadow-sm relative group",
-            isFromCustomer 
-              ? "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100" 
-                          : isAI 
-            ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-700"
-            : "bg-blue-500 text-white",
-            isFailed && "border border-red-500"
-          )}
-          onMouseEnter={() => setShowActions(true)}
-          onMouseLeave={() => setShowActions(false)}
-        >
-          {/* Menu de ações */}
-          {showActions && (
-            <div className={cn(
-              "absolute top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
-              isFromCustomer ? "-right-20" : "-left-20"
-            )}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => onReply?.(message)}
-                title="Responder"
-              >
-                <Reply className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => onInfo?.(message)}
-                title="Informações"
-              >
-                <Info className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-              </Button>
-              
-              {isFromCompany && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"
-                    onClick={() => onEdit?.(message)}
-                    title="Editar"
-                  >
-                    <Edit className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-red-100 dark:hover:bg-red-900/20"
-                    onClick={() => onDelete?.(message.id)}
-                    title="Excluir"
-                  >
-                    <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400" />
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Mostrar nome para mensagens da empresa */}
-          {showName && isFromCompany && (
-            <div className={cn(
-              "text-xs font-semibold mb-1",
-              isAI ? "text-green-700 dark:text-green-300" : "text-blue-100"
-            )}>
-              {displayName}
+        <div className={`max-w-[70%] ${isUser ? 'order-first' : ''}`}>
+          {!isUser && showName && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 px-1">
+              {isAI ? 'IA Assistente' : isAgent ? 'Atendente' : contactName}
             </div>
           )}
           
-          {/* Renderizar conteúdo baseado no tipo */}
-          {message.mediaType ? (
+          <div 
+            className={`relative group rounded-lg px-3 py-2 ${
+              isUser 
+                ? 'bg-blue-500 text-white' 
+                : isAI 
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-100'
+                  : isAgent
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-100'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+            }`}
+            onMouseEnter={() => setShowActions(true)}
+            onMouseLeave={() => setShowActions(false)}
+          >
+            {/* Conteúdo da mensagem */}
             <div className="space-y-2">
-              {/* Renderizar mídia baseado no tipo */}
+              {/* Imagem */}
               {message.mediaType === 'image' && message.mediaUrl && (
                 <div className="space-y-1">
                   <img 
-                    src={message.mediaUrl} 
-                    alt={message.mediaInfo?.caption || 'Imagem'} 
-                    className="max-w-48 max-h-48 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => {
-                      // Criar popup para visualizar imagem
-                      const popup = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes')
-                      if (popup) {
-                        popup.document.write(`
-                          <html>
-                            <head><title>Visualizar Imagem</title></head>
-                            <body style="margin:0; padding:20px; background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh;">
-                              <img src="${message.mediaUrl}" style="max-width:100%; max-height:100%; object-fit:contain;" />
-                            </body>
-                          </html>
-                        `)
-                        popup.document.close()
-                      }
+                    src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+                    alt="Imagem enviada"
+                    className="max-w-48 max-h-48 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={handleImageClick}
+                    onError={(e) => {
+                      console.error('Erro ao carregar imagem:', message.mediaUrl)
+                      e.currentTarget.style.display = 'none'
                     }}
                   />
                   {message.mediaInfo?.caption && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <p className="text-xs opacity-75">
                       {message.mediaInfo.caption}
                     </p>
                   )}
                 </div>
               )}
               
+              {/* Áudio */}
               {message.mediaType === 'audio' && message.mediaUrl && (
                 <div className="space-y-1">
                   <audio controls className="max-w-48">
-                    <source src={message.mediaUrl} type={message.mediaInfo?.mimeType || 'audio/mpeg'} />
+                    <source 
+                      src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+                      type={message.mediaInfo?.mimeType || 'audio/mpeg'} 
+                    />
                     Seu navegador não suporta áudio.
                   </audio>
                 </div>
               )}
               
+              {/* Vídeo */}
               {message.mediaType === 'video' && message.mediaUrl && (
                 <div className="space-y-1">
                   <video controls className="max-w-48 max-h-48 rounded-lg">
-                    <source src={message.mediaUrl} type={message.mediaInfo?.mimeType || 'video/mp4'} />
+                    <source 
+                      src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+                      type={message.mediaInfo?.mimeType || 'video/mp4'} 
+                    />
                     Seu navegador não suporta vídeo.
                   </video>
                   {message.mediaInfo?.caption && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <p className="text-xs opacity-75">
                       {message.mediaInfo.caption}
                     </p>
                   )}
                 </div>
               )}
               
+              {/* Documento */}
               {message.mediaType === 'document' && message.mediaUrl && (
-                <div className="flex items-center gap-2 p-2 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                  <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded flex items-center justify-center">
-                    <span className="text-xs font-bold text-red-600 dark:text-red-400">PDF</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {message.mediaInfo?.title || 'Documento'}
-                    </p>
-                    {message.mediaInfo?.mimeType && (
-                      <p className="text-xs text-gray-500">
-                        {message.mediaInfo.mimeType}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.open(message.mediaUrl, '_blank')}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    Abrir
-                  </Button>
-                </div>
-              )}
-              
-              {message.mediaType === 'contact' && message.mediaInfo && (
-                <div className="flex items-center gap-2 p-2 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                    <span className="text-sm">👤</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      {message.mediaInfo.displayName}
-                    </p>
-                    <p className="text-xs text-gray-500">Contato compartilhado</p>
-                  </div>
-                </div>
-              )}
-              
-              {message.mediaType === 'location' && message.mediaInfo && (
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 p-2 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                    <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                      <span className="text-sm">📍</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Localização</p>
-                      {message.mediaInfo.address && (
-                        <p className="text-xs text-gray-500">{message.mediaInfo.address}</p>
+                  <div 
+                    className="flex items-center gap-2 p-2 bg-white/10 rounded cursor-pointer hover:bg-white/20 transition-colors"
+                    onClick={handleDocumentClick}
+                  >
+                    <FileText className="w-6 h-6 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {message.mediaInfo?.filename || message.mediaInfo?.title || 'Documento'}
+                      </p>
+                      {message.mediaInfo?.pageCount && (
+                        <p className="text-xs opacity-75">
+                          {message.mediaInfo.pageCount} páginas
+                        </p>
                       )}
                     </div>
-                    {message.mediaInfo.latitude && message.mediaInfo.longitude && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(`https://maps.google.com/?q=${message.mediaInfo?.latitude},${message.mediaInfo?.longitude}`, '_blank')}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Ver no Maps
-                      </Button>
-                    )}
+                    <ExternalLink className="w-4 h-4 flex-shrink-0" />
                   </div>
                 </div>
               )}
               
-              {/* Texto da mensagem (se houver) */}
-              {message.content && !message.content.startsWith('📷') && !message.content.startsWith('🎤') && !message.content.startsWith('🎬') && !message.content.startsWith('📄') && !message.content.startsWith('👤') && !message.content.startsWith('📍') && (
-                <p className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>
+              {/* Contato */}
+              {message.mediaType === 'contact' && message.mediaInfo && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
+                    <User className="w-6 h-6 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">
+                        {message.mediaInfo.displayName}
+                      </p>
+                      <p className="text-xs opacity-75">Contato compartilhado</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Localização */}
+              {message.mediaType === 'location' && message.mediaInfo && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
+                    <MapPin className="w-6 h-6 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">Localização</p>
+                      {message.mediaInfo.address && (
+                        <p className="text-xs opacity-75">{message.mediaInfo.address}</p>
+                      )}
+                      <p className="text-xs opacity-75">
+                        {message.mediaInfo.latitude}, {message.mediaInfo.longitude}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Texto da mensagem */}
+              {message.content && !message.content.startsWith('[') && (
+                <p className="text-sm whitespace-pre-wrap break-words">
                   {message.content}
                 </p>
               )}
             </div>
-          ) : (
-            <p className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>
-              {message.content}
-            </p>
-          )}
-          
-          <div className="flex items-center justify-end gap-2 mt-1">
-            <span className={cn(
-              "text-xs",
-              isFromCustomer ? "text-gray-500 dark:text-gray-400" : isAI ? "text-green-600 dark:text-green-400" : "text-blue-100"
-            )}>
-              {format(dateObj, 'HH:mm')}
-            </span>
-            {isFromCompany && <MessageStatus status={message.status} />}
-            {isFailed && (
-              <span className="text-xs text-red-500 ml-2">Erro</span>
+            
+            {/* Timestamp */}
+            <div className={`text-xs mt-1 ${isUser ? 'text-blue-100' : 'opacity-60'}`}>
+              {formatTime(message.timestamp)}
+              {message.status === 'sent' && isUser && (
+                <span className="ml-1">✓</span>
+              )}
+              {message.status === 'delivered' && isUser && (
+                <span className="ml-1">✓✓</span>
+              )}
+              {message.status === 'read' && isUser && (
+                <span className="ml-1 text-blue-200">✓✓</span>
+              )}
+            </div>
+            
+            {/* Actions menu */}
+            {showActions && (onReply || onEdit || onDelete || onInfo) && (
+              <div className={`absolute top-0 ${isUser ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'} flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                {onReply && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                    onClick={() => onReply(message)}
+                    title="Responder"
+                  >
+                    <Reply className="w-3 h-3" />
+                  </Button>
+                )}
+                
+                {onEdit && !isUser && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                    onClick={() => onEdit(message)}
+                    title="Editar"
+                  >
+                    <Edit className="w-3 h-3" />
+                  </Button>
+                )}
+                
+                {onDelete && !isUser && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 text-red-500 hover:text-red-600"
+                    onClick={() => onDelete(message.id)}
+                    title="Deletar"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
+                
+                {onInfo && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 bg-white dark:bg-gray-800 shadow-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                    onClick={() => onInfo(message)}
+                    title="Informações"
+                  >
+                    <Info className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </div>
         
-        {/* Avatar do lado direito para empresa (IA/Agente) */}
-        {isFromCompany && showAvatar && (
-          <Avatar className="w-8 h-8">
+        {isUser && showAvatar && (
+          <Avatar className="w-8 h-8 flex-shrink-0">
             <AvatarImage src={avatar} />
-            <AvatarFallback>
-              {isAI ? '🤖' : displayName.charAt(0)}
+            <AvatarFallback className="text-xs">
+              {contactName?.charAt(0) || 'U'}
             </AvatarFallback>
           </Avatar>
         )}
       </div>
+      
+      {/* Popup de imagem */}
+      {showImagePopup && message.mediaType === 'image' && message.mediaUrl && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 cursor-pointer"
+          onClick={() => setShowImagePopup(false)}
+        >
+          <div className="relative max-w-4xl max-h-4xl p-4">
+            <img 
+              src={message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`}
+              alt="Imagem ampliada"
+              className="max-w-full max-h-full object-contain"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 text-white hover:bg-white/20"
+              onClick={() => setShowImagePopup(false)}
+            >
+              <X className="w-6 h-6" />
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   )
 } 
