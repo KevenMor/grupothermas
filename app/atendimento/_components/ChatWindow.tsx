@@ -226,17 +226,10 @@ const MessageInput = ({
   const [previewType, setPreviewType] = useState<string>('')
   const [previewUrl, setPreviewUrl] = useState<string>('')
 
-  const handleSend = () => {
-    if (!message.trim() || !chat) return
-
-    if (message.length > 100) {
-      setPendingMessage(message)
-      setShowLongMessageConfirmation(true)
-      return
-    }
-
-    onSendMessage({ content: message })
-    setMessage('')
+  const handleSend = (data: { content: string, replyTo?: string, replyToContent?: string }) => {
+    if (!chat) return
+    onSendMessage(data)
+    setReplyMessage(null)
   }
 
   const confirmSendLongMessage = () => {
@@ -634,7 +627,7 @@ const MessageInput = ({
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  handleSend()
+                  handleSend({ content: message })
                 }
               }}
               className="pr-10"
@@ -675,7 +668,7 @@ const MessageInput = ({
             </Button>
 
             <Button
-              onClick={handleSend}
+              onClick={() => handleSend({ content: message })}
               disabled={!message.trim() || !canInteract()}
               size="icon"
               className="bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 dark:disabled:bg-gray-600"
@@ -820,15 +813,10 @@ export function ChatWindow({
   }
 
   // Função para enviar mensagem (adaptar para incluir reply)
-  const handleSend = (content: string) => {
+  const handleSend = (data: { content: string, replyTo?: string, replyToContent?: string }) => {
     if (!chat) return
-    if (replyMessage) {
-      // Enviar mensagem com referência à mensagem respondida
-      onSendMessage({ content, replyTo: replyMessage.id, replyToContent: replyMessage.content })
-      setReplyMessage(null)
-    } else {
-      onSendMessage({ content })
-    }
+    onSendMessage(data)
+    setReplyMessage(null)
   }
 
   // Implementar funções das mensagens
