@@ -331,7 +331,7 @@ async function handleMessage(message: ZAPIWebhookEvent) {
       name: userName,
       // Adicionar informações de mídia se houver
       ...(mediaInfo && { 
-        mediaType: mediaInfo.type,
+        mediaType: mediaInfo.type as 'image' | 'audio' | 'video' | 'document' | 'contact' | 'location',
         mediaUrl: mediaInfo.url,
         mediaInfo: mediaInfo 
       })

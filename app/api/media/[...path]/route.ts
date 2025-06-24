@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    // Aguardar params (Promise no Next.js 15+)
+    const resolvedParams = await params
+    
     // Reconstruir a URL original
-    const originalUrl = decodeURIComponent(params.path.join('/'))
+    const originalUrl = decodeURIComponent(resolvedParams.path.join('/'))
     
     // Validar se é uma URL válida
     if (!originalUrl.startsWith('http')) {

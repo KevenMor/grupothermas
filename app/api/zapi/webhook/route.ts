@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
       status: 'sent',
       // Adicionar informações de mídia se houver
       ...(mediaInfo && { 
-        mediaType: mediaInfo.type,
+        mediaType: mediaInfo.type as 'image' | 'audio' | 'video' | 'document' | 'contact' | 'location',
         mediaUrl: mediaInfo.url,
         mediaInfo: mediaInfo 
       })
