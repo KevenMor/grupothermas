@@ -251,39 +251,97 @@ export default function AdminPage() {
   const checkStatus = async () => {
     const toastId = toast.loading('Verificando status da conexão...')
     try {
+      setCheckingStatus(true)
       const response = await fetch('/api/admin/status')
       const data = await response.json()
 
-      if (response.ok) {
-        toast.success('Status verificado com sucesso!', { id: toastId })
-        setConnectionStatus(data.connected ? 'connected' : 'disconnected')
+      if (response.ok && data.connected) {
+        toast.success('✅ Z-API conectado com sucesso!', { id: toastId })
+        setConnectionStatus('connected')
         setLastStatusCheck(new Date().toISOString())
-        setConfig(prev => ({
-          ...prev,
-          connectionStatus: data.connected ? 'connected' : 'disconnected',
-          lastStatusCheck: new Date().toISOString()
-        }))
+        
+        // Salvar status no Firebase
+        const updatedConfig = {
+          ...config,
+          connectionStatus: 'connected',
+          lastStatusCheck: new Date().toISOString(),
+          lastConnection: new Date().toISOString()
+        }
+        setConfig(updatedConfig)
+        
+        // Salvar no Firebase
+        await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedConfig)
+        })
+        
       } else {
-        toast.error(data.error || 'Falha ao verificar status.', { id: toastId })
-        setConnectionStatus('error')
+        toast.error(data.error || 'Z-API desconectado', { id: toastId })
+        setConnectionStatus('disconnected')
+        
+        // Salvar status desconectado
+        const updatedConfig = {
+          ...config,
+          connectionStatus: 'disconnected',
+          lastStatusCheck: new Date().toISOString()
+        }
+        setConfig(updatedConfig)
+        
+        await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedConfig)
+        })
       }
     } catch (error) {
       console.error("Check status error:", error)
       toast.error('Erro de rede ao verificar status.', { id: toastId })
       setConnectionStatus('error')
+    } finally {
+      setCheckingStatus(false)
     }
   }
 
   const generateQRCode = async () => {
+    if (!config.zapiApiKey || !config.zapiInstanceId) {
+      toast.error('Configure as credenciais Z-API primeiro')
+      return
+    }
+
     setGeneratingQR(true)
     const toastId = toast.loading('Gerando QR Code...')
     try {
       const response = await fetch('/api/admin/qr-code', { method: 'POST' })
       const data = await response.json()
 
-      if (response.ok) {
-        setQrCodeImage(data.qrCode)
-        toast.success('QR Code gerado com sucesso!', { id: toastId })
+      if (response.ok && data.qrCode) {
+        // Verificar se é uma URL ou dados base64
+        let qrCodeUrl = data.qrCode
+        if (typeof data.qrCode === 'object' && data.qrCode.qrcode) {
+          qrCodeUrl = data.qrCode.qrcode
+        }
+        
+        setQrCodeImage(qrCodeUrl)
+        toast.success('QR Code gerado com sucesso! Escaneie com seu WhatsApp.', { id: toastId })
+        
+        // Salvar QR Code no config
+        const updatedConfig = {
+          ...config,
+          qrCodeUrl: qrCodeUrl,
+          connectionStatus: 'qr_code',
+          updatedAt: new Date().toISOString()
+        }
+        setConfig(updatedConfig)
+        setConnectionStatus('qr_code')
+        
+        // Salvar no Firebase
+        await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedConfig)
+        })
+        
       } else {
         toast.error(data.error || 'Falha ao gerar QR Code.', { id: toastId })
       }
@@ -375,8 +433,9 @@ export default function AdminPage() {
       connected: 'Conectado',
       disconnected: 'Desconectado',
       checking: 'Verificando...',
-      error: 'Erro',
-      connecting: 'Conectando...'
+      qr_code: 'QR Code Gerado',
+      connecting: 'Conectando...',
+      error: 'Erro'
     }
     return translations[status] || 'Indefinido'
   }
@@ -384,7 +443,9 @@ export default function AdminPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'connected': return 'bg-green-500'
-      case 'connecting': return 'bg-yellow-500'
+      case 'connecting': return 'bg-orange-500'
+      case 'qr_code': return 'bg-blue-500'
+      case 'checking': return 'bg-yellow-500'
       case 'disconnected': return 'bg-red-500'
       default: return 'bg-gray-500'
     }
@@ -394,6 +455,8 @@ export default function AdminPage() {
     switch (status) {
       case 'connected': return <CheckCircle className="h-4 w-4" />
       case 'connecting': return <Loader className="h-4 w-4 animate-spin" />
+      case 'qr_code': return <QrCode className="h-4 w-4" />
+      case 'checking': return <Loader className="h-4 w-4 animate-spin" />
       case 'disconnected': return <XCircle className="h-4 w-4" />
       default: return <XCircle className="h-4 w-4" />
     }
@@ -1348,99 +1411,7 @@ export default function AdminPage() {
           </Button>
         </div>
 
-        {/* Nova Seção: Diagnóstico do Webhook */}
-        <Card className="p-6 mt-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold">🔍 Diagnóstico do Webhook</h2>
-              <p className="text-gray-600 mt-1">Verifique por que as mensagens do WhatsApp não estão chegando</p>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const response = await fetch('/api/admin/webhook-diagnostics')
-                    const result = await response.json()
-                    console.log('Diagnóstico completo:', result)
-                    
-                    if (result.status === 'ok') {
-                      toast.success('✅ Webhook configurado corretamente!')
-                    } else if (result.status === 'error') {
-                      // Mostrar erro específico
-                      if (result.diagnostics?.issues?.length > 0) {
-                        const mainIssue = result.diagnostics.issues[0]
-                        toast.error(`❌ ${mainIssue.message}`)
-                        console.error('Issues detalhados:', result.diagnostics.issues)
-                      } else {
-                        toast.error(`❌ ${result.error || 'Erro desconhecido'}`)
-                      }
-                    } else {
-                      const issueCount = result.diagnostics?.issues?.length || 0
-                      if (issueCount > 0) {
-                        toast.warning(`⚠️ ${issueCount} problema(s) encontrado(s)`)
-                        console.warn('Issues:', result.diagnostics.issues)
-                      } else {
-                        toast.success('✅ Nenhum problema encontrado')
-                      }
-                    }
-                  } catch (error) {
-                    console.error('Erro completo:', error)
-                    toast.error('❌ Erro ao fazer diagnóstico - verifique o console')
-                  }
-                }}
-              >
-                🔍 Diagnosticar
-              </Button>
-              
-              <Button
-                onClick={async () => {
-                  try {
-                    const response = await fetch('/api/admin/webhook-diagnostics', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ action: 'fix_webhook' })
-                    })
-                    const result = await response.json()
-                    console.log('Resultado da correção:', result)
-                    
-                    if (result.success) {
-                      toast.success('✅ Webhook corrigido com sucesso!')
-                    } else {
-                      // Mostrar erro mais detalhado
-                      const errorMsg = result.error || result.message || 'Erro desconhecido'
-                      toast.error(`❌ Erro na correção: ${errorMsg}`)
-                      if (result.details) {
-                        console.error('Detalhes do erro:', result.details)
-                      }
-                    }
-                  } catch (error) {
-                    console.error('Erro completo na correção:', error)
-                    toast.error('❌ Erro ao corrigir webhook - verifique o console')
-                  }
-                }}
-              >
-                Corrigir Webhook
-              </Button>
-            </div>
-          </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium mb-2">🚨 Possíveis Problemas</h4>
-            <ul className="text-sm space-y-1 text-gray-700">
-              <li>• Webhook não configurado na Z-API</li>
-              <li>• URL do webhook incorreta</li>
-              <li>• WhatsApp não conectado</li>
-              <li>• Credenciais Z-API inválidas</li>
-              <li>• Variável NEXT_PUBLIC_BASE_URL não configurada</li>
-            </ul>
-            
-            <div className="mt-4 p-3 bg-blue-100 rounded text-sm">
-              <strong>💡 Dica:</strong> Se o diagnóstico mostrar problemas, clique em "Corrigir Webhook" para tentar resolver automaticamente.
-            </div>
-          </div>
-        </Card>
 
 
 
@@ -1910,6 +1881,8 @@ const ConnectionStatusPill = ({ status }: { status: string | null }) => {
     connected: { text: 'Conectado', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
     disconnected: { text: 'Desconectado', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
     checking: { text: 'Verificando...', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+    qr_code: { text: 'QR Code Gerado', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+    connecting: { text: 'Conectando...', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
     error: { text: 'Erro', color: 'bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-100' },
   }
   

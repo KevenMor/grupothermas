@@ -51,8 +51,24 @@ export async function POST() {
       return NextResponse.json({ error: data.error || 'Erro ao gerar QR Code' }, { status: 400 })
     }
 
-    console.log('QR Code gerado com sucesso')
-    return NextResponse.json({ qrCode: data })
+    console.log('QR Code gerado com sucesso:', data)
+    
+    // Extrair a URL do QR Code do response
+    let qrCodeUrl = null
+    if (data.qrcode) {
+      qrCodeUrl = data.qrcode
+    } else if (data.data && data.data.qrcode) {
+      qrCodeUrl = data.data.qrcode
+    } else if (typeof data === 'string') {
+      qrCodeUrl = data
+    }
+    
+    if (!qrCodeUrl) {
+      console.log('QR Code não encontrado na resposta:', data)
+      return NextResponse.json({ error: 'QR Code não encontrado na resposta da Z-API' }, { status: 400 })
+    }
+    
+    return NextResponse.json({ qrCode: qrCodeUrl })
 
   } catch (error) {
     console.error('Erro ao gerar QR Code:', error)

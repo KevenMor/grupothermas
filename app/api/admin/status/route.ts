@@ -70,13 +70,18 @@ export async function GET() {
       )
     }
 
-    // Update last status check
+    // Verificar se está realmente conectado
+    const isConnected = data.connected === true || data.status === 'connected'
+    
+    // Update status and last check
     await adminDB.collection('admin_config').doc('ai_settings').update({
-      lastStatusCheck: new Date().toISOString()
+      lastStatusCheck: new Date().toISOString(),
+      connectionStatus: isConnected ? 'connected' : 'disconnected',
+      lastConnection: isConnected ? new Date().toISOString() : config.lastConnection
     })
 
     return NextResponse.json({
-      connected: true,
+      connected: isConnected,
       status: data,
       lastCheck: new Date().toISOString()
     })
