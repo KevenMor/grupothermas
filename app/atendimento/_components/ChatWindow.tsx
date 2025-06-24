@@ -25,7 +25,8 @@ import {
   Reply,
   Edit,
   Trash2,
-  Info
+  Info,
+  X
 } from 'lucide-react'
 import { ChatMessageItem } from './ChatMessageItem'
 import { EmojiPicker } from './EmojiPicker'
@@ -792,6 +793,7 @@ export function ChatWindow({
   onMessageInfo
 }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [replyMessage, setReplyMessage] = useState<ChatMessage | null>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -807,35 +809,29 @@ export function ChatWindow({
     }
   }
 
-  // Implementar funções das mensagens
-  const handleReplyMessage = async (message: ChatMessage) => {
+  // Função para iniciar reply
+  const handleReplyMessage = (message: ChatMessage) => {
+    setReplyMessage(message)
+  }
+
+  // Função para cancelar reply
+  const handleCancelReply = () => {
+    setReplyMessage(null)
+  }
+
+  // Função para enviar mensagem (adaptar para incluir reply)
+  const handleSend = (content: string) => {
     if (!chat) return
-    
-    const replyContent = prompt('Digite sua resposta:')
-    if (!replyContent) return
-
-    try {
-      const response = await fetch('/api/atendimento/message-actions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'reply',
-          chatId: chat.id,
-          messageId: message.id,
-          content: replyContent,
-          phone: chat.customerPhone
-        })
-      })
-
-      if (response.ok) {
-        // Recarregar mensagens ou usar callback
-        if (onReplyMessage) onReplyMessage(message)
-      }
-    } catch (error) {
-      console.error('Erro ao responder mensagem:', error)
+    if (replyMessage) {
+      // Enviar mensagem com referência à mensagem respondida
+      onSendMessage({ content, replyTo: replyMessage.id, replyToContent: replyMessage.content })
+      setReplyMessage(null)
+    } else {
+      onSendMessage(content)
     }
   }
 
+  // Implementar funções das mensagens
   const handleEditMessage = async (message: ChatMessage) => {
     if (!chat) return
     
@@ -961,9 +957,21 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         <div ref={messagesEndRef} />
       </div>
       
+      {replyMessage && (
+        <div className="flex items-center bg-blue-100 border-l-4 border-blue-500 px-3 py-2 mb-2 rounded relative">
+          <div className="flex-1">
+            <div className="text-xs text-blue-700 font-semibold">Respondendo a:</div>
+            <div className="text-xs text-blue-900 truncate max-w-xs">{replyMessage.content}</div>
+          </div>
+          <Button size="icon" variant="ghost" className="ml-2" onClick={handleCancelReply}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
       <MessageInput
         chat={chat}
-        onSendMessage={onSendMessage}
+        onSendMessage={handleSend}
         onAssumeChat={handleAssumeChat}
       />
     </div>

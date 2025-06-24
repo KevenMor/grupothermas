@@ -207,8 +207,25 @@ export async function POST(request: NextRequest) {
       zapiHeaders['Client-Token'] = config.zapiClientToken.trim()
     }
 
-    console.log('Enviando para Z-API:', { 
-      url: zapiUrl, 
+    // Log detalhado do payload (truncar base64)
+    const logPayload = { ...payload }
+    if (logPayload.document && typeof logPayload.document === 'string' && logPayload.document.length > 100) {
+      logPayload.document = logPayload.document.substring(0, 100) + '... (truncado)'
+    }
+    if (logPayload.image && typeof logPayload.image === 'string' && logPayload.image.length > 100) {
+      logPayload.image = logPayload.image.substring(0, 100) + '... (truncado)'
+    }
+    if (logPayload.audio && typeof logPayload.audio === 'string' && logPayload.audio.length > 100) {
+      logPayload.audio = logPayload.audio.substring(0, 100) + '... (truncado)'
+    }
+    if (logPayload.video && typeof logPayload.video === 'string' && logPayload.video.length > 100) {
+      logPayload.video = logPayload.video.substring(0, 100) + '... (truncado)'
+    }
+
+    console.log('Enviando para Z-API:', {
+      url: zapiUrl,
+      headers: zapiHeaders,
+      payload: logPayload,
       payloadKeys: Object.keys(payload),
       hasBase64: Object.values(payload).some(v => typeof v === 'string' && v.includes('base64')),
       payloadSize: JSON.stringify(payload).length,
@@ -217,13 +234,31 @@ export async function POST(request: NextRequest) {
     })
 
     // Enviar via Z-API
-    const zapiResponse = await fetch(zapiUrl, {
-      method: 'POST',
-      headers: zapiHeaders,
-      body: JSON.stringify(payload)
-    })
-
-    const zapiResult = await zapiResponse.json()
+    let zapiResponse, zapiResult, zapiText
+    try {
+      zapiResponse = await fetch(zapiUrl, {
+        method: 'POST',
+        headers: zapiHeaders,
+        body: JSON.stringify(payload)
+      })
+      zapiText = await zapiResponse.text()
+      try {
+        zapiResult = JSON.parse(zapiText)
+      } catch (err) {
+        zapiResult = { raw: zapiText }
+      }
+      console.log('Resposta da Z-API:', {
+        status: zapiResponse.status,
+        statusText: zapiResponse.statusText,
+        body: zapiResult
+      })
+    } catch (err) {
+      console.error('Erro ao enviar para Z-API:', err)
+      return NextResponse.json({
+        error: 'Erro ao enviar para Z-API',
+        details: err instanceof Error ? err.message : 'Unknown error'
+      }, { status: 500 })
+    }
 
     if (!zapiResponse.ok) {
       console.error('Erro Z-API:', zapiResult)
