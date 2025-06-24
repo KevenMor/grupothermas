@@ -7,7 +7,7 @@ import { sendImage, sendAudio, sendDocument } from '@/lib/zapi'
 
 interface MediaMessage {
   phone: string
-  type: 'text' | 'image' | 'audio' | 'video' | 'document'
+  type: 'image' | 'audio' | 'video' | 'document'
   content?: string // Para texto
   localPath?: string // Para mídia local
   caption?: string // Legenda para mídia
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       
       const conversationRef = adminDB.collection('conversations').doc(phone)
       const messageData: MessageData = {
-        content: type === 'text' ? content || '' : `[${type.toUpperCase()}]`,
+        content: `[${type.toUpperCase()}]`,
         role: 'agent',
         timestamp: new Date().toISOString(),
         status: 'sent',
@@ -220,16 +220,14 @@ export async function POST(request: NextRequest) {
         agentName: 'Sistema' // TODO: Pegar nome do agente logado
       }
 
-      // Adicionar informações de mídia se não for texto
-      if (type !== 'text') {
-        messageData.mediaType = type as 'image' | 'audio' | 'video' | 'document'
-        messageData.mediaUrl = mediaUrl
-        messageData.mediaInfo = {
-          type: type,
-          url: mediaUrl,
-          filename: filename || localPath?.split('/').pop(),
-          ...(caption && { caption })
-        }
+      // Adicionar informações de mídia
+      messageData.mediaType = type
+      messageData.mediaUrl = mediaUrl
+      messageData.mediaInfo = {
+        type: type,
+        url: mediaUrl,
+        filename: filename || localPath?.split('/').pop(),
+        ...(caption && { caption })
       }
 
       console.log('Dados da mensagem para salvar:', messageData)
@@ -238,7 +236,7 @@ export async function POST(request: NextRequest) {
       
       // Atualizar última mensagem da conversa
       await conversationRef.update({
-        lastMessage: type === 'text' ? content : `[${type.toUpperCase()}] enviado`,
+        lastMessage: `[${type.toUpperCase()}] enviado`,
         timestamp: new Date().toISOString()
       })
 
