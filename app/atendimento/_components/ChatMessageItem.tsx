@@ -154,7 +154,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
           >
             {/* Menu de ações */}
             {showActions && (
-              <div className={`absolute top-1 ${isFromAgent ? 'right-2' : 'left-2'} flex gap-1 z-20 bg-white/80 dark:bg-gray-800/80 rounded shadow p-1`}>
+              <div className={`absolute -top-9 ${isFromAgent ? 'right-2' : 'left-2'} flex gap-1 z-30 bg-white/90 dark:bg-gray-800/90 rounded shadow p-1`}>
                 <Button size="icon" variant="ghost" onClick={() => onReply && onReply(message)} title="Responder"><Reply className="w-4 h-4" /></Button>
                 {isFromAgent && (
                   <Button size="icon" variant="ghost" onClick={() => onEdit && onEdit(message)} title="Editar"><Edit className="w-4 h-4" /></Button>

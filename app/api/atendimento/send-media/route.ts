@@ -11,6 +11,7 @@ interface MediaMessage {
   localPath?: string // Para mídia local
   caption?: string // Legenda para mídia
   filename?: string // Para documentos
+  replyTo?: string
 }
 
 interface MessageData {
@@ -32,7 +33,7 @@ interface MessageData {
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, type, content, localPath, caption, filename }: MediaMessage = await request.json()
+    const { phone, type, content, localPath, caption, filename, replyTo }: MediaMessage & { replyTo?: string } = await request.json()
     
     console.log(`=== RECEBIDO PEDIDO DE ENVIO ===`)
     console.log('Phone:', phone)
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
     console.log('LocalPath:', localPath)
     console.log('Caption:', caption)
     console.log('Filename:', filename)
+    console.log('ReplyTo:', replyTo)
     
     if (!phone || !type) {
       return NextResponse.json({ 
@@ -80,6 +82,7 @@ export async function POST(request: NextRequest) {
     if (type === 'text') {
       zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`
       payload.message = content
+      if (replyTo) payload.messageId = replyTo
     } else if (localPath) {
       // Ler arquivo local e converter para base64
       try {
@@ -140,6 +143,7 @@ export async function POST(request: NextRequest) {
             
             payload.image = `data:${imageMimeType};base64,${base64Data}`
             if (caption) payload.caption = caption
+            if (replyTo) payload.messageId = replyTo
             break
 
           case 'audio':
@@ -152,6 +156,7 @@ export async function POST(request: NextRequest) {
             else if (audioExt === 'm4a') audioMimeType = 'audio/mp4'
             
             payload.audio = `data:${audioMimeType};base64,${base64Data}`
+            if (replyTo) payload.messageId = replyTo
             break
 
           case 'video':
@@ -165,6 +170,7 @@ export async function POST(request: NextRequest) {
             
             payload.video = `data:${videoMimeType};base64,${base64Data}`
             if (caption) payload.caption = caption
+            if (replyTo) payload.messageId = replyTo
             break
 
           case 'document':
@@ -178,6 +184,7 @@ export async function POST(request: NextRequest) {
             
             payload.document = `data:${docMimeType};base64,${base64Data}`
             payload.fileName = filename || localPath.split('/').pop() || 'documento'
+            if (replyTo) payload.messageId = replyTo
             break
 
           default:

@@ -786,10 +786,17 @@ export function ChatWindow({
   onMessageInfo
 }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [replyMessage, setReplyMessage] = useState<ChatMessage | null>(null)
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = messagesContainerRef.current
+    if (!container) return
+    // Verifica se o usuário está no final do chat
+    const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100
+    if (isAtBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages])
 
   // Adicionar log de depuração das mensagens
@@ -923,7 +930,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         onMarkResolved={onMarkResolved}
         onAssumeChat={handleAssumeChat}
       />
-      <div className="flex-1 min-h-0 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')]">
+      <div ref={messagesContainerRef} className="flex-1 min-h-0 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')]">
         {isLoading && messages.length === 0 ? (
           <div className="flex justify-center items-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
