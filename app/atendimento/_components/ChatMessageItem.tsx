@@ -198,6 +198,10 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   </video>
                 </div>
               )}
+              {/* Conteúdo textual */}
+              <div>
+                {message.content ? message.content : <span style={{color: 'red'}}>[Sem conteúdo]</span>}
+              </div>
             </div>
           </div>
         </div>

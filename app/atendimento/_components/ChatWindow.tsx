@@ -917,6 +917,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
           </div>
         ) : (
           <div className="space-y-2">
+            {console.log('Mensagens recebidas:', messages)}
             {messages.map((msg, idx) => {
               const dateObj = new Date(msg.timestamp)
               const isFirstOfDay = !lastDate || !isSameDay(lastDate, dateObj)
