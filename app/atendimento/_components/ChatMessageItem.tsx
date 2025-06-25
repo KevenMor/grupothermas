@@ -5,8 +5,7 @@ import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { useState, useEffect, useRef } from 'react'
-import twemoji from 'twemoji'
+import { useState, useEffect, useRef, useMemo } from 'react'
 
 interface ChatMessageItemProps {
   message: ChatMessage
@@ -317,10 +316,9 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
               {message.content && !message.mediaType && (
                 <div 
                   className="break-words"
-                  dangerouslySetInnerHTML={{ 
-                    __html: twemoji.parse(message.content) 
-                  }}
-                />
+                >
+                  {message.content}
+                </div>
               )}
               {!message.content && !message.mediaType ? <span style={{color: 'red'}}>[Sem conteúdo]</span> : null}
             </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Chat, ChatMessage } from '@/lib/models'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -789,28 +789,34 @@ export function ChatWindow({
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [replyMessage, setReplyMessage] = useState<ChatMessage | null>(null)
   const [autoScroll, setAutoScroll] = useState(true);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
+
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 10;
+    setAutoScroll(isAtBottom);
+  }, []);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
 
-    const handleScroll = () => {
-      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 10;
-      setAutoScroll(isAtBottom);
-    };
-
     container.addEventListener('scroll', handleScroll);
     return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [handleScroll]);
 
   useEffect(() => {
-    if (autoScroll) {
+    // Só fazer scroll se autoScroll estiver ativo E houver novas mensagens
+    if (autoScroll && messages.length > lastMessageCount) {
       const timeout = setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 50);
       return () => clearTimeout(timeout);
     }
-  }, [messages, autoScroll]);
+    setLastMessageCount(messages.length);
+  }, [messages.length, autoScroll, lastMessageCount]);
 
   // Adicionar log de depuração das mensagens
   console.log('Mensagens recebidas:', messages);
