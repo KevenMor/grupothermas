@@ -63,6 +63,37 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
     
+    // Se localPath for uma URL pública, envie direto para o Z-API
+    if (localPath.startsWith('http')) {
+      mediaUrl = localPath
+      switch (type) {
+        case 'image': {
+          const imageResult = await sendImage(phone, localPath, caption, replyTo)
+          if (!imageResult.success) throw new Error(imageResult.error || 'Erro ao enviar imagem')
+          zapiResult = imageResult
+          break
+        }
+        case 'audio': {
+          const audioResult = await sendAudio(phone, localPath, replyTo)
+          if (!audioResult.success) throw new Error(audioResult.error || 'Erro ao enviar áudio')
+          zapiResult = audioResult
+          break
+        }
+        case 'document': {
+          const docFilename = filename || localPath.split('/').pop() || 'documento'
+          const docMimeType = 'application/pdf'
+          const docResult = await sendDocument(phone, localPath, docFilename, docMimeType, replyTo)
+          if (!docResult.success) throw new Error(docResult.error || 'Erro ao enviar documento')
+          zapiResult = docResult
+          break
+        }
+        default:
+          return NextResponse.json({ error: 'Tipo de mídia não suportado para URL pública' }, { status: 400 })
+      }
+      // Retornar resposta
+      return NextResponse.json({ success: true, zapiResult })
+    }
+    
     // Ler arquivo local e converter para base64
     try {
       // Remover barra inicial se existir para join funcionar corretamente
