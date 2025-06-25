@@ -209,13 +209,13 @@ export async function POST(request: NextRequest) {
       let mediaUrlToSave = mediaUrl
       let lastMessageText = `[${type.toUpperCase()}] enviado`
       if (type === 'document') {
-        // Para documentos, sempre usar a URL pública da Z-API
+        // Para documentos, usar a URL pública da Z-API se existir, senão usar o link local
         if (zapiResult.url) {
           mediaUrlToSave = zapiResult.url
           lastMessageText = `📄 Documento enviado: ${filename || localPath?.split('/').pop() || 'documento.pdf'}`
         } else {
-          mediaUrlToSave = 'ERRO: Documento não possui URL pública da Z-API.'
-          lastMessageText = '❌ Erro ao enviar documento (sem URL pública)'
+          mediaUrlToSave = mediaUrl // fallback para o link local
+          lastMessageText = `📄 Documento enviado (link local): ${filename || localPath?.split('/').pop() || 'documento.pdf'}`
         }
       } else if (type === 'image') {
         lastMessageText = '🖼️ Imagem enviada'
