@@ -184,7 +184,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
           {message.replyTo && (
             <div
               className="mb-2 px-2 py-1 rounded bg-blue-100/80 dark:bg-blue-900/20 border-l-4 border-blue-500/80 dark:border-blue-400/70 text-xs shadow-sm flex flex-col gap-1 cursor-pointer hover:bg-blue-200/80 dark:hover:bg-blue-800/40 transition"
-              aria-label="Mensagem respondida"
+              aria-label="Mensagem citada"
               onClick={handleReplyBubbleClick}
             >
               <span className="flex items-center gap-1 font-semibold text-blue-700 dark:text-blue-200" style={{fontSize:'0.95em'}}>
@@ -192,7 +192,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                 {message.replyTo.author === 'agent' ? 'Você' : (contactName || 'Cliente')}
               </span>
               <span className="text-gray-700 dark:text-gray-200 truncate" style={{display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>
-                {message.replyTo.text?.length > 45 ? message.replyTo.text.slice(0, 45) + '…' : message.replyTo.text || 'Mensagem removida'}
+                {message.replyTo.text ? (message.replyTo.text.length > 45 ? message.replyTo.text.slice(0, 45) + '…' : message.replyTo.text) : 'Mensagem removida'}
               </span>
             </div>
           )}
