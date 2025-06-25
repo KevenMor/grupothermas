@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // URL pública do arquivo - usar URL completa do servidor
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const fileUrl = `${baseUrl}/uploads/${type}/${fileName}`
+    const fileUrl = `${baseUrl}/api/uploads/${type}/${fileName}`
 
     console.log('Upload concluído:', {
       fileName,

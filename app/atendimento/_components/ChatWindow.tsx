@@ -376,7 +376,23 @@ const MessageInput = ({
       
     } catch (error) {
       console.error('Erro ao enviar anexo:', error)
-      alert('Erro ao enviar arquivo. Tente novamente.')
+      
+      // Mostrar erro mais específico
+      let errorMessage = 'Erro ao enviar arquivo. Tente novamente.'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('upload')) {
+          errorMessage = 'Erro no upload do arquivo. Verifique se o arquivo não está corrompido.'
+        } else if (error.message.includes('Z-API')) {
+          errorMessage = 'Erro na API do WhatsApp. Tente novamente em alguns instantes.'
+        } else if (error.message.includes('404')) {
+          errorMessage = 'Arquivo não encontrado no servidor. Tente fazer upload novamente.'
+        } else {
+          errorMessage = `Erro: ${error.message}`
+        }
+      }
+      
+      alert(errorMessage)
     }
   }
 
