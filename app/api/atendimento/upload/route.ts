@@ -8,6 +8,9 @@ export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
+    if (!adminStorage) {
+      return NextResponse.json({ error: 'Firebase Storage não inicializado no backend.' }, { status: 500 })
+    }
     const formData = await request.formData()
     const file = formData.get('file') as File
     const type = formData.get('type') as string
