@@ -12,7 +12,7 @@ interface MediaMessage {
   localPath?: string // Para mídia local
   caption?: string // Legenda para mídia
   filename?: string // Para documentos
-  replyTo?: string
+  replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
 }
 
 interface MessageData {
@@ -30,11 +30,12 @@ interface MessageData {
     filename?: string
     caption?: string
   }
+  replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, type, content, localPath, caption, filename, replyTo }: MediaMessage & { replyTo?: string } = await request.json()
+    const { phone, type, content, localPath, caption, filename, replyTo }: MediaMessage = await request.json()
     
     console.log(`=== RECEBIDO PEDIDO DE ENVIO ===`)
     console.log('Phone:', phone)
@@ -111,7 +112,8 @@ export async function POST(request: NextRequest) {
             url: mediaUrl,
             filename: filename || localPath?.split('/').pop(),
             ...(caption && { caption })
-          }
+          },
+          ...(replyTo && { replyTo })
         }
         await conversationRef.collection('messages').add(messageData)
         await conversationRef.update({

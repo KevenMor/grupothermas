@@ -153,9 +153,12 @@ export interface ChatMessage {
     address?: string
     pageCount?: number
   }
-  // Campos para reply
-  replyTo?: string
-  replyToContent?: string
+  // Novo campo para reply
+  replyTo?: {
+    id: string
+    text: string
+    author: 'agent' | 'customer'
+  }
 }
 
 export interface ChatCustomer {

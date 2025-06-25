@@ -35,7 +35,7 @@ import { isSameDay } from 'date-fns'
 interface ChatWindowProps {
   chat: Chat | null
   messages: ChatMessage[]
-  onSendMessage: (data: { content: string, replyTo?: string, replyToContent?: string }) => void
+  onSendMessage: (data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } }) => void
   isLoading: boolean
   onToggleAI?: (chatId: string, enabled: boolean) => void
   onAssignAgent?: (chatId: string) => void
@@ -207,7 +207,7 @@ const MessageInput = ({
   onAssumeChat 
 }: { 
   chat: Chat | null
-  onSendMessage: (data: { content: string, replyTo?: string, replyToContent?: string }) => void
+  onSendMessage: (data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } }) => void
   onAssumeChat?: () => void
 }) => {
   const [message, setMessage] = useState('')
@@ -226,9 +226,18 @@ const MessageInput = ({
   const [previewType, setPreviewType] = useState<string>('')
   const [previewUrl, setPreviewUrl] = useState<string>('')
 
+  const [replyDraft, setReplyDraft] = useState<{ id: string, text: string, author: 'agent' | 'customer' } | null>(null)
+
   const handleSend = () => {
     if (!chat) return;
-    onSendMessage({ content: message });
+    if (replyDraft) {
+      onSendMessage({
+        ...{ content: message },
+        replyTo: replyDraft
+      });
+    } else {
+      onSendMessage({ content: message });
+    }
     setMessage('');
   }
 
@@ -803,7 +812,7 @@ export function ChatWindow({
 }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const [replyMessage, setReplyMessage] = useState<ChatMessage | null>(null)
+  const [replyDraft, setReplyDraft] = useState<{ id: string, text: string, author: 'agent' | 'customer' } | null>(null)
   const [autoScroll, setAutoScroll] = useState(true);
   const [lastMessageCount, setLastMessageCount] = useState(0);
 
@@ -846,24 +855,27 @@ export function ChatWindow({
 
   // Função para iniciar reply
   const handleReplyMessage = (message: ChatMessage) => {
-    setReplyMessage(message)
+    setReplyDraft({
+      id: message.id,
+      text: message.content,
+      author: message.role === 'agent' ? 'agent' : 'customer'
+    })
   }
 
   // Função para cancelar reply
   const handleCancelReply = () => {
-    setReplyMessage(null)
+    setReplyDraft(null)
   }
 
   // Função para enviar mensagem (adaptar para incluir reply)
-  const handleSend = (data: { content: string, replyTo?: string, replyToContent?: string }) => {
+  const handleSend = (data: { content: string }) => {
     if (!chat) return
-    if (replyMessage) {
+    if (replyDraft) {
       onSendMessage({
         ...data,
-        replyTo: replyMessage.id,
-        replyToContent: replyMessage.content
+        replyTo: replyDraft
       })
-      setReplyMessage(null)
+      setReplyDraft(null)
     } else {
       onSendMessage(data)
     }
@@ -1008,11 +1020,11 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         <div ref={messagesEndRef} />
       </div>
       
-      {replyMessage && (
+      {replyDraft && (
         <div className="flex items-center bg-blue-100 border-l-4 border-blue-500 px-3 py-2 mb-2 rounded relative">
           <div className="flex-1">
             <div className="text-xs text-blue-700 font-semibold">Respondendo a:</div>
-            <div className="text-xs text-blue-900 truncate max-w-xs">{replyMessage.content}</div>
+            <div className="text-xs text-blue-900 truncate max-w-xs">{replyDraft.text}</div>
           </div>
           <Button size="icon" variant="ghost" className="ml-2" onClick={handleCancelReply}>
             <X className="w-4 h-4" />

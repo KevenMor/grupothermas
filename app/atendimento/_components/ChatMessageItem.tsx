@@ -140,22 +140,17 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   
   const dateObj = new Date(message.timestamp)
 
-  // Fallback para replyToContent
-  let replyContent = message.replyToContent;
-  let replySender = '';
-  if (message.replyTo && messages) {
-    const original = messages.find(m => m.id === message.replyTo);
-    replyContent = replyContent || original?.content || '[Mensagem original não encontrada]';
-    // Nome do remetente original
-    if (original) {
-      if (original.role === 'agent') replySender = original.agentName || original.userName || 'Atendente';
-      else if (original.role === 'ai') replySender = 'IA Assistente';
-      else if (original.role === 'user') replySender = contactName || 'Cliente';
-      else replySender = 'Sistema';
+  // Mini-bubble de reply visual
+  const handleReplyBubbleClick = () => {
+    if (message.replyTo?.id && messages) {
+      const el = document.getElementById(`msg-${message.replyTo.id}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('ring-2', 'ring-blue-400')
+        setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400'), 1000)
+      }
     }
   }
-  // Truncar replyContent para 2 linhas
-  const truncatedReplyContent = replyContent && replyContent.length > 120 ? replyContent.slice(0, 120) + '...' : replyContent;
 
   return (
     <>
@@ -168,7 +163,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
       )}
       
       {/* Balão da mensagem principal */}
-      <div className={`flex gap-2 mb-3 ${isFromAgent ? 'justify-end' : 'justify-start'}`}>
+      <div className={`flex gap-2 mb-3 ${isFromAgent ? 'justify-end' : 'justify-start'}`} id={`msg-${message.id}`}>
         {!isFromAgent && showAvatar && (
           <Avatar className="w-8 h-8 flex-shrink-0">
             <AvatarImage src={avatar} />
@@ -185,6 +180,22 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
             </div>
           )}
           
+          {/* Mini-bubble de reply visual */}
+          {message.replyTo && (
+            <div
+              className="mb-2 px-2 py-1 rounded bg-blue-100/80 dark:bg-blue-900/20 border-l-4 border-blue-500/80 dark:border-blue-400/70 text-xs shadow-sm flex flex-col gap-1 cursor-pointer hover:bg-blue-200/80 dark:hover:bg-blue-800/40 transition"
+              aria-label="Mensagem respondida"
+              onClick={handleReplyBubbleClick}
+            >
+              <span className="flex items-center gap-1 font-semibold text-blue-700 dark:text-blue-200" style={{fontSize:'0.95em'}}>
+                ↩
+                {message.replyTo.author === 'agent' ? 'Você' : (contactName || 'Cliente')}
+              </span>
+              <span className="text-gray-700 dark:text-gray-200 truncate" style={{display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>
+                {message.replyTo.text?.length > 45 ? message.replyTo.text.slice(0, 45) + '…' : message.replyTo.text || 'Mensagem removida'}
+              </span>
+            </div>
+          )}
           <div 
             className={`relative group rounded-2xl px-3 py-2 max-w-full ${
               isFromAgent 
@@ -196,13 +207,6 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
             onMouseEnter={() => setShowActions(true)}
             onMouseLeave={() => setShowActions(false)}
           >
-            {/* Box de reply dentro do balão */}
-            {message.replyTo && replyContent && (
-              <div className="mb-2 px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/40 border-l-4 border-blue-400 text-xs shadow-sm flex flex-col gap-1">
-                <span className="font-semibold text-blue-700 dark:text-blue-200" style={{fontSize:'0.95em'}}>{replySender ? `↩️ ${replySender}` : '↩️ Resposta'}</span>
-                <span className="text-gray-700 dark:text-gray-200 truncate" style={{display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{truncatedReplyContent}</span>
-              </div>
-            )}
             {/* Menu de ações */}
             {showActions && (
               <div className={`absolute -top-9 ${isFromAgent ? 'right-2' : 'left-2'} flex gap-1 z-30 bg-white/90 dark:bg-gray-800/90 rounded shadow p-1`}>

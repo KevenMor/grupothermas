@@ -206,7 +206,7 @@ export async function sendImage(
   phone: string, 
   base64: string, 
   caption?: string,
-  replyTo?: string
+  replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
 ): Promise<MessageResponse> {
   try {
     const config = await getZAPIConfig();
@@ -225,14 +225,14 @@ export async function sendImage(
     };
     
     if (caption) payload.caption = caption;
-    if (replyTo) payload.messageId = replyTo;
+    if (replyTo?.id) payload.messageId = replyTo.id;
     
     console.log('Enviando imagem para Z-API:', {
       url: zapiUrl,
       phone,
       hasImage: !!base64,
       caption,
-      replyTo
+      replyTo: replyTo?.id
     });
 
     const zapiResponse = await fetch(zapiUrl, {
@@ -287,7 +287,7 @@ export async function sendImage(
 export async function sendAudio(
   phone: string, 
   base64: string,
-  replyTo?: string
+  replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
 ): Promise<MessageResponse> {
   try {
     const config = await getZAPIConfig();
@@ -305,13 +305,13 @@ export async function sendAudio(
       audio: base64.startsWith('data:') ? base64 : `data:audio/mpeg;base64,${base64}`
     };
     
-    if (replyTo) payload.messageId = replyTo;
+    if (replyTo?.id) payload.messageId = replyTo.id;
     
     console.log('Enviando áudio para Z-API:', {
       url: zapiUrl,
       phone,
       hasAudio: !!base64,
-      replyTo
+      replyTo: replyTo?.id
     });
 
     const zapiResponse = await fetch(zapiUrl, {
@@ -367,7 +367,7 @@ export async function sendDocument(
   fileUrl: string, 
   fileName: string,
   mimeType: string = 'application/pdf',
-  replyTo?: string
+  replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
 ): Promise<MessageResponse> {
   try {
     const config = await getZAPIConfig();
@@ -380,8 +380,8 @@ export async function sendDocument(
       document: fileUrl, // URL pública do documento
       fileName
     };
-    if (replyTo) {
-      payload.messageId = replyTo;
+    if (replyTo?.id) {
+      payload.messageId = replyTo.id;
     }
     console.log('Enviando documento para Z-API:', {
       url: zapiUrl,
@@ -389,7 +389,7 @@ export async function sendDocument(
       fileName,
       fileUrl,
       mimeType,
-      replyTo,
+      replyTo: replyTo?.id,
       payloadKeys: Object.keys(payload)
     });
     // LOG: Mostra o Client-Token lido do Firestore
