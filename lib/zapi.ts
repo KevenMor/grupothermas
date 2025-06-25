@@ -360,11 +360,11 @@ export async function sendAudio(
 }
 
 /**
- * Envia um documento via Z-API
+ * Envia um documento via Z-API usando URL pública
  */
 export async function sendDocument(
   phone: string, 
-  base64: string, 
+  fileUrl: string, 
   fileName: string,
   mimeType: string = 'application/pdf',
   replyTo?: string
@@ -380,17 +380,12 @@ export async function sendDocument(
 
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-document`;
     
-    // Garantir que o base64 tenha o prefixo correto
-    const documentBase64 = base64.startsWith('data:') 
-      ? base64 
-      : `data:${mimeType};base64,${base64}`;
-    
-    // Payload correto para Z-API com isPublic para gerar URL pública
+    // Payload correto para Z-API usando URL pública
     const payload: any = { 
       phone, 
-      document: documentBase64,
+      fileUrl, // URL pública do documento
       fileName,
-      isPublic: true  // Gerar URL pública acessível ao cliente
+      isPublic: true  // Garantir que o documento seja público
     };
     
     // Adicionar messageId para resposta, se fornecido
@@ -402,8 +397,8 @@ export async function sendDocument(
       url: zapiUrl,
       phone,
       fileName,
+      fileUrl,
       mimeType,
-      hasDocument: !!base64,
       replyTo,
       payloadKeys: Object.keys(payload)
     });
@@ -439,7 +434,7 @@ export async function sendDocument(
     }
     
     // Verificar se temos URL pública
-    const documentUrl = zapiResult.url || zapiResult.documentUrl || zapiResult.publicUrl;
+    const documentUrl = zapiResult.url || zapiResult.documentUrl || zapiResult.publicUrl || fileUrl;
     if (!documentUrl) {
       console.warn('Z-API não retornou URL pública para o documento:', zapiResult);
     }
@@ -452,12 +447,12 @@ export async function sendDocument(
       role: 'agent',
       status: 'sent',
       mediaType: 'document',
-      mediaUrl: documentUrl || '',
+      mediaUrl: documentUrl,
       mediaInfo: {
         type: 'document',
         filename: fileName,
         mimeType,
-        url: documentUrl || ''
+        url: documentUrl
       },
       replyTo
     };

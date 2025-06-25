@@ -170,13 +170,13 @@ export async function POST(request: NextRequest) {
             phone,
             filename: docFilename,
             mimeType: docMimeType,
-            fileSize: `${(base64Data.length * 0.75 / 1024 / 1024).toFixed(2)} MB`
+            fileUrl: mediaUrl
           })
           
-          // Usar a nova função sendDocument
+          // Usar a nova função sendDocument com URL pública
           const docResult = await sendDocument(
             phone, 
-            `data:${docMimeType};base64,${base64Data}`,
+            mediaUrl, // URL pública do documento
             docFilename,
             docMimeType,
             replyTo
