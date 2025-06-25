@@ -19,6 +19,7 @@ interface ChatMessageItemProps {
   onEdit?: (message: ChatMessage) => void
   onDelete?: (messageId: string) => void
   onInfo?: (message: ChatMessage) => void
+  messages?: ChatMessage[]
 }
 
 const MessageStatus = ({ status }: { status: ChatStatus }) => {
@@ -44,7 +45,7 @@ const formatDate = (date: Date) => {
   return format(date, 'dd/MM/yyyy', { locale: ptBR })
 }
 
-export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo }: ChatMessageItemProps) {
+export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo, messages }: ChatMessageItemProps) {
   const [showImagePopup, setShowImagePopup] = useState(false)
   const [showDocumentPopup, setShowDocumentPopup] = useState(false)
   const [showActions, setShowActions] = useState(false)
@@ -135,6 +136,13 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   
   const dateObj = new Date(message.timestamp)
 
+  // Fallback para replyToContent
+  let replyContent = message.replyToContent;
+  if (message.replyTo && !replyContent && messages) {
+    const original = messages.find(m => m.id === message.replyTo);
+    replyContent = original?.content || '[Mensagem original não encontrada]';
+  }
+
   return (
     <>
       {isFirstOfDay && (
@@ -145,9 +153,9 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
         </div>
       )}
       
-      {message.replyTo && message.replyToContent && (
-        <div className={`mb-1 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 border-l-4 border-blue-400 text-xs ${isFromAgent ? 'ml-auto max-w-[70%]' : 'mr-auto max-w-[70%]'}`}>
-          <span className="font-semibold">Respondendo:</span> {message.replyToContent}
+      {message.replyTo && replyContent && (
+        <div className={`mb-1 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 border-l-4 border-blue-400 text-xs ${isFromAgent ? 'ml-auto max-w-[70%]' : 'mr-auto max-w-[70%]'}`}> 
+          <span className="font-semibold">Respondendo:</span> {replyContent}
         </div>
       )}
       

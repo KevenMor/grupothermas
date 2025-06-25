@@ -200,6 +200,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Salvar na subcoleção messages
+    let replyToContent: string | undefined = undefined;
+    if (replyTo) {
+      // Buscar o conteúdo da mensagem original para replyToContent
+      try {
+        const originalMsgSnap = await conversationRef.collection('messages').doc(replyTo).get();
+        if (originalMsgSnap.exists) {
+          const originalMsgData = originalMsgSnap.data() as Partial<ChatMessage>;
+          replyToContent = originalMsgData?.content || '[Mensagem original não encontrada]';
+        } else {
+          replyToContent = '[Mensagem original não encontrada]';
+        }
+      } catch (err) {
+        console.error('Erro ao buscar mensagem original para reply:', err);
+        replyToContent = '[Erro ao buscar mensagem original]';
+      }
+    }
+
     const msg: Partial<ChatMessage> = {
       content,
       role: 'user',
@@ -211,7 +228,8 @@ export async function POST(request: NextRequest) {
         mediaUrl: mediaInfo.url,
         mediaInfo: mediaInfo 
       }),
-      ...(replyTo && { replyTo })
+      ...(replyTo && { replyTo }),
+      ...(replyToContent && { replyToContent })
     }
     await conversationRef.collection('messages').doc(messageId).set(msg)
 

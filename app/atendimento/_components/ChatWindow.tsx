@@ -955,6 +955,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
                   onEdit={handleEditMessage}
                   onDelete={handleDeleteMessage}
                   onInfo={handleMessageInfo}
+                  messages={messages}
                 />
               )
             })}
