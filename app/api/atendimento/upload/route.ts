@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     // Salvar arquivo no Firebase Storage
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const bucket = adminStorage.bucket('grupo-thermas-a99fc.appspot.com')
+    const bucket = adminStorage.bucket('grupo-thermas-a99fc.firebasestorage.app')
     const fileRef = bucket.file(storagePath)
     await fileRef.save(buffer, {
       contentType: file.type || undefined,
