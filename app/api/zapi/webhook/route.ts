@@ -247,9 +247,13 @@ export async function POST(request: NextRequest) {
         mediaUrl: mediaInfo.url,
         mediaInfo: mediaInfo 
       }),
-      ...(replyToFirestoreId && { replyTo: replyToFirestoreId }),
-      ...(replyToContent && { replyToContent }),
-      ...(replyToSender && { replyToSender })
+      ...(replyToFirestoreId && replyToContent && {
+        replyTo: {
+          id: replyToFirestoreId,
+          text: replyToContent,
+          author: replyToSender === 'Atendente' || replyToSender === 'IA Assistente' ? 'agent' : 'customer'
+        }
+      })
     }
     await conversationRef.collection('messages').doc(messageId).set(msg)
 
