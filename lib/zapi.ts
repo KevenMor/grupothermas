@@ -371,28 +371,18 @@ export async function sendDocument(
 ): Promise<MessageResponse> {
   try {
     const config = await getZAPIConfig();
-    
-    // Headers da requisição
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (config.zapiClientToken && config.zapiClientToken.trim()) {
-      headers['Client-Token'] = config.zapiClientToken.trim();
-    }
-
-    const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-document`;
-    
+    // Descobrir a extensão do arquivo
+    const extension = fileName.split('.').pop()?.toLowerCase() || 'pdf';
+    const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-document/${extension}`;
     // Payload correto para Z-API usando URL pública
     const payload: any = { 
       phone, 
-      fileUrl, // URL pública do documento
-      fileName,
-      isPublic: true  // Garantir que o documento seja público
+      document: fileUrl, // URL pública do documento
+      fileName
     };
-    
-    // Adicionar messageId para resposta, se fornecido
     if (replyTo) {
       payload.messageId = replyTo;
     }
-    
     console.log('Enviando documento para Z-API:', {
       url: zapiUrl,
       phone,
@@ -402,13 +392,11 @@ export async function sendDocument(
       replyTo,
       payloadKeys: Object.keys(payload)
     });
-
     const zapiResponse = await fetch(zapiUrl, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-
     const zapiResultText = await zapiResponse.text();
     let zapiResult: any = {};
     try { 
@@ -417,29 +405,21 @@ export async function sendDocument(
       console.error('Erro ao fazer parse da resposta da Z-API:', parseError);
       zapiResult = { raw: zapiResultText };
     }
-    
     console.log('Resposta da Z-API (documento):', {
       status: zapiResponse.status,
       statusText: zapiResponse.statusText,
       result: zapiResult
     });
-
     if (!zapiResponse.ok) {
       throw new Error(`Erro Z-API (${zapiResponse.status}): ${zapiResultText}`);
     }
-    
-    // Verificar se a resposta contém dados válidos
     if (!zapiResult.messageId) {
       console.warn('Z-API não retornou messageId:', zapiResult);
     }
-    
-    // Verificar se temos URL pública
     const documentUrl = zapiResult.url || zapiResult.documentUrl || zapiResult.publicUrl || fileUrl;
     if (!documentUrl) {
       console.warn('Z-API não retornou URL pública para o documento:', zapiResult);
     }
-    
-    // Criar objeto de mensagem local para atualização imediata da UI
     const localMessageObj = {
       id: `local_${Date.now()}`,
       content: '',
@@ -456,7 +436,6 @@ export async function sendDocument(
       },
       replyTo
     };
-    
     return { 
       success: true, 
       messageId: zapiResult.messageId,
