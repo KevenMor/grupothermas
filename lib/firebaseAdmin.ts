@@ -96,4 +96,15 @@ const mockFirestore = {
 };
 
 export const adminDB = (admin && typeof admin.name === 'string') ? getFirestore(admin) : mockFirestore as any;
-export const adminStorage = (admin && typeof admin.name === 'string') ? getStorage(admin) : null; 
+export const adminStorage = (admin && typeof admin.name === 'string') ? getStorage(admin) : null;
+
+export async function generateSignedUrl(storagePath: string, expiresInSeconds = 60 * 60) {
+  if (!adminStorage) throw new Error('Firebase Storage não inicializado');
+  const bucket = adminStorage.bucket('grupo-thermas-a99fc.firebasestorage.app');
+  const file = bucket.file(storagePath);
+  const [url] = await file.getSignedUrl({
+    action: 'read',
+    expires: Date.now() + expiresInSeconds * 1000, // 1 hora por padrão
+  });
+  return url;
+} 

@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server'
-import { adminStorage } from '@/lib/firebaseAdmin'
+import { adminStorage, generateSignedUrl } from '@/lib/firebaseAdmin'
 
 export const runtime = 'nodejs'
 
@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
       contentType: file.type || 'application/pdf'
     })
 
-    // Gerar URL pública
-    const fileUrl = `https://firebasestorage.googleapis.com/v0/b/grupo-thermas-a99fc.appspot.com/o/${encodeURIComponent(storagePath)}?alt=media`
+    // Gerar signed URL (válido por 1 hora)
+    const fileUrl = await generateSignedUrl(storagePath, 60 * 60)
 
     console.log('Upload concluído:', {
       fileName,
