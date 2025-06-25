@@ -207,13 +207,20 @@ export async function POST(request: NextRequest) {
       
       const conversationRef = adminDB.collection('conversations').doc(phone)
       let mediaUrlToSave = mediaUrl
+      let lastMessageText = `[${type.toUpperCase()}] enviado`
       if (type === 'document') {
         // Para documentos, sempre usar a URL pública da Z-API
         if (zapiResult.url) {
           mediaUrlToSave = zapiResult.url
+          lastMessageText = `📄 Documento enviado: ${filename || localPath?.split('/').pop() || 'documento.pdf'}`
         } else {
           mediaUrlToSave = 'ERRO: Documento não possui URL pública da Z-API.'
+          lastMessageText = '❌ Erro ao enviar documento (sem URL pública)'
         }
+      } else if (type === 'image') {
+        lastMessageText = '🖼️ Imagem enviada'
+      } else if (type === 'audio') {
+        lastMessageText = '🎤 Áudio enviado'
       }
       const messageData: MessageData = {
         content: `[${type.toUpperCase()}]`,
@@ -240,7 +247,7 @@ export async function POST(request: NextRequest) {
       
       // Atualizar última mensagem da conversa
       await conversationRef.update({
-        lastMessage: `[${type.toUpperCase()}] enviado`,
+        lastMessage: lastMessageText,
         timestamp: new Date().toISOString()
       })
 
