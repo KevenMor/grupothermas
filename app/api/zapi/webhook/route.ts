@@ -144,6 +144,9 @@ export async function POST(request: NextRequest) {
     
     console.log('Dados extraídos:', { phone, content, messageId, senderName })
 
+    // Extrair referência de resposta (reply) se houver
+    const replyTo = body.quotedMsgId || body.context?.id || null;
+
     // Referência da conversa (documento por telefone)
     const conversationRef = adminDB.collection('conversations').doc(phone)
 
@@ -207,7 +210,8 @@ export async function POST(request: NextRequest) {
         mediaType: mediaInfo.type as 'image' | 'audio' | 'video' | 'document' | 'contact' | 'location',
         mediaUrl: mediaInfo.url,
         mediaInfo: mediaInfo 
-      })
+      }),
+      ...(replyTo && { replyTo })
     }
     await conversationRef.collection('messages').doc(messageId).set(msg)
 
