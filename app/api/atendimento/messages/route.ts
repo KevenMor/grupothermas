@@ -61,8 +61,7 @@ export async function GET(request: NextRequest) {
           mediaUrl: data.mediaUrl,
           mediaInfo: data.mediaInfo,
           // Incluir informações de resposta se disponíveis
-          replyTo: data.replyTo,
-          replyToContent: data.replyToContent
+          replyTo: data.replyTo
         })
       } catch (err) {
         console.error('Erro ao mapear mensagem', doc.id, err)
