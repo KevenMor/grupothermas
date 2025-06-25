@@ -1,7 +1,4 @@
 import { NextResponse, NextRequest } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
 import { adminStorage } from '@/lib/firebaseAdmin'
 
 export const runtime = 'nodejs'
@@ -32,27 +29,15 @@ export async function POST(request: NextRequest) {
       uploadType: type
     })
 
-    // Criar diretório se não existir
-    const uploadDir = join(process.cwd(), 'public', 'uploads', type)
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-      console.log('Diretório criado:', uploadDir)
-    }
-
     // Gerar nome único para o arquivo
     const timestamp = Date.now()
     let extension = file.name.split('.').pop()?.toLowerCase() || 'unknown'
-    
-    // Para áudios sem extensão, usar wav como padrão
     if (type === 'audio' && (!extension || extension === 'unknown')) {
       extension = 'wav'
     }
-    
-    // Para documentos, preservar extensão original
     if (type === 'document' && extension === 'unknown') {
-      extension = 'pdf' // fallback para PDF
+      extension = 'pdf'
     }
-    
     const fileName = `${timestamp}.${extension}`
     const storagePath = `${type}/${fileName}`
 
@@ -68,8 +53,7 @@ export async function POST(request: NextRequest) {
     const bucket = adminStorage.bucket('grupo-thermas-a99fc.firebasestorage.app')
     const fileRef = bucket.file(storagePath)
     await fileRef.save(buffer, {
-      contentType: file.type || undefined,
-      public: true
+      contentType: file.type || 'application/pdf'
     })
 
     // Gerar URL pública
