@@ -202,14 +202,26 @@ export async function POST(request: NextRequest) {
     // Salvar na subcoleção messages
     let replyToContent: string | undefined = undefined;
     let replyToSender: string | undefined = undefined;
+    let replyToFirestoreId: string | undefined = undefined;
     if (replyTo) {
-      // Buscar o conteúdo da mensagem original para replyToContent e o nome do remetente
+      // Buscar a mensagem original pelo zapiMessageId primeiro
       try {
-        const originalMsgSnap = await conversationRef.collection('messages').doc(replyTo).get();
-        if (originalMsgSnap.exists) {
+        const querySnap = await conversationRef.collection('messages').where('zapiMessageId', '==', replyTo).limit(1).get();
+        let originalMsgSnap;
+        if (!querySnap.empty) {
+          originalMsgSnap = querySnap.docs[0];
+          replyToFirestoreId = originalMsgSnap.id;
+        } else {
+          // Fallback: tentar pelo id direto (caso replyTo seja o id Firestore)
+          const docSnap = await conversationRef.collection('messages').doc(replyTo).get();
+          if (docSnap.exists) {
+            originalMsgSnap = docSnap;
+            replyToFirestoreId = docSnap.id;
+          }
+        }
+        if (originalMsgSnap) {
           const originalMsgData = originalMsgSnap.data() as Partial<ChatMessage>;
           replyToContent = originalMsgData?.content || '[Mensagem original não encontrada]';
-          // Determinar o nome do remetente original
           if (originalMsgData?.role === 'agent') replyToSender = originalMsgData.agentName || originalMsgData.userName || 'Atendente';
           else if (originalMsgData?.role === 'ai') replyToSender = 'IA Assistente';
           else if (originalMsgData?.role === 'user') replyToSender = senderName || chatName || 'Cliente';
@@ -230,13 +242,12 @@ export async function POST(request: NextRequest) {
       role: 'user',
       timestamp,
       status: 'sent',
-      // Adicionar informações de mídia se houver
       ...(mediaInfo && { 
         mediaType: mediaInfo.type as 'image' | 'audio' | 'video' | 'document' | 'contact' | 'location',
         mediaUrl: mediaInfo.url,
         mediaInfo: mediaInfo 
       }),
-      ...(replyTo && { replyTo }),
+      ...(replyToFirestoreId && { replyTo: replyToFirestoreId }),
       ...(replyToContent && { replyToContent }),
       ...(replyToSender && { replyToSender })
     }
