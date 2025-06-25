@@ -247,11 +247,15 @@ export async function POST(request: NextRequest) {
         mediaUrl: mediaInfo.url,
         mediaInfo: mediaInfo 
       }),
-      ...(replyToFirestoreId && replyToContent && {
-        replyTo: {
+      ...(replyTo && {
+        replyTo: replyToFirestoreId && replyToContent ? {
           id: replyToFirestoreId,
           text: replyToContent,
           author: replyToSender === 'Atendente' || replyToSender === 'IA Assistente' ? 'agent' : 'customer'
+        } : {
+          id: replyTo,
+          text: 'Mensagem removida',
+          author: 'customer'
         }
       })
     }
