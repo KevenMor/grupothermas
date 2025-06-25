@@ -790,14 +790,18 @@ export function ChatWindow({
   const [replyMessage, setReplyMessage] = useState<ChatMessage | null>(null)
 
   useEffect(() => {
-    const container = messagesContainerRef.current
-    if (!container) return
-    // Verifica se o usuário está no final do chat
-    const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100
-    if (isAtBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [messages])
+    // Usar requestAnimationFrame para garantir que o DOM está pronto
+    const scrollToEnd = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+    // Pequeno delay + animation frame para máxima garantia
+    const timeout = setTimeout(() => {
+      requestAnimationFrame(scrollToEnd);
+    }, 50);
+    return () => clearTimeout(timeout);
+  }, [messages]);
 
   // Adicionar log de depuração das mensagens
   console.log('Mensagens recebidas:', messages);
