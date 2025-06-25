@@ -471,4 +471,7 @@ export async function updateMessageStatus(
     console.error('Erro ao atualizar status da mensagem:', error);
     return false;
   }
-} 
+}
+
+// O Client-Token da Z-API é buscado do Firestore (admin_config/ai_settings) e enviado automaticamente nos headers das requisições.
+// Se precisar atualizar, basta salvar o novo token no painel admin IA. 
