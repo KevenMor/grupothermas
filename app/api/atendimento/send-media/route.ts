@@ -166,6 +166,13 @@ export async function POST(request: NextRequest) {
           
           const docFilename = filename || localPath.split('/').pop() || 'documento'
           
+          console.log('Enviando documento:', {
+            phone,
+            filename: docFilename,
+            mimeType: docMimeType,
+            fileSize: `${(base64Data.length * 0.75 / 1024 / 1024).toFixed(2)} MB`
+          })
+          
           // Usar a nova função sendDocument
           const docResult = await sendDocument(
             phone, 
@@ -176,8 +183,14 @@ export async function POST(request: NextRequest) {
           )
           
           if (!docResult.success) {
+            console.error('Erro ao enviar documento:', docResult.error)
             throw new Error(docResult.error || 'Erro ao enviar documento')
           }
+          
+          console.log('Documento enviado com sucesso:', {
+            messageId: docResult.messageId,
+            url: docResult.url
+          })
           
           zapiResult = docResult
           break
@@ -216,6 +229,7 @@ export async function POST(request: NextRequest) {
         } else {
           mediaUrlToSave = mediaUrl // fallback para o link local
           lastMessageText = `📄 Documento enviado (link local): ${filename || localPath?.split('/').pop() || 'documento.pdf'}`
+          console.warn('Z-API não retornou URL para documento, usando URL local:', mediaUrl)
         }
       } else if (type === 'image') {
         lastMessageText = '🖼️ Imagem enviada'

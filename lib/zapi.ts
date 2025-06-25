@@ -21,6 +21,7 @@ interface MessageResponse {
   messageId?: string;
   error?: string;
   localMessageObj?: any;
+  url?: string;
 }
 
 /**
@@ -384,13 +385,11 @@ export async function sendDocument(
       ? base64 
       : `data:${mimeType};base64,${base64}`;
     
-    // Corrigido para usar os parâmetros corretos esperados pela Z-API
+    // Payload correto para Z-API - remover public_url que pode causar erro
     const payload: any = { 
       phone, 
       document: documentBase64,
-      fileName,
-      // Garantir que o documento tenha URL pública
-      public_url: true
+      fileName
     };
     
     // Adicionar messageId para resposta, se fornecido
@@ -405,7 +404,7 @@ export async function sendDocument(
       mimeType,
       hasDocument: !!base64,
       replyTo,
-      payload
+      payloadKeys: Object.keys(payload)
     });
 
     const zapiResponse = await fetch(zapiUrl, {
@@ -416,12 +415,26 @@ export async function sendDocument(
 
     const zapiResultText = await zapiResponse.text();
     let zapiResult: any = {};
-    try { zapiResult = JSON.parse(zapiResultText); } catch { zapiResult = zapiResultText; }
+    try { 
+      zapiResult = JSON.parse(zapiResultText); 
+    } catch (parseError) { 
+      console.error('Erro ao fazer parse da resposta da Z-API:', parseError);
+      zapiResult = { raw: zapiResultText };
+    }
     
-    console.log('Resposta da Z-API (documento):', zapiResult);
+    console.log('Resposta da Z-API (documento):', {
+      status: zapiResponse.status,
+      statusText: zapiResponse.statusText,
+      result: zapiResult
+    });
 
     if (!zapiResponse.ok) {
-      throw new Error(`Erro Z-API: ${zapiResultText}`);
+      throw new Error(`Erro Z-API (${zapiResponse.status}): ${zapiResultText}`);
+    }
+    
+    // Verificar se a resposta contém dados válidos
+    if (!zapiResult.messageId) {
+      console.warn('Z-API não retornou messageId:', zapiResult);
     }
     
     // Criar objeto de mensagem local para atualização imediata da UI
@@ -432,12 +445,12 @@ export async function sendDocument(
       role: 'agent',
       status: 'sent',
       mediaType: 'document',
-      mediaUrl: zapiResult.url || '',
+      mediaUrl: zapiResult.url || zapiResult.documentUrl || '',
       mediaInfo: {
         type: 'document',
         filename: fileName,
         mimeType,
-        url: zapiResult.url || ''
+        url: zapiResult.url || zapiResult.documentUrl || ''
       },
       replyTo
     };
@@ -445,6 +458,7 @@ export async function sendDocument(
     return { 
       success: true, 
       messageId: zapiResult.messageId,
+      url: zapiResult.url || zapiResult.documentUrl,
       localMessageObj
     };
   } catch (error) {

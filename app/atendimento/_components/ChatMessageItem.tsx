@@ -107,8 +107,13 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
         setShowDocumentPopup(true)
       } else {
         // Para outros tipos de documentos, abrir em nova aba
-        window.open(getFullUrl(message.mediaUrl), '_blank')
+        const fullUrl = getFullUrl(message.mediaUrl)
+        console.log('Abrindo documento:', fullUrl)
+        window.open(fullUrl, '_blank')
       }
+    } else {
+      console.error('Documento sem URL válida:', message)
+      alert('Erro: Documento não encontrado ou URL inválida')
     }
   }
 
@@ -289,6 +294,23 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                         src={getFullUrl(message.mediaUrl)} 
                         className="w-full h-full"
                         title={message.mediaInfo?.filename || 'Documento'}
+                        onError={(e) => {
+                          console.error('Erro ao carregar PDF:', message.mediaUrl)
+                          e.currentTarget.style.display = 'none'
+                          // Mostrar mensagem de erro
+                          const errorDiv = document.createElement('div')
+                          errorDiv.innerHTML = `
+                            <div class="flex flex-col items-center justify-center h-full text-center p-4">
+                              <p class="text-red-500 mb-2">Erro ao carregar PDF</p>
+                              <p class="text-sm text-gray-600 mb-4">O documento pode não estar disponível ou a URL está inválida.</p>
+                              <button onclick="window.open('${getFullUrl(message.mediaUrl)}', '_blank')" 
+                                      class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                Tentar abrir em nova aba
+                              </button>
+                            </div>
+                          `
+                          e.currentTarget.parentNode?.appendChild(errorDiv)
+                        }}
                       />
                     </div>
                   </div>
