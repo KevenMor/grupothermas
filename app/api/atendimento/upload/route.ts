@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { adminStorage } from '@/lib/firebaseAdmin'
 
 export const runtime = 'nodejs'
 
@@ -50,33 +51,32 @@ export async function POST(request: NextRequest) {
     }
     
     const fileName = `${timestamp}.${extension}`
-    const filePath = join(uploadDir, fileName)
+    const storagePath = `${type}/${fileName}`
 
     console.log('Salvando arquivo:', {
       fileName,
-      filePath,
+      storagePath,
       extension
     })
 
-    // Salvar arquivo
+    // Salvar arquivo no Firebase Storage
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    const bucket = adminStorage.bucket('grupo-thermas-a99fc.appspot.com')
+    const fileRef = bucket.file(storagePath)
+    await fileRef.save(buffer, {
+      contentType: file.type || undefined,
+      public: true
+    })
 
-    // Verificar se o arquivo foi salvo
-    if (!existsSync(filePath)) {
-      throw new Error('Arquivo não foi salvo corretamente')
-    }
-
-    // URL pública do arquivo - usar URL completa do servidor
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const fileUrl = `${baseUrl}/api/uploads/${type}/${fileName}`
+    // Gerar URL pública
+    const fileUrl = `https://firebasestorage.googleapis.com/v0/b/grupo-thermas-a99fc.appspot.com/o/${encodeURIComponent(storagePath)}?alt=media`
 
     console.log('Upload concluído:', {
       fileName,
       fileUrl,
       fileSize: file.size,
-      savedPath: filePath
+      storagePath
     })
 
     return NextResponse.json({
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       fileUrl,
       fileSize: file.size,
       fileType: file.type,
-      localPath: `/uploads/${type}/${fileName}` // Caminho local para compatibilidade
+      storagePath
     })
 
   } catch (error) {
