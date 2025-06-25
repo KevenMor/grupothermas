@@ -788,20 +788,29 @@ export function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [replyMessage, setReplyMessage] = useState<ChatMessage | null>(null)
+  const [autoScroll, setAutoScroll] = useState(true);
 
   useEffect(() => {
-    // Usar requestAnimationFrame para garantir que o DOM está pronto
-    const scrollToEnd = () => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 10;
+      setAutoScroll(isAtBottom);
     };
-    // Pequeno delay + animation frame para máxima garantia
-    const timeout = setTimeout(() => {
-      requestAnimationFrame(scrollToEnd);
-    }, 50);
-    return () => clearTimeout(timeout);
-  }, [messages]);
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (autoScroll) {
+      const timeout = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+      return () => clearTimeout(timeout);
+    }
+  }, [messages, autoScroll]);
 
   // Adicionar log de depuração das mensagens
   console.log('Mensagens recebidas:', messages);
@@ -934,7 +943,19 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         onMarkResolved={onMarkResolved}
         onAssumeChat={handleAssumeChat}
       />
-      <div ref={messagesContainerRef} className="flex-1 min-h-0 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')]">
+      <div ref={messagesContainerRef} className="flex-1 min-h-0 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')] relative">
+        {/* Botão para ir para o fim */}
+        {!autoScroll && (
+          <button
+            onClick={() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              setAutoScroll(true);
+            }}
+            className="absolute right-4 bottom-24 z-10 bg-blue-500 text-white px-3 py-1 rounded shadow hover:bg-blue-600 transition"
+          >
+            Ir para a última mensagem
+          </button>
+        )}
         {isLoading && messages.length === 0 ? (
           <div className="flex justify-center items-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
