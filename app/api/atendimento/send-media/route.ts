@@ -247,13 +247,11 @@ export async function POST(request: NextRequest) {
 
     // Salvar mensagem no Firebase com informações completas
     try {
-      console.log('Salvando mensagem no Firebase...')
-      
+      console.log('DEBUG: Iniciando salvamento da mensagem no Firestore...')
       const conversationRef = adminDB.collection('conversations').doc(phone)
       let mediaUrlToSave = mediaUrl
       let lastMessageText = `[${type.toUpperCase()}] enviado`
       if (type === 'document') {
-        // Sempre salve a mensagem, usando o signed URL do backend
         mediaUrlToSave = mediaUrl
         lastMessageText = `📄 Documento enviado: ${filename || localPath?.split('/').pop() || 'documento.pdf'}`
       } else if (type === 'image') {
@@ -269,8 +267,6 @@ export async function POST(request: NextRequest) {
         zapiMessageId: zapiResult.messageId || null,
         agentName: 'Sistema' // TODO: Pegar nome do agente logado
       }
-
-      // Adicionar informações de mídia
       messageData.mediaType = type
       messageData.mediaUrl = mediaUrlToSave
       messageData.mediaInfo = {
@@ -279,21 +275,17 @@ export async function POST(request: NextRequest) {
         filename: filename || localPath?.split('/').pop(),
         ...(caption && { caption })
       }
-
-      console.log('Dados da mensagem para salvar:', messageData)
-      
-      await conversationRef.collection('messages').add(messageData)
-      
+      console.log('DEBUG: Dados da mensagem para salvar:', messageData)
+      const addResult = await conversationRef.collection('messages').add(messageData)
+      console.log('DEBUG: Mensagem salva no Firestore com ID:', addResult.id)
       // Atualizar última mensagem da conversa
       await conversationRef.update({
         lastMessage: lastMessageText,
         timestamp: new Date().toISOString()
       })
-
-      console.log('Mensagem salva com sucesso no Firebase')
+      console.log('DEBUG: Conversa atualizada com última mensagem.')
     } catch (saveError) {
-      console.error('Erro ao salvar mensagem no Firebase:', saveError)
-      // Não falhar o envio por causa disso, mas logar o erro
+      console.error('DEBUG: Erro ao salvar mensagem no Firebase:', saveError)
     }
 
     return NextResponse.json({ 
