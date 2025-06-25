@@ -253,15 +253,9 @@ export async function POST(request: NextRequest) {
       let mediaUrlToSave = mediaUrl
       let lastMessageText = `[${type.toUpperCase()}] enviado`
       if (type === 'document') {
-        // Para documentos, usar a URL pública da Z-API se existir, senão usar o link local
-        if (zapiResult.url) {
-          mediaUrlToSave = zapiResult.url
-          lastMessageText = `📄 Documento enviado: ${filename || localPath?.split('/').pop() || 'documento.pdf'}`
-        } else {
-          // Se não temos URL pública, não salvar como enviado - pode indicar erro
-          console.error('Z-API não retornou URL pública para documento. Envio pode ter falhado.')
-          throw new Error('Falha no envio do documento: Z-API não retornou URL pública')
-        }
+        // Sempre salve a mensagem, usando o signed URL do backend
+        mediaUrlToSave = mediaUrl
+        lastMessageText = `📄 Documento enviado: ${filename || localPath?.split('/').pop() || 'documento.pdf'}`
       } else if (type === 'image') {
         lastMessageText = '🖼️ Imagem enviada'
       } else if (type === 'audio') {
