@@ -62,6 +62,10 @@ export async function POST(request: NextRequest) {
         error: 'LocalPath é obrigatório para envio de mídia'
       }, { status: 400 })
     }
+    // Só aceita URLs públicas do Firebase Storage
+    if (!localPath.startsWith('http')) {
+      return NextResponse.json({ error: 'localPath precisa ser uma URL pública do Firebase Storage' }, { status: 400 })
+    }
     
     // Se localPath for uma URL pública (Firebase Storage), use-a. Caso contrário, retorne erro.
     if (localPath.startsWith('http')) {
