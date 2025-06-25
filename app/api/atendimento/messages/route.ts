@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     console.log('POST /api/atendimento/messages - Body recebido:', body)
-    const { chatId, content, phone, userName, agentId, replyTo, replyToContent } = body
+    const { chatId, content, phone, userName, agentId, replyTo } = body
 
     if (!chatId || !content || !phone) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       userName: userName || 'Atendente',
       agentId: agentId,
       agentName: userName || 'Atendente',
-      ...(replyTo ? { replyTo, replyToContent } : {})
+      ...(replyTo ? { replyTo } : {})
     }
 
     // Salvar primeiro para garantir persistência mesmo se Z-API falhar
@@ -114,21 +114,18 @@ export async function POST(request: NextRequest) {
 
     try {
       let zapiResult;
-      
       // Verificar se é uma resposta ou mensagem normal
-      if (replyTo && replyToContent) {
-        console.log('Enviando resposta via Z-API para mensagem:', replyTo);
-        
+      if (replyTo && replyTo.id) {
+        console.log('Enviando resposta via Z-API para mensagem:', replyTo.id);
         // Enviar como resposta
         zapiResult = await replyMessage(
           phone, 
-          replyTo, 
+          replyTo.id, // quotedMsgId
           content, 
           userName || 'Atendente'
         );
       } else {
         console.log('Enviando mensagem normal via Z-API');
-        
         // Enviar como mensagem normal
         zapiResult = await sendTextMessage(
           phone, 
@@ -136,17 +133,14 @@ export async function POST(request: NextRequest) {
           userName || 'Atendente'
         );
       }
-      
       if (!zapiResult.success) {
         throw new Error(zapiResult.error || 'Erro ao enviar mensagem via Z-API');
       }
-      
       // Salvar messageId da Z-API para poder excluir depois
       await messageRef.update({ 
         status: 'sent',
         zapiMessageId: zapiResult.messageId || null
       });
-      
     } catch (err) {
       console.error('Falha ao enviar via Z-API:', err)
       await updateStatus('failed')

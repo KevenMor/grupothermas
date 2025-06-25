@@ -95,7 +95,7 @@ export default function AtendimentoPage() {
     fetchMessages(chat.id)
   }
 
-  const handleSendMessage = async (data: { content: string, replyTo?: string, replyToContent?: string }) => {
+  const handleSendMessage = async (data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } }) => {
     if (!selectedChat) return
     const tempId = `temp-${Date.now()}`
     const currentUserName = 'Keven Moreira' // Temporário
@@ -110,7 +110,7 @@ export default function AtendimentoPage() {
       userName: currentUserName,
       agentId: currentUserId,
       agentName: currentUserName,
-      ...(data.replyTo ? { replyTo: data.replyTo, replyToContent: data.replyToContent } : {})
+      ...(data.replyTo ? { replyTo: data.replyTo } : {})
     }
     setMessages(prev => [...prev, optimisticMessage])
     try {
@@ -123,7 +123,7 @@ export default function AtendimentoPage() {
           phone: selectedChat.customerPhone,
           userName: currentUserName,
           agentId: currentUserId,
-          ...(data.replyTo ? { replyTo: data.replyTo, replyToContent: data.replyToContent } : {})
+          ...(data.replyTo ? { replyTo: data.replyTo } : {})
         }),
       })
 
