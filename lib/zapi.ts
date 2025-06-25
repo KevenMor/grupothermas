@@ -385,11 +385,12 @@ export async function sendDocument(
       ? base64 
       : `data:${mimeType};base64,${base64}`;
     
-    // Payload correto para Z-API - remover public_url que pode causar erro
+    // Payload correto para Z-API com isPublic para gerar URL pública
     const payload: any = { 
       phone, 
       document: documentBase64,
-      fileName
+      fileName,
+      isPublic: true  // Gerar URL pública acessível ao cliente
     };
     
     // Adicionar messageId para resposta, se fornecido
@@ -437,6 +438,12 @@ export async function sendDocument(
       console.warn('Z-API não retornou messageId:', zapiResult);
     }
     
+    // Verificar se temos URL pública
+    const documentUrl = zapiResult.url || zapiResult.documentUrl || zapiResult.publicUrl;
+    if (!documentUrl) {
+      console.warn('Z-API não retornou URL pública para o documento:', zapiResult);
+    }
+    
     // Criar objeto de mensagem local para atualização imediata da UI
     const localMessageObj = {
       id: `local_${Date.now()}`,
@@ -445,12 +452,12 @@ export async function sendDocument(
       role: 'agent',
       status: 'sent',
       mediaType: 'document',
-      mediaUrl: zapiResult.url || zapiResult.documentUrl || '',
+      mediaUrl: documentUrl || '',
       mediaInfo: {
         type: 'document',
         filename: fileName,
         mimeType,
-        url: zapiResult.url || zapiResult.documentUrl || ''
+        url: documentUrl || ''
       },
       replyTo
     };
@@ -458,7 +465,7 @@ export async function sendDocument(
     return { 
       success: true, 
       messageId: zapiResult.messageId,
-      url: zapiResult.url || zapiResult.documentUrl,
+      url: documentUrl,
       localMessageObj
     };
   } catch (error) {

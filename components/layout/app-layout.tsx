@@ -278,15 +278,17 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { user, loading } = useAuth()
 
   React.useEffect(() => {
-    console.log('AppLayout useEffect:', { user: !!user, loading })
-    if (!loading && !user) {
-      console.log('No user found, redirecting to login')
-      router.replace('/login')
+    if (loading) {
+      return
+    }
+    
+    if (!user) {
+      router.push('/login')
+      return
     }
   }, [user, loading, router])
 
   if (loading) {
-    console.log('AppLayout: showing loading state')
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <motion.div
@@ -305,11 +307,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   if (!user) {
-    console.log('AppLayout: no user, returning null')
     return null // Redirect will happen in useEffect
   }
 
-  console.log('AppLayout: rendering full layout for user:', user.email)
   return (
     <SidebarProvider>
       <div className="flex h-screen overflow-hidden">

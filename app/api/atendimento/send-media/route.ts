@@ -227,9 +227,9 @@ export async function POST(request: NextRequest) {
           mediaUrlToSave = zapiResult.url
           lastMessageText = `📄 Documento enviado: ${filename || localPath?.split('/').pop() || 'documento.pdf'}`
         } else {
-          mediaUrlToSave = mediaUrl // fallback para o link local
-          lastMessageText = `📄 Documento enviado (link local): ${filename || localPath?.split('/').pop() || 'documento.pdf'}`
-          console.warn('Z-API não retornou URL para documento, usando URL local:', mediaUrl)
+          // Se não temos URL pública, não salvar como enviado - pode indicar erro
+          console.error('Z-API não retornou URL pública para documento. Envio pode ter falhado.')
+          throw new Error('Falha no envio do documento: Z-API não retornou URL pública')
         }
       } else if (type === 'image') {
         lastMessageText = '🖼️ Imagem enviada'

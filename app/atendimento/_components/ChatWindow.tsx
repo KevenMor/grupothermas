@@ -818,9 +818,6 @@ export function ChatWindow({
     setLastMessageCount(messages.length);
   }, [messages.length, autoScroll, lastMessageCount]);
 
-  // Adicionar log de depuração das mensagens
-  console.log('Mensagens recebidas:', messages);
-
   if (!chat) {
     return <WelcomeScreen />
   }
