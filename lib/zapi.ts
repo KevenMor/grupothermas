@@ -140,8 +140,8 @@ export async function replyMessage(
     // Incluir nome do atendente na mensagem para o cliente
     const messageWithAgent = agentName ? `*${agentName}:*\n${message}` : message;
     
-    // Corrigido para usar o endpoint correto e os parâmetros esperados pela Z-API
-    const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-reply`;
+    // Usar o endpoint correto da Z-API para reply
+    const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`;
     
     console.log('Enviando reply para Z-API:', {
       url: zapiUrl,
@@ -150,11 +150,11 @@ export async function replyMessage(
       message: messageWithAgent
     });
 
-    // Corrigido para usar o formato esperado pela Z-API
+    // Payload conforme documentação oficial
     const payload = {
       phone,
-      messageId: quotedMsgId,  // ID da mensagem a ser respondida
-      text: messageWithAgent   // Texto da resposta
+      message: messageWithAgent, // Texto da resposta
+      messageId: quotedMsgId     // ID da mensagem a ser respondida
     };
 
     const zapiResponse = await fetch(zapiUrl, {

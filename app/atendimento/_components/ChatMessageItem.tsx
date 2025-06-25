@@ -138,10 +138,20 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
 
   // Fallback para replyToContent
   let replyContent = message.replyToContent;
-  if (message.replyTo && !replyContent && messages) {
+  let replySender = '';
+  if (message.replyTo && messages) {
     const original = messages.find(m => m.id === message.replyTo);
-    replyContent = original?.content || '[Mensagem original não encontrada]';
+    replyContent = replyContent || original?.content || '[Mensagem original não encontrada]';
+    // Nome do remetente original
+    if (original) {
+      if (original.role === 'agent') replySender = original.agentName || original.userName || 'Atendente';
+      else if (original.role === 'ai') replySender = 'IA Assistente';
+      else if (original.role === 'user') replySender = contactName || 'Cliente';
+      else replySender = 'Sistema';
+    }
   }
+  // Truncar replyContent para 2 linhas
+  const truncatedReplyContent = replyContent && replyContent.length > 120 ? replyContent.slice(0, 120) + '...' : replyContent;
 
   return (
     <>
@@ -154,8 +164,9 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
       )}
       
       {message.replyTo && replyContent && (
-        <div className={`mb-1 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 border-l-4 border-blue-400 text-xs ${isFromAgent ? 'ml-auto max-w-[70%]' : 'mr-auto max-w-[70%]'}`}> 
-          <span className="font-semibold">Respondendo:</span> {replyContent}
+        <div className={`mb-1 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-600 text-xs shadow-sm flex flex-col gap-1 ${isFromAgent ? 'ml-auto max-w-[70%]' : 'mr-auto max-w-[70%]'}`}> 
+          <span className="font-semibold text-blue-700 dark:text-blue-200" style={{fontSize:'0.95em'}}>{replySender ? `Respondendo a: ${replySender}` : 'Respondendo:'}</span>
+          <span className="text-gray-700 dark:text-gray-200 truncate" style={{display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{truncatedReplyContent}</span>
         </div>
       )}
       
