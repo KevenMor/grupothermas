@@ -392,9 +392,18 @@ export async function sendDocument(
       replyTo,
       payloadKeys: Object.keys(payload)
     });
+    // LOG: Mostra o Client-Token lido do Firestore
+    console.log('Client-Token usado:', config.zapiClientToken)
+    // Monta os headers
+    const headers: any = { 'Content-Type': 'application/json' }
+    if (config.zapiClientToken && config.zapiClientToken !== 'null') {
+      headers['Client-Token'] = config.zapiClientToken
+    }
+    // LOG: Mostra os headers enviados
+    console.log('Headers enviados para Z-API:', headers)
     const zapiResponse = await fetch(zapiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload)
     });
     const zapiResultText = await zapiResponse.text();
