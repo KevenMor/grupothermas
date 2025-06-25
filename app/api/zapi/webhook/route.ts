@@ -201,19 +201,27 @@ export async function POST(request: NextRequest) {
 
     // Salvar na subcoleção messages
     let replyToContent: string | undefined = undefined;
+    let replyToSender: string | undefined = undefined;
     if (replyTo) {
-      // Buscar o conteúdo da mensagem original para replyToContent
+      // Buscar o conteúdo da mensagem original para replyToContent e o nome do remetente
       try {
         const originalMsgSnap = await conversationRef.collection('messages').doc(replyTo).get();
         if (originalMsgSnap.exists) {
           const originalMsgData = originalMsgSnap.data() as Partial<ChatMessage>;
           replyToContent = originalMsgData?.content || '[Mensagem original não encontrada]';
+          // Determinar o nome do remetente original
+          if (originalMsgData?.role === 'agent') replyToSender = originalMsgData.agentName || originalMsgData.userName || 'Atendente';
+          else if (originalMsgData?.role === 'ai') replyToSender = 'IA Assistente';
+          else if (originalMsgData?.role === 'user') replyToSender = senderName || chatName || 'Cliente';
+          else replyToSender = 'Sistema';
         } else {
           replyToContent = '[Mensagem original não encontrada]';
+          replyToSender = 'Desconhecido';
         }
       } catch (err) {
         console.error('Erro ao buscar mensagem original para reply:', err);
         replyToContent = '[Erro ao buscar mensagem original]';
+        replyToSender = 'Erro';
       }
     }
 
@@ -229,7 +237,8 @@ export async function POST(request: NextRequest) {
         mediaInfo: mediaInfo 
       }),
       ...(replyTo && { replyTo }),
-      ...(replyToContent && { replyToContent })
+      ...(replyToContent && { replyToContent }),
+      ...(replyToSender && { replyToSender })
     }
     await conversationRef.collection('messages').doc(messageId).set(msg)
 

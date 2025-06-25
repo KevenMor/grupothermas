@@ -163,13 +163,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
         </div>
       )}
       
-      {message.replyTo && replyContent && (
-        <div className={`mb-1 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-600 text-xs shadow-sm flex flex-col gap-1 ${isFromAgent ? 'ml-auto max-w-[70%]' : 'mr-auto max-w-[70%]'}`}> 
-          <span className="font-semibold text-blue-700 dark:text-blue-200" style={{fontSize:'0.95em'}}>{replySender ? `Respondendo a: ${replySender}` : 'Respondendo:'}</span>
-          <span className="text-gray-700 dark:text-gray-200 truncate" style={{display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{truncatedReplyContent}</span>
-        </div>
-      )}
-      
+      {/* Balão da mensagem principal */}
       <div className={`flex gap-2 mb-3 ${isFromAgent ? 'justify-end' : 'justify-start'}`}>
         {!isFromAgent && showAvatar && (
           <Avatar className="w-8 h-8 flex-shrink-0">
@@ -198,6 +192,13 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
             onMouseEnter={() => setShowActions(true)}
             onMouseLeave={() => setShowActions(false)}
           >
+            {/* Box de reply dentro do balão */}
+            {message.replyTo && replyContent && (
+              <div className="mb-2 px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/40 border-l-4 border-blue-400 text-xs shadow-sm flex flex-col gap-1">
+                <span className="font-semibold text-blue-700 dark:text-blue-200" style={{fontSize:'0.95em'}}>{replySender ? `↩️ ${replySender}` : '↩️ Resposta'}</span>
+                <span className="text-gray-700 dark:text-gray-200 truncate" style={{display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{truncatedReplyContent}</span>
+              </div>
+            )}
             {/* Menu de ações */}
             {showActions && (
               <div className={`absolute -top-9 ${isFromAgent ? 'right-2' : 'left-2'} flex gap-1 z-30 bg-white/90 dark:bg-gray-800/90 rounded shadow p-1`}>
