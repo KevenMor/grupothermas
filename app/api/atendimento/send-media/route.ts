@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
     
-    // Se localPath for uma URL pública, envie direto para o Z-API
+    // Se localPath for uma URL pública (Firebase Storage), use-a. Caso contrário, retorne erro.
     if (localPath.startsWith('http')) {
       mediaUrl = localPath
       switch (type) {
@@ -90,8 +90,37 @@ export async function POST(request: NextRequest) {
         default:
           return NextResponse.json({ error: 'Tipo de mídia não suportado para URL pública' }, { status: 400 })
       }
-      // Retornar resposta
+      // Salvar mensagem no Firebase com mediaUrl correto
+      try {
+        const conversationRef = adminDB.collection('conversations').doc(phone)
+        const messageData: MessageData = {
+          content: `[${type.toUpperCase()}]`,
+          role: 'agent',
+          timestamp: new Date().toISOString(),
+          status: 'sent',
+          zapiMessageId: zapiResult.messageId || null,
+          agentName: 'Sistema',
+          mediaType: type,
+          mediaUrl: mediaUrl,
+          mediaInfo: {
+            type: type,
+            url: mediaUrl,
+            filename: filename || localPath?.split('/').pop(),
+            ...(caption && { caption })
+          }
+        }
+        await conversationRef.collection('messages').add(messageData)
+        await conversationRef.update({
+          lastMessage: `[${type.toUpperCase()}] enviado`,
+          timestamp: new Date().toISOString()
+        })
+      } catch (e) {
+        console.error('Erro ao salvar mensagem no Firestore:', e)
+      }
       return NextResponse.json({ success: true, zapiResult })
+    } else {
+      // Se não for URL pública, retorne erro
+      return NextResponse.json({ error: 'localPath precisa ser uma URL pública do Firebase Storage' }, { status: 400 })
     }
     
     // Ler arquivo local e converter para base64
