@@ -56,10 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    const { signOut as firebaseSignOut } = await import('firebase/auth')
+    const firebaseAuth = await import('firebase/auth')
     const { auth } = await import('@/lib/firebase')
     try {
-      await firebaseSignOut(auth)
+      await firebaseAuth.signOut(auth)
     } catch (error) {
       console.error('Sign out error:', error)
       throw error
