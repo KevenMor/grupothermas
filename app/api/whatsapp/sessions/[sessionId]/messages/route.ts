@@ -3,16 +3,17 @@ import { adminDB } from '@/lib/firebaseAdmin'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  context: { params: any }
 ) {
   try {
+    const { sessionId } = context.params
     const { searchParams } = new URL(request.url)
     const contact = searchParams.get('contact')
     const limit = parseInt(searchParams.get('limit') || '50')
 
     let query = adminDB
       .collection('whatsapp_messages')
-      .where('sessionId', '==', params.sessionId)
+      .where('sessionId', '==', sessionId)
       .orderBy('timestamp', 'desc')
       .limit(limit)
 
@@ -40,9 +41,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  context: { params: any }
 ) {
   try {
+    const { sessionId } = context.params
     const { to, message, type = 'text' } = await request.json()
 
     if (!to || !message) {
@@ -55,7 +57,7 @@ export async function POST(
     // Aqui você pode integrar com o WhatsAppManager para enviar a mensagem
     // Por enquanto, vamos apenas salvar no banco
     const messageData = {
-      sessionId: params.sessionId,
+      sessionId: sessionId,
       from: 'system', // Será substituído pelo número da sessão
       to,
       body: message,
