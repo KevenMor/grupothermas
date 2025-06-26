@@ -43,6 +43,11 @@ const nextConfig = {
   images: {
     domains: ['firebasestorage.googleapis.com'],
   },
+  experimental: {
+    appDir: true,
+    typedRoutes: true,
+    serverActions: false,
+  },
   webpack: (config, { dev, isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
