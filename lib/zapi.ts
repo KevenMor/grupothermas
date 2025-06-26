@@ -274,50 +274,43 @@ export async function sendImage(
  */
 export async function sendAudio(
   phone: string, 
-  base64: string,
+  base64OrUrl: string,
   replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
 ): Promise<MessageResponse> {
   try {
+    // Só aceita arquivos mp3
+    if (!base64OrUrl.endsWith('.mp3') && !base64OrUrl.startsWith('data:audio/mp3') && !base64OrUrl.startsWith('data:audio/mpeg')) {
+      console.error('Apenas arquivos mp3 são suportados para envio de áudio via Z-API.');
+      return { success: false, error: 'Apenas arquivos mp3 são suportados para envio de áudio via Z-API.' };
+    }
     const config = await getZAPIConfig();
-    
     // Headers da requisição
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (config.zapiClientToken && config.zapiClientToken.trim()) {
       headers['Client-Token'] = config.zapiClientToken.trim();
     }
-
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-audio`;
-    
-    const payload: any = { 
-      phone, 
-      audio: base64.startsWith('data:') ? base64 : `data:audio/mpeg;base64,${base64}`
-    };
-    
+    // Sempre envie o campo 'audio' para a Z-API, seja base64 ou link público
+    const payload: any = { phone, audio: base64OrUrl };
     if (replyTo?.id) payload.messageId = replyTo.id;
-    
     console.log('Enviando áudio para Z-API:', {
       url: zapiUrl,
       phone,
-      hasAudio: !!base64,
+      payload,
       replyTo: replyTo?.id
     });
-
     const zapiResponse = await fetch(zapiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
-
     const zapiResultText = await zapiResponse.text();
     let zapiResult: any = {};
     try { zapiResult = JSON.parse(zapiResultText); } catch { zapiResult = zapiResultText; }
-    
     console.log('Resposta da Z-API (áudio):', zapiResult);
-
     if (!zapiResponse.ok) {
       throw new Error(`Erro Z-API: ${zapiResultText}`);
     }
-    
     // Criar objeto de mensagem local para atualização imediata da UI
     const localMessageObj = {
       id: `local_${Date.now()}`,
@@ -326,13 +319,12 @@ export async function sendAudio(
       role: 'agent',
       status: 'sent',
       mediaType: 'audio',
-      mediaUrl: base64,
+      mediaUrl: base64OrUrl,
       mediaInfo: {
         type: 'audio'
       },
       replyTo
     };
-    
     return { 
       success: true, 
       messageId: zapiResult.messageId,
