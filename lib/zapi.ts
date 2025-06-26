@@ -217,13 +217,8 @@ export async function sendImage(
     }
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-image`;
     let payload: any = { phone };
-    if (base64OrUrl.startsWith('http')) {
-      payload.url = base64OrUrl;
-      // Remover qualquer campo 'image' se for URL
-      if (payload.image) delete payload.image;
-    } else {
-      payload.image = base64OrUrl.startsWith('data:') ? base64OrUrl : `data:image/jpeg;base64,${base64OrUrl}`;
-    }
+    // Sempre envie o campo 'image' para a Z-API, seja base64 ou link público
+    payload.image = base64OrUrl;
     if (caption) payload.caption = caption;
     if (replyTo?.id) payload.messageId = replyTo.id;
     console.log('Enviando imagem para Z-API:', {
