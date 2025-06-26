@@ -45,7 +45,6 @@ const nextConfig = {
   },
   experimental: {
     appDir: true,
-    typedRoutes: true,
     serverActions: false,
   },
   webpack: (config, { dev, isServer }) => {
