@@ -59,6 +59,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'localPath precisa ser uma URL pública do Firebase Storage' }, { status: 400 })
     }
 
+    // Testar se a URL está realmente acessível (HEAD request)
+    if (type === 'image' && localPath) {
+      try {
+        const testResponse = await fetch(localPath, { method: 'HEAD' });
+        if (!testResponse.ok) {
+          return NextResponse.json({ error: 'A URL da imagem não está acessível publicamente para a Z-API.' }, { status: 400 })
+        }
+      } catch (e) {
+        return NextResponse.json({ error: 'Falha ao testar a URL da imagem. Verifique se está realmente pública.' }, { status: 400 })
+      }
+    }
+
     let zapiResult: any = {}
     let mediaUrl = localPath
     let zapiError = null
