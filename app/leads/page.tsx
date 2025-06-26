@@ -3,9 +3,6 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { onAuthStateChanged } from 'firebase/auth'
-import { collection, query, where, getDocs, doc, updateDoc, addDoc } from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase'
 import { Lead } from '@/lib/models'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -18,31 +15,37 @@ export default function LeadsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        router.push('/login' as any)
-        return
-      }
-      setCurrentUser(user)
-      await loadLeads(user.uid)
+    let unsubscribe: any
+    let authInstance: any
+    import('firebase/auth').then(({ onAuthStateChanged }) => {
+      import('@/lib/firebase').then(({ auth }) => {
+        authInstance = auth
+        unsubscribe = onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            router.push('/login' as any)
+            return
+          }
+          setCurrentUser(user)
+          await loadLeads(user.uid)
+        })
+      })
     })
-
-    return () => unsubscribe()
+    return () => unsubscribe && unsubscribe()
   }, [router])
 
   const loadLeads = async (uid: string) => {
+    const { collection, query, where, getDocs } = await import('firebase/firestore')
+    const { db } = await import('@/lib/firebase')
     try {
       const leadsRef = collection(db, 'leads')
       const q = query(leadsRef, where('uid', '==', uid))
       const querySnapshot = await getDocs(q)
-      
       const leadsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate(),
         updatedAt: doc.data().updatedAt?.toDate(),
       })) as Lead[]
-      
       setLeads(leadsData)
     } catch (error) {
       console.error('Error loading leads:', error)
@@ -52,13 +55,14 @@ export default function LeadsPage() {
   }
 
   const handleUpdateLead = async (leadId: string, stage: Lead['stage']) => {
+    const { doc, updateDoc } = await import('firebase/firestore')
+    const { db } = await import('@/lib/firebase')
     try {
       const leadRef = doc(db, 'leads', leadId)
       await updateDoc(leadRef, {
         stage,
         updatedAt: new Date(),
       })
-
       setLeads(prev =>
         prev.map(lead =>
           lead.id === leadId
@@ -74,15 +78,13 @@ export default function LeadsPage() {
 
   const handleAddLead = async () => {
     if (!currentUser) return
-
     const name = prompt('Nome do lead:')
     if (!name) return
-
     const phone = prompt('Telefone:')
     if (!phone) return
-
     const email = prompt('E-mail (opcional):') || ''
-
+    const { addDoc, collection } = await import('firebase/firestore')
+    const { db } = await import('@/lib/firebase')
     try {
       const newLead = {
         uid: currentUser.uid,
@@ -93,9 +95,7 @@ export default function LeadsPage() {
         createdAt: new Date(),
         updatedAt: new Date(),
       }
-
       const docRef = await addDoc(collection(db, 'leads'), newLead)
-      
       setLeads(prev => [...prev, { ...newLead, id: docRef.id }])
     } catch (error) {
       console.error('Error adding lead:', error)
