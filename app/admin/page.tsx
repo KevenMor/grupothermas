@@ -208,8 +208,15 @@ export default function AdminPage() {
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    const { name, value } = e.target
-    setConfig(prev => ({ ...prev, [name]: value }))
+    const { name, value, type } = e.target
+    
+    // Converter valores numéricos para number
+    let processedValue: string | number = value
+    if (type === 'number' || type === 'range') {
+      processedValue = parseFloat(value) || 0
+    }
+    
+    setConfig(prev => ({ ...prev, [name]: processedValue }))
   }
 
   const handleWebhookChange = (e: React.ChangeEvent<HTMLInputElement>) => {

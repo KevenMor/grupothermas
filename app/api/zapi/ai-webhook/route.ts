@@ -364,6 +364,15 @@ async function handleMessage(message: ZAPIWebhookEvent) {
     // Call OpenAI API
     let aiResponse: string
     try {
+      // Garantir que os valores numéricos sejam do tipo correto
+      const temperature = typeof config.openaiTemperature === 'string' 
+        ? parseFloat(config.openaiTemperature) 
+        : (config.openaiTemperature || 0.7)
+      
+      const maxTokens = typeof config.openaiMaxTokens === 'string' 
+        ? parseInt(config.openaiMaxTokens) 
+        : (config.openaiMaxTokens || 500)
+      
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -373,8 +382,8 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         body: JSON.stringify({
           model: config.openaiModel,
           messages: messages,
-          temperature: config.openaiTemperature,
-          max_tokens: config.openaiMaxTokens
+          temperature: temperature,
+          max_tokens: maxTokens
         })
       })
 

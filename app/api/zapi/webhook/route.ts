@@ -336,4 +336,13 @@ export async function POST(request: NextRequest) {
     console.error('Erro webhook Z-API:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ 
+    message: 'Webhook Z-API endpoint is working',
+    timestamp: new Date().toISOString(),
+    methods: ['POST'],
+    usage: 'This endpoint receives webhooks from Z-API'
+  })
 } 

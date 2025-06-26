@@ -79,6 +79,24 @@ export async function POST(request: NextRequest) {
 
     // 4. Chamar OpenAI API
     console.log('4. Testando OpenAI API...')
+    
+    // Garantir que os valores numéricos sejam do tipo correto
+    const temperature = typeof config.openaiTemperature === 'string' 
+      ? parseFloat(config.openaiTemperature) 
+      : (config.openaiTemperature || 0.7)
+    
+    const maxTokens = typeof config.openaiMaxTokens === 'string' 
+      ? parseInt(config.openaiMaxTokens) 
+      : (config.openaiMaxTokens || 500)
+    
+    console.log('Parâmetros OpenAI:', { 
+      model: config.openaiModel || 'gpt-4o-mini', 
+      temperature, 
+      maxTokens,
+      temperatureType: typeof temperature,
+      maxTokensType: typeof maxTokens
+    })
+    
     try {
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -98,8 +116,8 @@ export async function POST(request: NextRequest) {
               content: message
             }
           ],
-          temperature: config.openaiTemperature || 0.7,
-          max_tokens: config.openaiMaxTokens || 500
+          temperature: temperature,
+          max_tokens: maxTokens
         })
       })
 
