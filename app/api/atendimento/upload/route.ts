@@ -2,11 +2,8 @@ import { NextResponse, NextRequest } from 'next/server'
 import { adminStorage, generateSignedUrl } from '@/lib/firebaseAdmin'
 import ffmpeg from 'fluent-ffmpeg'
 import { tmpdir } from 'os'
-import { writeFile, unlink } from 'fs/promises'
+import { writeFile, unlink, readFile } from 'fs/promises'
 import path from 'path'
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg'
-
-ffmpeg.setFfmpegPath(ffmpegInstaller.path)
 
 export const runtime = 'nodejs'
 
@@ -56,23 +53,38 @@ export async function POST(request: NextRequest) {
     let finalFileName = fileName
     let finalContentType = file.type || 'application/pdf'
     if (type === 'audio' && extension === 'wav') {
-      // Converter para mp3 usando ffmpeg
-      const tmpWav = path.join(tmpdir(), `${timestamp}.wav`)
-      const tmpMp3 = path.join(tmpdir(), `${timestamp}.mp3`)
-      await writeFile(tmpWav, buffer)
-      await new Promise((resolve, reject) => {
-        ffmpeg(tmpWav)
-          .toFormat('mp3')
-          .on('end', resolve)
-          .on('error', reject)
-          .save(tmpMp3)
-      })
-      finalBuffer = await import('fs').then(fs => fs.readFileSync(tmpMp3))
-      finalExtension = 'mp3'
-      finalFileName = `${timestamp}.mp3`
-      finalContentType = 'audio/mpeg'
-      await unlink(tmpWav)
-      await unlink(tmpMp3)
+      try {
+        // Tentar converter para mp3 usando ffmpeg (se disponível)
+        const tmpWav = path.join(tmpdir(), `${timestamp}.wav`)
+        const tmpMp3 = path.join(tmpdir(), `${timestamp}.mp3`)
+        await writeFile(tmpWav, buffer)
+        
+        await new Promise<void>((resolve, reject) => {
+          ffmpeg(tmpWav)
+            .toFormat('mp3')
+            .audioCodec('libmp3lame')
+            .audioBitrate(192)
+            .on('end', () => resolve())
+            .on('error', (err) => reject(err))
+            .save(tmpMp3)
+        })
+        
+        const mp3Buffer = await readFile(tmpMp3)
+        finalBuffer = mp3Buffer
+        finalExtension = 'mp3'
+        finalFileName = `${timestamp}.mp3`
+        finalContentType = 'audio/mpeg'
+        
+        // Limpar arquivos temporários
+        await unlink(tmpWav)
+        await unlink(tmpMp3)
+        
+        console.log('Áudio convertido de .wav para .mp3 com sucesso')
+      } catch (error) {
+        console.warn('Erro na conversão de áudio para mp3:', error)
+        console.warn('Arquivo .wav será enviado sem conversão (pode não funcionar na Z-API)')
+        // Continuar com o arquivo original
+      }
     }
     const storagePath = `${type}/${finalFileName}`
 
