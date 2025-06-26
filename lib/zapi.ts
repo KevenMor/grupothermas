@@ -219,6 +219,8 @@ export async function sendImage(
     let payload: any = { phone };
     if (base64OrUrl.startsWith('http')) {
       payload.url = base64OrUrl;
+      // Remover qualquer campo 'image' se for URL
+      if (payload.image) delete payload.image;
     } else {
       payload.image = base64OrUrl.startsWith('data:') ? base64OrUrl : `data:image/jpeg;base64,${base64OrUrl}`;
     }
@@ -227,8 +229,7 @@ export async function sendImage(
     console.log('Enviando imagem para Z-API:', {
       url: zapiUrl,
       phone,
-      hasImage: !!payload.image,
-      hasUrl: !!payload.url,
+      payload, // log detalhado do payload
       caption,
       replyTo: replyTo?.id
     });
