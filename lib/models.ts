@@ -159,6 +159,8 @@ export interface ChatMessage {
     text: string
     author: 'agent' | 'customer'
   }
+  // Novo campo para timestamp de status (entregue/lido)
+  statusTimestamp?: string
 }
 
 export interface ChatCustomer {
