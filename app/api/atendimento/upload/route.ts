@@ -47,6 +47,9 @@ export async function POST(request: NextRequest) {
     }
     const fileName = `${timestamp}.${extension}`
 
+    // Salvar arquivo no Firebase Storage
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
     // Conversão automática de áudio para mp3 se necessário
     let finalBuffer = buffer
     let finalExtension = extension
