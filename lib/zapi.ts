@@ -278,10 +278,10 @@ export async function sendAudio(
   replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
 ): Promise<MessageResponse> {
   try {
-    // Só aceita arquivos mp3
-    if (!base64OrUrl.endsWith('.mp3') && !base64OrUrl.startsWith('data:audio/mp3') && !base64OrUrl.startsWith('data:audio/mpeg')) {
-      console.error('Apenas arquivos mp3 são suportados para envio de áudio via Z-API.');
-      return { success: false, error: 'Apenas arquivos mp3 são suportados para envio de áudio via Z-API.' };
+    // Aceita URLs do Firebase Storage e arquivos mp3
+    if (!base64OrUrl.startsWith('http') && !base64OrUrl.endsWith('.mp3') && !base64OrUrl.startsWith('data:audio/mp3') && !base64OrUrl.startsWith('data:audio/mpeg')) {
+      console.error('Apenas URLs públicas ou arquivos mp3 são suportados para envio de áudio via Z-API.');
+      return { success: false, error: 'Apenas URLs públicas ou arquivos mp3 são suportados para envio de áudio via Z-API.' };
     }
     const config = await getZAPIConfig();
     // Headers da requisição
@@ -290,8 +290,17 @@ export async function sendAudio(
       headers['Client-Token'] = config.zapiClientToken.trim();
     }
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-audio`;
-    // Sempre envie o campo 'audio' para a Z-API, seja base64 ou link público
-    const payload: any = { phone, audio: base64OrUrl };
+    
+    // Para URLs públicas, usar campo 'audio', para base64 usar 'audio'
+    let payload: any = { phone };
+    
+    if (base64OrUrl.startsWith('http')) {
+      // URL pública - usar campo 'audio' com a URL
+      payload.audio = base64OrUrl;
+    } else {
+      // Base64 - usar campo 'audio' com o base64
+      payload.audio = base64OrUrl;
+    }
     if (replyTo?.id) payload.messageId = replyTo.id;
     console.log('Enviando áudio para Z-API:', {
       url: zapiUrl,

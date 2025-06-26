@@ -60,14 +60,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Testar se a URL está realmente acessível (HEAD request)
-    if (type === 'image' && localPath) {
+    if (localPath) {
       try {
         const testResponse = await fetch(localPath, { method: 'HEAD' });
         if (!testResponse.ok) {
-          return NextResponse.json({ error: 'A URL da imagem não está acessível publicamente para a Z-API.' }, { status: 400 })
+          return NextResponse.json({ error: `A URL do ${type} não está acessível publicamente para a Z-API.` }, { status: 400 })
         }
       } catch (e) {
-        return NextResponse.json({ error: 'Falha ao testar a URL da imagem. Verifique se está realmente pública.' }, { status: 400 })
+        return NextResponse.json({ error: `Falha ao testar a URL do ${type}. Verifique se está realmente pública.` }, { status: 400 })
       }
     }
 
