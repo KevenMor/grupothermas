@@ -1,15 +1,12 @@
-import { collection, addDoc, getDocs, query, where, orderBy, limit } from 'firebase/firestore'
-import { db } from './firebase'
-
 // Função para testar a conexão
 export async function testFirebaseConnection() {
   try {
     console.log('Testando conexão Firebase...')
-    
+    const { collection, getDocs } = await import('firebase/firestore')
+    const { db } = await import('./firebase')
     // Tentar buscar documentos de uma coleção
     const testCollection = collection(db, 'test')
     const snapshot = await getDocs(testCollection)
-    
     console.log('Conexão Firebase OK! Documentos encontrados:', snapshot.size)
     return true
   } catch (error) {
@@ -21,6 +18,8 @@ export async function testFirebaseConnection() {
 // Função para criar dados de teste
 export async function createTestData(uid: string) {
   try {
+    const { collection, addDoc } = await import('firebase/firestore')
+    const { db } = await import('./firebase')
     // Criar alguns leads de teste
     const leadsData = [
       {
@@ -107,6 +106,8 @@ export async function createTestData(uid: string) {
 // Função para buscar leads do usuário
 export async function getUserLeads(uid: string) {
   try {
+    const { collection, getDocs, query, where, orderBy, limit } = await import('firebase/firestore')
+    const { db } = await import('./firebase')
     const leadsCollection = collection(db, 'leads')
     const q = query(
       leadsCollection,
@@ -114,13 +115,11 @@ export async function getUserLeads(uid: string) {
       orderBy('createdAt', 'desc'),
       limit(10)
     )
-    
     const snapshot = await getDocs(q)
     const leads = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }))
-    
     return leads
   } catch (error) {
     console.error('Erro ao buscar leads:', error)
@@ -131,6 +130,8 @@ export async function getUserLeads(uid: string) {
 // Função para buscar contratos do usuário
 export async function getUserContracts(uid: string) {
   try {
+    const { collection, getDocs, query, where, orderBy, limit } = await import('firebase/firestore')
+    const { db } = await import('./firebase')
     const contractsCollection = collection(db, 'contracts')
     const q = query(
       contractsCollection,
@@ -138,13 +139,11 @@ export async function getUserContracts(uid: string) {
       orderBy('createdAt', 'desc'),
       limit(10)
     )
-    
     const snapshot = await getDocs(q)
     const contracts = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }))
-    
     return contracts
   } catch (error) {
     console.error('Erro ao buscar contratos:', error)
