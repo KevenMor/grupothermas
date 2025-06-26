@@ -1,4 +1,5 @@
 'use client'
+export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -31,7 +32,7 @@ export default function LoginPage() {
         await signIn(email, password)
         toast.success('Login realizado com sucesso!')
       }
-      router.push('/dashboard')
+      router.push('/dashboard' as any)
     } catch (error: any) {
       console.error('Auth error:', error)
       toast.error(error.message || 'Erro na autenticação')

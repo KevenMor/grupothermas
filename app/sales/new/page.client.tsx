@@ -26,7 +26,7 @@ export default function NewSalePage() {
           <div className="flex items-center py-6">
             <Button
               variant="ghost"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/dashboard' as any)}
               className="mr-4"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -89,7 +89,7 @@ export default function NewSalePage() {
             </div>
             
             <div className="flex justify-end gap-4 mt-6">
-              <Button variant="outline" onClick={() => router.push('/dashboard')}>
+              <Button variant="outline" onClick={() => router.push('/dashboard' as any)}>
                 Cancelar
               </Button>
               <Button onClick={() => alert('Funcionalidade em desenvolvimento')}>

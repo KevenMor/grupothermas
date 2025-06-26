@@ -44,8 +44,9 @@ const nextConfig = {
     domains: ['firebasestorage.googleapis.com'],
   },
   experimental: {
-    appDir: true,
-    serverActions: false,
+    serverActions: {
+      allowedOrigins: ['localhost:3000']
+    },
   },
   webpack: (config, { dev, isServer }) => {
     if (!isServer) {

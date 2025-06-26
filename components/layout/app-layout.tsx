@@ -57,7 +57,7 @@ function AppSidebar() {
     try {
       await signOut()
       toast.success('Logout realizado com sucesso')
-      router.push('/login')
+      router.push('/login' as any)
     } catch (error) {
       toast.error('Erro ao fazer logout')
     }
@@ -99,7 +99,7 @@ function AppSidebar() {
             <SidebarNavItem
               icon={<LayoutDashboard className="h-4 w-4" />}
               active={pathname === '/dashboard'}
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/dashboard' as any)}
             >
               Dashboard
             </SidebarNavItem>
@@ -113,21 +113,21 @@ function AppSidebar() {
               <SidebarNavSubItem
                 icon={<MessageSquare className="h-4 w-4" />}
                 active={pathname === '/atendimento'}
-                onClick={() => router.push('/atendimento')}
+                onClick={() => router.push('/atendimento' as any)}
               >
                 Chat
               </SidebarNavSubItem>
               <SidebarNavSubItem
                 icon={<Kanban className="h-4 w-4" />}
                 active={pathname === '/kanban'}
-                onClick={() => router.push('/kanban')}
+                onClick={() => router.push('/kanban' as any)}
               >
                 Kanban
               </SidebarNavSubItem>
               <SidebarNavSubItem
                 icon={<Bot className="h-4 w-4" />}
                 active={pathname === '/admin'}
-                onClick={() => router.push('/admin')}
+                onClick={() => router.push('/admin' as any)}
               >
                 Admin IA
               </SidebarNavSubItem>
@@ -142,14 +142,14 @@ function AppSidebar() {
               <SidebarNavSubItem
                 icon={<ShoppingCart className="h-4 w-4" />}
                 active={pathname === '/sales/new'}
-                onClick={() => router.push('/sales/new')}
+                onClick={() => router.push('/sales/new' as any)}
               >
                 Nova Venda
               </SidebarNavSubItem>
               <SidebarNavSubItem
                 icon={<FileText className="h-4 w-4" />}
                 active={pathname === '/contracts'}
-                onClick={() => router.push('/contracts')}
+                onClick={() => router.push('/contracts' as any)}
               >
                 Contratos
               </SidebarNavSubItem>
@@ -161,7 +161,7 @@ function AppSidebar() {
           <SidebarNav>
             <SidebarNavItem
               icon={<Settings className="h-4 w-4" />}
-              onClick={() => router.push('/settings')}
+              onClick={() => router.push('/settings' as any)}
             >
               Configurações
             </SidebarNavItem>
@@ -172,7 +172,7 @@ function AppSidebar() {
           <SidebarNav>
             <SidebarNavItem
               icon={<Plus className="h-4 w-4" />}
-              onClick={() => router.push('/sales/new')}
+              onClick={() => router.push('/sales/new' as any)}
             >
               Nova Venda
             </SidebarNavItem>
@@ -283,7 +283,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
     
     if (!user) {
-      router.push('/login')
+      router.push('/login' as any)
       return
     }
   }, [user, loading, router])

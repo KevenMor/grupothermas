@@ -20,7 +20,7 @@ export default function ContractsPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.push('/login')
+        router.push('/login' as any)
         return
       }
       await loadContracts(user.uid)
@@ -88,7 +88,7 @@ export default function ContractsPage() {
             <div className="flex items-center">
               <Button
                 variant="ghost"
-                onClick={() => router.push('/dashboard')}
+                onClick={() => router.push('/dashboard' as any)}
                 className="mr-4"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

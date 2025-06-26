@@ -20,7 +20,7 @@ export default function LeadsPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.push('/login')
+        router.push('/login' as any)
         return
       }
       setCurrentUser(user)
@@ -118,7 +118,7 @@ export default function LeadsPage() {
           <div className="flex items-center py-6">
             <Button
               variant="ghost"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/dashboard' as any)}
               className="mr-4"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
