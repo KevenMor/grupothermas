@@ -13,4 +13,4 @@ RUN npm run build
 
 EXPOSE 8080
 
-CMD ["node", ".next/standalone/server.js"] 
+CMD ["npm", "start"] 
