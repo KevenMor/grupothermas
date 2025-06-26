@@ -1,0 +1,3 @@
+'use client'
+export const dynamic = 'force-dynamic'
+// ... existing code from page.tsx ... 
