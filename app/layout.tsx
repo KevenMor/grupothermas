@@ -1,3 +1,6 @@
+'use client'
+export const dynamic = 'force-dynamic'
+
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
