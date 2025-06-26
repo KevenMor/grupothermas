@@ -3,10 +3,10 @@ import { adminDB } from '@/lib/firebaseAdmin'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  context: { params: any }
 ) {
   try {
-    const sessionId = params.sessionId
+    const { sessionId } = context.params
     
     // Dados de exemplo para contatos
     const sampleContacts = [
