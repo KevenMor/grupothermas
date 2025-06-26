@@ -12,6 +12,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Body completo:', JSON.stringify(body, null, 2))
 
+    // Ignorar eventos de presença e outros tipos não relacionados a mensagens
+    const ignoredTypes = [
+      'PresenceChatCallback',
+      'PresenceCallback',
+      'StatusCallback',
+      'AckCallback',
+      'MessageStatusCallback'
+    ];
+    if (ignoredTypes.includes(body?.type)) {
+      // Se quiser, logue só em modo debug:
+      // console.debug('Evento ignorado:', body.type);
+      return NextResponse.json({ ignored: true, reason: 'not a chat message', type: body.type });
+    }
+
     // Z-API envia diferentes tipos de eventos; focamos em mensagens recebidas
     if (!body || body.fromMe) {
       console.log('Mensagem ignorada:', { 
