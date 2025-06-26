@@ -3,9 +3,6 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { onAuthStateChanged } from 'firebase/auth'
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase'
 import { Contract } from '@/lib/models'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,18 +15,24 @@ export default function ContractsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        router.push('/login' as any)
-        return
-      }
-      await loadContracts(user.uid)
+    let unsubscribe: any
+    import('firebase/auth').then(({ onAuthStateChanged }) => {
+      import('@/lib/firebase').then(({ auth }) => {
+        unsubscribe = onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            router.push('/login' as any)
+            return
+          }
+          await loadContracts(user.uid)
+        })
+      })
     })
-
-    return () => unsubscribe()
+    return () => unsubscribe && unsubscribe()
   }, [router])
 
   const loadContracts = async (uid: string) => {
+    const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore')
+    const { db } = await import('@/lib/firebase')
     try {
       const contractsRef = collection(db, 'contracts')
       const q = query(
@@ -38,14 +41,12 @@ export default function ContractsPage() {
         orderBy('createdAt', 'desc')
       )
       const querySnapshot = await getDocs(q)
-      
       const contractsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate(),
         updatedAt: doc.data().updatedAt?.toDate(),
       })) as Contract[]
-      
       setContracts(contractsData)
     } catch (error) {
       console.error('Error loading contracts:', error)
