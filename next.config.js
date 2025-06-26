@@ -40,13 +40,20 @@ const nextConfig = {
   },
   // Não executar APIs durante build
   staticPageGenerationTimeout: 30,
-  images: {
-    domains: ['firebasestorage.googleapis.com'],
-  },
+  // Desabilitar completamente a geração estática
+  output: 'standalone',
+  // Forçar todas as páginas a serem dinâmicas
   experimental: {
     serverActions: {
       allowedOrigins: ['localhost:3000']
     },
+  },
+  // Configuração para evitar prerenderização
+  generateStaticParams: async () => {
+    return []
+  },
+  images: {
+    domains: ['firebasestorage.googleapis.com'],
   },
   webpack: (config, { dev, isServer }) => {
     if (!isServer) {
