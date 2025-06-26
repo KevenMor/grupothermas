@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     console.log(`=== ENVIANDO ${type.toUpperCase()} VIA Z-API (ATENDIMENTO) ===`)
     
     // Permitir apenas URL pública por enquanto (robustez)
-    if (!localPath.startsWith('http')) {
+    if (!localPath || !localPath.startsWith('http')) {
       return NextResponse.json({ error: 'localPath precisa ser uma URL pública do Firebase Storage' }, { status: 400 })
     }
 
