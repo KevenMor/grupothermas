@@ -48,10 +48,6 @@ const nextConfig = {
       allowedOrigins: ['localhost:3000']
     },
   },
-  // Configuração para evitar prerenderização
-  generateStaticParams: async () => {
-    return []
-  },
   images: {
     domains: ['firebasestorage.googleapis.com'],
   },
