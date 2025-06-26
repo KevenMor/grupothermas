@@ -44,6 +44,11 @@ export async function POST(request: NextRequest) {
     }
     const fileName = `${timestamp}.${extension}`
 
+    // Se for áudio, só aceite mp3
+    if (type === 'audio' && extension !== 'mp3') {
+      return NextResponse.json({ error: 'Apenas arquivos MP3 são suportados para envio de áudio.' }, { status: 400 })
+    }
+
     // Salvar arquivo no Firebase Storage
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
