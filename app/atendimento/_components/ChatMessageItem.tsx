@@ -352,7 +352,9 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
             <div className="flex justify-end mt-1">
               <span className="text-xs text-gray-300 dark:text-gray-500 flex items-center gap-1">
                 <MessageStatus status={message.status} />
-                {formatTime(message.timestamp)}
+                {['delivered','read'].includes(message.status) && message.statusTimestamp
+                  ? formatTime(message.statusTimestamp)
+                  : formatTime(message.timestamp)}
               </span>
             </div>
           </div>

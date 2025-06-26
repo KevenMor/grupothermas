@@ -310,6 +310,27 @@ export async function POST(request: NextRequest) {
       console.log('IA não está ativa para esta conversa, status:', finalConversationData?.conversationStatus)
     }
 
+    // Novo: tratar eventos de status de mensagem (MessageStatusCallback)
+    if (body.type === 'MessageStatusCallback' && body.ids && Array.isArray(body.ids)) {
+      const status = body.status || 'unknown';
+      const phone = body.phone;
+      const momment = body.momment || Date.now();
+      const timestamp = new Date(momment).toISOString();
+      for (const messageId of body.ids) {
+        // Atualiza status e timestamp de entrega
+        await adminDB
+          .collection('conversations')
+          .doc(phone)
+          .collection('messages')
+          .doc(messageId)
+          .update({ 
+            status,
+            statusTimestamp: timestamp // novo campo para rastrear quando recebeu esse status
+          });
+      }
+      return NextResponse.json({ success: true, updated: body.ids.length, status });
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Erro webhook Z-API:', error)
