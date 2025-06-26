@@ -40,8 +40,6 @@ const nextConfig = {
   },
   // Não executar APIs durante build
   staticPageGenerationTimeout: 30,
-  // Desabilitar completamente a geração estática
-  output: 'standalone',
   // Forçar todas as páginas a serem dinâmicas
   experimental: {
     serverActions: {

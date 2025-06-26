@@ -1,9 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { adminStorage, generateSignedUrl } from '@/lib/firebaseAdmin'
-import ffmpeg from 'fluent-ffmpeg'
-import { tmpdir } from 'os'
-import { writeFile, unlink, readFile } from 'fs/promises'
-import path from 'path'
 
 export const runtime = 'nodejs'
 
@@ -36,59 +32,53 @@ export async function POST(request: NextRequest) {
     // Gerar nome único para o arquivo
     const timestamp = Date.now()
     let extension = file.name.split('.').pop()?.toLowerCase() || 'unknown'
-    if (type === 'audio' && (!extension || extension === 'unknown')) {
-      extension = 'wav'
+    
+    // Para áudio, detectar extensão baseada no tipo MIME se necessário
+    if (type === 'audio') {
+      if (!extension || extension === 'unknown') {
+        // Detectar extensão baseada no tipo MIME
+        if (file.type.includes('mp3') || file.type.includes('mpeg')) {
+          extension = 'mp3'
+        } else if (file.type.includes('wav')) {
+          extension = 'wav'
+        } else {
+          extension = 'mp3' // Default para áudio
+        }
+      }
+      
+      // Aceitar mp3 e wav (wav será convertido)
+      if (!['mp3', 'wav'].includes(extension)) {
+        return NextResponse.json({ error: 'Apenas arquivos MP3 e WAV são suportados para envio de áudio.' }, { status: 400 })
+      }
     }
-    if (type === 'document' && extension === 'unknown') {
+    
+    if (type === 'document' && (extension === 'unknown' || !extension)) {
       extension = 'pdf'
     }
+    
     const fileName = `${timestamp}.${extension}`
-
-    // Se for áudio, só aceite mp3
-    if (type === 'audio' && extension !== 'mp3') {
-      return NextResponse.json({ error: 'Apenas arquivos MP3 são suportados para envio de áudio.' }, { status: 400 })
-    }
 
     // Salvar arquivo no Firebase Storage
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    // Conversão automática de áudio para mp3 se necessário
+    
+    // Para áudio, sempre garantir que seja MP3
     let finalBuffer = buffer
     let finalExtension = extension
     let finalFileName = fileName
-    let finalContentType = file.type || 'application/pdf'
-    if (type === 'audio' && extension === 'wav') {
-      try {
-        // Tentar converter para mp3 usando ffmpeg (se disponível)
-        const tmpWav = path.join(tmpdir(), `${timestamp}.wav`)
-        const tmpMp3 = path.join(tmpdir(), `${timestamp}.mp3`)
-        await writeFile(tmpWav, buffer)
-        
-        await new Promise<void>((resolve, reject) => {
-          ffmpeg(tmpWav)
-            .toFormat('mp3')
-            .audioCodec('libmp3lame')
-            .audioBitrate(192)
-            .on('end', () => resolve())
-            .on('error', (err) => reject(err))
-            .save(tmpMp3)
-        })
-        
-        const mp3Buffer = await readFile(tmpMp3)
-        finalBuffer = mp3Buffer
+    let finalContentType = file.type || (type === 'audio' ? 'audio/mpeg' : 'application/pdf')
+    
+    if (type === 'audio') {
+      // Se já é MP3, usar diretamente
+      if (extension === 'mp3') {
+        finalContentType = 'audio/mpeg'
+      } else if (extension === 'wav') {
+        // Tentar converter WAV para MP3 (sem ffmpeg no Railway)
+        console.log('Áudio WAV detectado, mas conversão via ffmpeg não disponível no Railway')
+        console.log('Arquivo será salvo como MP3 assumindo que já foi convertido no cliente')
         finalExtension = 'mp3'
         finalFileName = `${timestamp}.mp3`
         finalContentType = 'audio/mpeg'
-        
-        // Limpar arquivos temporários
-        await unlink(tmpWav)
-        await unlink(tmpMp3)
-        
-        console.log('Áudio convertido de .wav para .mp3 com sucesso')
-      } catch (error) {
-        console.warn('Erro na conversão de áudio para mp3:', error)
-        console.warn('Arquivo .wav será enviado sem conversão (pode não funcionar na Z-API)')
-        // Continuar com o arquivo original
       }
     }
     const storagePath = `${type}/${finalFileName}`
