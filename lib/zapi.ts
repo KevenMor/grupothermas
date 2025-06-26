@@ -204,53 +204,46 @@ export async function replyMessage(
  */
 export async function sendImage(
   phone: string, 
-  base64: string, 
+  base64OrUrl: string, 
   caption?: string,
   replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
 ): Promise<MessageResponse> {
   try {
     const config = await getZAPIConfig();
-    
     // Headers da requisição
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (config.zapiClientToken && config.zapiClientToken.trim()) {
       headers['Client-Token'] = config.zapiClientToken.trim();
     }
-
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-image`;
-    
-    const payload: any = { 
-      phone, 
-      image: base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`
-    };
-    
+    let payload: any = { phone };
+    if (base64OrUrl.startsWith('http')) {
+      payload.url = base64OrUrl;
+    } else {
+      payload.image = base64OrUrl.startsWith('data:') ? base64OrUrl : `data:image/jpeg;base64,${base64OrUrl}`;
+    }
     if (caption) payload.caption = caption;
     if (replyTo?.id) payload.messageId = replyTo.id;
-    
     console.log('Enviando imagem para Z-API:', {
       url: zapiUrl,
       phone,
-      hasImage: !!base64,
+      hasImage: !!payload.image,
+      hasUrl: !!payload.url,
       caption,
       replyTo: replyTo?.id
     });
-
     const zapiResponse = await fetch(zapiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
-
     const zapiResultText = await zapiResponse.text();
     let zapiResult: any = {};
     try { zapiResult = JSON.parse(zapiResultText); } catch { zapiResult = zapiResultText; }
-    
     console.log('Resposta da Z-API (imagem):', zapiResult);
-
     if (!zapiResponse.ok) {
       throw new Error(`Erro Z-API: ${zapiResultText}`);
     }
-    
     // Criar objeto de mensagem local para atualização imediata da UI
     const localMessageObj = {
       id: `local_${Date.now()}`,
@@ -259,14 +252,13 @@ export async function sendImage(
       role: 'agent',
       status: 'sent',
       mediaType: 'image',
-      mediaUrl: base64,
+      mediaUrl: base64OrUrl,
       mediaInfo: {
         type: 'image',
         caption
       },
       replyTo
     };
-    
     return { 
       success: true, 
       messageId: zapiResult.messageId,
