@@ -54,23 +54,16 @@ export async function POST(request: NextRequest) {
 
     console.log(`=== ENVIANDO ${type.toUpperCase()} VIA Z-API (ATENDIMENTO) ===`)
     
-    // Variáveis para resultado da API e URL da mídia
-    let zapiResult: any = {}
-    let mediaUrl = '' // Para salvar no Firebase
-
-    if (!localPath) {
-      return NextResponse.json({ 
-        error: 'LocalPath é obrigatório para envio de mídia'
-      }, { status: 400 })
-    }
-    // Só aceita URLs públicas do Firebase Storage
+    // Permitir apenas URL pública por enquanto (robustez)
     if (!localPath.startsWith('http')) {
       return NextResponse.json({ error: 'localPath precisa ser uma URL pública do Firebase Storage' }, { status: 400 })
     }
-    
-    // Se localPath for uma URL pública (Firebase Storage), use-a. Caso contrário, retorne erro.
-    if (localPath.startsWith('http')) {
-      mediaUrl = localPath
+
+    let zapiResult: any = {}
+    let mediaUrl = localPath
+    let zapiError = null
+
+    try {
       switch (type) {
         case 'image': {
           const imageResult = await sendImage(phone, localPath, caption, replyTo)
@@ -95,54 +88,41 @@ export async function POST(request: NextRequest) {
         default:
           return NextResponse.json({ error: 'Tipo de mídia não suportado para URL pública' }, { status: 400 })
       }
-      // Salvar mensagem no Firebase com mediaUrl correto
-      try {
-        const conversationRef = adminDB.collection('conversations').doc(phone)
-        const messageData: MessageData = {
-          content: `[${type.toUpperCase()}]`,
-          role: 'agent',
-          timestamp: new Date().toISOString(),
-          status: 'sent',
-          zapiMessageId: zapiResult.messageId || null,
-          agentName: 'Sistema',
-          mediaType: type,
-          mediaUrl: mediaUrl,
-          mediaInfo: {
-            type: type,
-            url: mediaUrl,
-            filename: filename || localPath?.split('/').pop(),
-            ...(caption && { caption })
-          },
-          ...(replyTo && { replyTo })
-        }
-        await conversationRef.collection('messages').add(messageData)
-        await conversationRef.update({
-          lastMessage: `[${type.toUpperCase()}] enviado`,
-          timestamp: new Date().toISOString()
-        })
-      } catch (e) {
-        console.error('Erro ao salvar mensagem no Firestore:', e)
-      }
-      return NextResponse.json({ success: true, zapiResult })
-    } else {
-      // Se não for URL pública, retorne erro
-      return NextResponse.json({ error: 'localPath precisa ser uma URL pública do Firebase Storage' }, { status: 400 })
+    } catch (err) {
+      zapiError = err instanceof Error ? err.message : 'Erro desconhecido'
+      console.error('Erro Z-API:', zapiError)
+      return NextResponse.json({ error: 'Erro ao enviar via Z-API', details: zapiError }, { status: 500 })
     }
 
-    return NextResponse.json({ 
-      success: true,
-      message: `${type.charAt(0).toUpperCase() + type.slice(1)} enviado com sucesso!`,
-      zapiResult,
-      sentData: {
-        type,
-        phone,
-        content,
-        localPath,
-        caption,
-        filename,
-        mediaUrl
+    // Só grava no Firestore se não houve erro
+    try {
+      const conversationRef = adminDB.collection('conversations').doc(phone)
+      const messageData: MessageData = {
+        content: `[${type.toUpperCase()}]`,
+        role: 'agent',
+        timestamp: new Date().toISOString(),
+        status: 'sent',
+        zapiMessageId: zapiResult.messageId || null,
+        agentName: 'Sistema',
+        mediaType: type,
+        mediaUrl: mediaUrl,
+        mediaInfo: {
+          type: type,
+          url: mediaUrl,
+          filename: filename || localPath?.split('/').pop(),
+          ...(caption && { caption })
+        },
+        ...(replyTo && { replyTo })
       }
-    })
+      await conversationRef.collection('messages').add(messageData)
+      await conversationRef.update({
+        lastMessage: `[${type.toUpperCase()}] enviado`,
+        timestamp: new Date().toISOString()
+      })
+    } catch (e) {
+      console.error('Erro ao salvar mensagem no Firestore:', e)
+    }
+    return NextResponse.json({ success: true, zapiResult })
 
   } catch (error) {
     console.error('Erro geral:', error)

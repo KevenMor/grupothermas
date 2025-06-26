@@ -22,9 +22,12 @@ import {
   PowerOff,
   Zap,
   Brain,
-  Workflow
+  Workflow,
+  MessageCircle
 } from 'lucide-react'
 import io from 'socket.io-client'
+import { WhatsAppChat } from './_components/WhatsAppChat'
+import { EmptyState } from './_components/EmptyState'
 
 interface WhatsAppSession {
   id: string
@@ -44,6 +47,7 @@ export default function WhatsAppPage() {
   const [newSessionName, setNewSessionName] = useState('')
   const [socket, setSocket] = useState<any>(null)
   const [selectedSession, setSelectedSession] = useState<WhatsAppSession | null>(null)
+  const [activeTab, setActiveTab] = useState('sessions')
 
   useEffect(() => {
     // Conectar ao Socket.IO para receber atualizações em tempo real
@@ -171,11 +175,15 @@ export default function WhatsAppPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="sessions" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="sessions">
               <Smartphone className="h-4 w-4 mr-2" />
               Sessões
+            </TabsTrigger>
+            <TabsTrigger value="chat">
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Chat
             </TabsTrigger>
             <TabsTrigger value="automation">
               <Bot className="h-4 w-4 mr-2" />
@@ -310,6 +318,67 @@ export default function WhatsAppPage() {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="chat" className="space-y-6">
+            {sessions.length === 0 ? (
+              <EmptyState 
+                type="no-sessions" 
+                onAction={() => setActiveTab('sessions')}
+              />
+            ) : sessions.filter(s => s.status === 'connected').length === 0 ? (
+              <EmptyState 
+                type="no-connected-sessions" 
+                onAction={() => setActiveTab('sessions')}
+              />
+            ) : (
+              <div className="space-y-4">
+                {/* Seletor de Sessão */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Smartphone className="h-5 w-5" />
+                      Selecionar Sessão
+                    </CardTitle>
+                    <CardDescription>
+                      Escolha uma sessão conectada para acessar o chat
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {sessions
+                        .filter(session => session.status === 'connected')
+                        .map((session) => (
+                          <Button
+                            key={session.id}
+                            variant={selectedSession?.id === session.id ? "default" : "outline"}
+                            className="h-auto p-4 flex flex-col items-start gap-2"
+                            onClick={() => setSelectedSession(session)}
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="font-medium">{session.name}</span>
+                            </div>
+                            {session.phone && (
+                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                                {session.phone}
+                              </span>
+                            )}
+                          </Button>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Chat */}
+                {selectedSession && (
+                  <WhatsAppChat 
+                    sessionId={selectedSession.id} 
+                    sessionName={selectedSession.name}
+                  />
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="automation" className="space-y-6">

@@ -101,29 +101,54 @@ export async function POST(request: NextRequest) {
 
       case 'image':
         zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-image`
-        // Enviar como base64 para aparecer como imagem real no WhatsApp
-        payload.image = `data:image/jpeg;base64,${mediaBase64}`
-        if (caption) payload.caption = caption
+        if (url && url.startsWith('http')) {
+          // Modo B: URL pública
+          payload.url = url
+          if (caption) payload.caption = caption
+        } else if (mediaBase64) {
+          // Modo A: base64 puro (sem prefixo)
+          payload.image = mediaBase64
+          if (caption) payload.caption = caption
+        } else {
+          return NextResponse.json({ error: 'URL ou base64 obrigatório para imagem' }, { status: 400 })
+        }
         break
 
       case 'audio':
         zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-audio`
-        // Enviar como base64 para aparecer como áudio real no WhatsApp
-        payload.audio = `data:audio/mpeg;base64,${mediaBase64}`
+        if (url && url.startsWith('http')) {
+          payload.url = url
+        } else if (mediaBase64) {
+          payload.audio = mediaBase64
+        } else {
+          return NextResponse.json({ error: 'URL ou base64 obrigatório para áudio' }, { status: 400 })
+        }
         break
 
       case 'video':
         zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-video`
-        // Enviar como base64 para aparecer como vídeo real no WhatsApp
-        payload.video = `data:video/mp4;base64,${mediaBase64}`
-        if (caption) payload.caption = caption
+        if (url && url.startsWith('http')) {
+          payload.url = url
+          if (caption) payload.caption = caption
+        } else if (mediaBase64) {
+          payload.video = mediaBase64
+          if (caption) payload.caption = caption
+        } else {
+          return NextResponse.json({ error: 'URL ou base64 obrigatório para vídeo' }, { status: 400 })
+        }
         break
 
       case 'document':
         zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-document`
-        // Enviar como base64 para aparecer como documento real no WhatsApp
-        payload.document = `data:application/pdf;base64,${mediaBase64}`
-        payload.fileName = filename || fileName || 'documento.pdf'
+        if (url && url.startsWith('http')) {
+          payload.url = url
+          payload.fileName = filename || fileName || 'documento.pdf'
+        } else if (mediaBase64) {
+          payload.document = mediaBase64
+          payload.fileName = filename || fileName || 'documento.pdf'
+        } else {
+          return NextResponse.json({ error: 'URL ou base64 obrigatório para documento' }, { status: 400 })
+        }
         break
 
       default:
@@ -153,7 +178,7 @@ export async function POST(request: NextRequest) {
 
     const zapiResult = await zapiResponse.json()
 
-    if (!zapiResponse.ok) {
+    if (!zapiResponse.ok || zapiResult.error) {
       console.error('Erro Z-API:', zapiResult)
       return NextResponse.json({ 
         error: 'Erro ao enviar via Z-API',
