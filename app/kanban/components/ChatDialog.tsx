@@ -1,4 +1,5 @@
 'use client'
+export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
 import { X, Send, Paperclip, Phone, MoreVertical } from 'lucide-react'
