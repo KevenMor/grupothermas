@@ -31,6 +31,7 @@ import {
 import { ChatMessageItem } from './ChatMessageItem'
 import { EmojiPicker } from './EmojiPicker'
 import { isSameDay } from 'date-fns'
+import lamejs from 'lamejs'
 
 interface ChatWindowProps {
   chat: Chat | null
@@ -476,27 +477,44 @@ const MessageInput = ({
     }
   }
 
+  // Função utilitária para converter WAV para MP3
+  async function wavToMp3(wavBlob: Blob): Promise<Blob> {
+    const arrayBuffer = await wavBlob.arrayBuffer();
+    const wav = lamejs.WavHeader.readHeader(new DataView(arrayBuffer));
+    const samples = new Int16Array(arrayBuffer, wav.dataOffset, wav.dataLen / 2);
+    const mp3enc = new lamejs.Mp3Encoder(wav.channels, wav.sampleRate, 128);
+    const mp3Data = [];
+    let remaining = samples.length;
+    let samplesPerFrame = 1152;
+    for (let i = 0; remaining >= samplesPerFrame; i += samplesPerFrame) {
+      let mono = samples.subarray(i, i + samplesPerFrame);
+      let mp3buf = mp3enc.encodeBuffer(mono);
+      if (mp3buf.length > 0) mp3Data.push(new Int8Array(mp3buf));
+      remaining -= samplesPerFrame;
+    }
+    let mp3buf = mp3enc.flush();
+    if (mp3buf.length > 0) mp3Data.push(new Int8Array(mp3buf));
+    return new Blob(mp3Data, { type: 'audio/mp3' });
+  }
+
   // Função para confirmar envio do áudio
   const confirmSendAudio = async () => {
     if (!recordedAudio || !chat) return
-    
     try {
+      // Converter WAV para MP3 antes do upload
+      const mp3Blob = await wavToMp3(recordedAudio)
       // Upload do áudio
       const formData = new FormData()
-      formData.append('file', recordedAudio, `audio_${Date.now()}.wav`)
+      formData.append('file', mp3Blob, `audio_${Date.now()}.mp3`)
       formData.append('type', 'audio')
-      
       const uploadResponse = await fetch('/api/atendimento/upload', {
         method: 'POST',
         body: formData
       })
-      
       if (!uploadResponse.ok) {
         throw new Error('Erro no upload do áudio')
       }
-      
       const uploadResult = await uploadResponse.json()
-      
       // Enviar áudio via Z-API usando nova API local
       const mediaResponse = await fetch('/api/atendimento/send-media', {
         method: 'POST',
@@ -507,11 +525,9 @@ const MessageInput = ({
           localPath: uploadResult.fileUrl
         })
       })
-      
       if (mediaResponse.ok) {
         const mediaResult = await mediaResponse.json()
         console.log('Áudio enviado com sucesso:', mediaResult)
-        
         // Criar mensagem otimista para mostrar imediatamente
         const optimisticMessage: ChatMessage = {
           id: `temp-audio-${Date.now()}`,
@@ -527,20 +543,16 @@ const MessageInput = ({
           mediaInfo: {
             type: 'audio',
             url: uploadResult.fileUrl,
-            filename: `audio_${Date.now()}.wav`
+            filename: `audio_${Date.now()}.mp3`
           }
         }
-        
-        // Adicionar mensagem à lista imediatamente
         window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
-        
         setShowSendConfirmation(false)
         setRecordedAudio(null)
         console.log('Áudio adicionado à conversa sem reload')
       } else {
         throw new Error('Falha ao enviar áudio via Z-API')
       }
-      
     } catch (error) {
       console.error('Erro ao enviar áudio:', error)
       alert('Erro ao enviar áudio. Tente novamente.')
