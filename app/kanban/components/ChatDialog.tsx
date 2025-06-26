@@ -6,8 +6,6 @@ import { X, Send, Paperclip, Phone, MoreVertical } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { collection, onSnapshot, query, orderBy, addDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -101,22 +99,27 @@ export function ChatDialog({ chat, onClose, isEmbedded = false }: ChatDialogProp
       return
     }
 
-    const messagesQuery = query(
-      collection(db, 'messages', chat.id, 'messages'),
-      orderBy('timestamp', 'asc')
-    )
+    let unsubscribe: any
+    import('firebase/firestore').then(({ collection, onSnapshot, query, orderBy }) => {
+      import('@/lib/firebase').then(({ db }) => {
+        const messagesQuery = query(
+          collection(db, 'messages', chat.id, 'messages'),
+          orderBy('timestamp', 'asc')
+        )
 
-    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const messagesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate() || new Date()
-      })) as Message[]
+        unsubscribe = onSnapshot(messagesQuery, (snapshot: any) => {
+          const messagesData = snapshot.docs.map((doc: any) => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: doc.data().timestamp?.toDate() || new Date()
+          })) as Message[]
 
-      setMessages(messagesData)
+          setMessages(messagesData)
+        })
+      })
     })
 
-    return unsubscribe
+    return () => unsubscribe && unsubscribe()
   }, [chat.id, user])
 
   // Send message
@@ -159,6 +162,8 @@ export function ChatDialog({ chat, onClose, isEmbedded = false }: ChatDialogProp
       }
 
       // Add to Firestore for real-time updates
+      const { addDoc, collection } = await import('firebase/firestore')
+      const { db } = await import('@/lib/firebase')
       await addDoc(collection(db, 'messages', chat.id, 'messages'), {
         chatId: chat.id,
         content: newMessage,
