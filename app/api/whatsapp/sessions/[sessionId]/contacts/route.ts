@@ -3,13 +3,14 @@ import { adminDB } from '@/lib/firebaseAdmin'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  context: { params: any }
 ) {
   try {
+    const { sessionId } = context.params
     // Buscar todas as mensagens da sessão para agrupar por contato
     const messagesSnapshot = await adminDB
       .collection('whatsapp_messages')
-      .where('sessionId', '==', params.sessionId)
+      .where('sessionId', '==', sessionId)
       .orderBy('timestamp', 'desc')
       .get()
 
