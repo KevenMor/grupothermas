@@ -16,6 +16,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
 
+  if (typeof window !== "undefined") {
+    console.log("API KEY em produção:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+  }
+
   useEffect(() => {
     let unsubscribe: any
     import('firebase/auth').then(({ onAuthStateChanged }) => {
