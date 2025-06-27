@@ -146,8 +146,8 @@ export default function IATrainingPage() {
       const response = await fetch('/api/admin/training-data');
       if (response.ok) {
         const data = await response.json();
-        if (data.training) {
-          setTrainingData(data.training);
+        if (data.agent) {
+          setTrainingData(data.agent);
         }
       }
     } catch (error) {
