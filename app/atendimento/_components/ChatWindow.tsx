@@ -588,9 +588,9 @@ const MessageInput = ({
       // Enviar áudio via Z-API usando nova API local
       console.log('4. Enviando via Z-API...')
       const mediaPayload = {
-        phone: chat.customerPhone,
-        type: 'audio',
-        localPath: uploadResult.fileUrl
+          phone: chat.customerPhone,
+          type: 'audio',
+          localPath: uploadResult.fileUrl
       }
       console.log('Payload para Z-API:', mediaPayload)
       
@@ -618,7 +618,7 @@ const MessageInput = ({
       console.error('Error:', error)
       console.error('Stack:', error instanceof Error ? error.stack : 'No stack')
       alert(`Erro ao enviar áudio: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
-    }
+  }
   }
 
 

@@ -137,9 +137,26 @@ export async function POST(request: NextRequest) {
         },
         ...(replyTo && { replyTo })
       }
+      let lastMessagePreview = '';
+      switch (type) {
+        case 'audio':
+          lastMessagePreview = '🎵 Áudio';
+          break;
+        case 'image':
+          lastMessagePreview = '🖼️ Imagem';
+          break;
+        case 'document':
+          lastMessagePreview = '📄 Documento';
+          break;
+        case 'video':
+          lastMessagePreview = '🎬 Vídeo';
+          break;
+        default:
+          lastMessagePreview = `[${type.toUpperCase()}]`;
+      }
       await conversationRef.collection('messages').add(messageData)
       await conversationRef.update({
-        lastMessage: `[${type.toUpperCase()}] enviado`,
+        lastMessage: lastMessagePreview,
         timestamp: new Date().toISOString()
       })
     } catch (e) {

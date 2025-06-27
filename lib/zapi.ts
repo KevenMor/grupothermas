@@ -287,11 +287,11 @@ export async function sendAudio(
     if (config.zapiClientToken && config.zapiClientToken.trim()) {
       headers['Client-Token'] = config.zapiClientToken.trim();
     }
-    
+
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-audio`;
     
     // Payload conforme documentação Z-API
-    const payload: any = {
+    const payload: any = { 
       phone: phone,
       audio: base64OrUrl,
       viewOnce: false,
@@ -309,13 +309,13 @@ export async function sendAudio(
     console.log('Audio URL:', base64OrUrl);
     console.log('Headers:', headers);
     console.log('Payload completo:', JSON.stringify(payload, null, 2));
-    
+
     const zapiResponse = await fetch(zapiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
-    
+
     const zapiResultText = await zapiResponse.text();
     let zapiResult: any = {};
     
@@ -330,7 +330,7 @@ export async function sendAudio(
     console.log('Status:', zapiResponse.status);
     console.log('Status Text:', zapiResponse.statusText);
     console.log('Response:', zapiResult);
-    
+
     if (!zapiResponse.ok) {
       throw new Error(`Erro Z-API (${zapiResponse.status}): ${zapiResultText}`);
     }
