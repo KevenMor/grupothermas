@@ -359,7 +359,7 @@ ${trainingData.followUpActions.map(fu => `
               className="resize-none text-base leading-relaxed"
             />
             <p className="text-xs text-gray-500">
-              {trainingData.promptTeaching.length}/5000 caracteres
+              {trainingData.promptTeaching.length} caracteres
             </p>
           </div>
           
