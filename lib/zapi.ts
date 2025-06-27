@@ -278,65 +278,82 @@ export async function sendAudio(
   replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
 ): Promise<MessageResponse> {
   try {
-    // Aceita URLs do Firebase Storage e arquivos mp3
-    if (!base64OrUrl.startsWith('http') && !base64OrUrl.endsWith('.mp3') && !base64OrUrl.startsWith('data:audio/mp3') && !base64OrUrl.startsWith('data:audio/mpeg')) {
-      console.error('Apenas URLs públicas ou arquivos mp3 são suportados para envio de áudio via Z-API.');
-      return { success: false, error: 'Apenas URLs públicas ou arquivos mp3 são suportados para envio de áudio via Z-API.' };
-    }
     const config = await getZAPIConfig();
-    // Headers da requisição
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    
+    // Headers conforme documentação Z-API
+    const headers: Record<string, string> = { 
+      'Content-Type': 'application/json'
+    };
     if (config.zapiClientToken && config.zapiClientToken.trim()) {
       headers['Client-Token'] = config.zapiClientToken.trim();
     }
+    
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-audio`;
     
-    // Para URLs públicas, usar campo 'audio', para base64 usar 'audio'
-    let payload: any = { phone };
+    // Payload conforme documentação Z-API
+    const payload: any = {
+      phone: phone,
+      audio: base64OrUrl,
+      viewOnce: false,
+      waveform: true
+    };
     
-    if (base64OrUrl.startsWith('http')) {
-      // URL pública - usar campo 'audio' com a URL
-      payload.audio = base64OrUrl;
-    } else {
-      // Base64 - usar campo 'audio' com o base64
-      payload.audio = base64OrUrl;
+    // Adicionar reply se especificado
+    if (replyTo?.id) {
+      payload.messageId = replyTo.id;
     }
-    if (replyTo?.id) payload.messageId = replyTo.id;
-    console.log('Enviando áudio para Z-API:', {
-      url: zapiUrl,
-      phone,
-      payload,
-      replyTo: replyTo?.id
-    });
+    
+    console.log('=== ENVIANDO ÁUDIO VIA Z-API ===');
+    console.log('URL:', zapiUrl);
+    console.log('Phone:', phone);
+    console.log('Audio URL:', base64OrUrl);
+    console.log('Headers:', headers);
+    console.log('Payload completo:', JSON.stringify(payload, null, 2));
+    
     const zapiResponse = await fetch(zapiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
+    
     const zapiResultText = await zapiResponse.text();
     let zapiResult: any = {};
-    try { zapiResult = JSON.parse(zapiResultText); } catch { zapiResult = zapiResultText; }
-    console.log('Resposta da Z-API (áudio):', zapiResult);
-    if (!zapiResponse.ok) {
-      throw new Error(`Erro Z-API: ${zapiResultText}`);
+    
+    try { 
+      zapiResult = JSON.parse(zapiResultText); 
+    } catch (parseError) { 
+      console.error('Erro ao fazer parse da resposta Z-API:', parseError);
+      zapiResult = { raw: zapiResultText };
     }
+    
+    console.log('=== RESPOSTA Z-API ÁUDIO ===');
+    console.log('Status:', zapiResponse.status);
+    console.log('Status Text:', zapiResponse.statusText);
+    console.log('Response:', zapiResult);
+    
+    if (!zapiResponse.ok) {
+      throw new Error(`Erro Z-API (${zapiResponse.status}): ${zapiResultText}`);
+    }
+    
     // Criar objeto de mensagem local para atualização imediata da UI
     const localMessageObj = {
       id: `local_${Date.now()}`,
-      content: '',
+      content: '🎤 Áudio enviado',
       timestamp: new Date().toISOString(),
       role: 'agent',
       status: 'sent',
       mediaType: 'audio',
       mediaUrl: base64OrUrl,
       mediaInfo: {
-        type: 'audio'
+        type: 'audio',
+        url: base64OrUrl
       },
       replyTo
     };
+    
     return { 
       success: true, 
-      messageId: zapiResult.messageId,
+      messageId: zapiResult.messageId || zapiResult.id,
       localMessageObj
     };
   } catch (error) {

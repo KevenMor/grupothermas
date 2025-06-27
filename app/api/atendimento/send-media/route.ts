@@ -84,7 +84,18 @@ export async function POST(request: NextRequest) {
           break
         }
         case 'audio': {
+          console.log('=== PROCESSANDO ÁUDIO ===')
+          console.log('Phone:', phone)
+          console.log('LocalPath (Firebase URL):', localPath)
+          console.log('ReplyTo:', replyTo)
+          
           const audioResult = await sendAudio(phone, localPath, replyTo)
+          
+          console.log('=== RESULTADO ENVIO ÁUDIO ===')
+          console.log('Success:', audioResult.success)
+          console.log('MessageId:', audioResult.messageId)
+          console.log('Error:', audioResult.error)
+          
           if (!audioResult.success) throw new Error(audioResult.error || 'Erro ao enviar áudio')
           zapiResult = audioResult
           break
