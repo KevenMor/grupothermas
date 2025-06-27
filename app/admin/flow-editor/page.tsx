@@ -1,702 +1,746 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
-import { 
-  Plus, 
-  Save, 
-  Play, 
-  Settings, 
-  Bot, 
-  MessageSquare, 
-  Zap, 
-  Code, 
-  Database,
-  Eye,
-  History,
-  Lock,
-  ChevronDown,
-  ChevronRight
-} from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { 
+  Bot, 
+  Building2, 
+  FileText, 
+  MessageSquare, 
+  Settings, 
+  Save, 
+  Play, 
+  Pause, 
+  Trash2, 
+  Plus, 
+  ArrowRight, 
+  GitBranch, 
+  Database, 
+  Zap, 
+  Shield, 
+  Clock, 
+  AlertTriangle,
+  CheckCircle,
+  History,
+  Download,
+  Upload,
+  Eye,
+  Edit,
+  Copy,
+  RotateCcw,
+  Activity,
+  Users,
+  Target,
+  Lightbulb,
+  BookOpen,
+  Brain,
+  Sparkles
+} from 'lucide-react';
+import toast from 'react-hot-toast';
 
+// Tipos para o fluxograma premium
 interface FlowBlock {
   id: string;
-  type: 'start' | 'ai_response' | 'zapi_action' | 'condition' | 'end';
+  type: 'start' | 'ai_response' | 'zapi_action' | 'condition' | 'delay' | 'end';
   position: { x: number; y: number };
-  title: string;
-  description: string;
-  config: {
-    openai?: {
-      prompt: string;
-      temperature: number;
-      maxTokens: number;
-      systemMessage: string;
-      examples: string[];
-    };
-    zapi?: {
-      action: string;
-      parameters: Record<string, any>;
-      webhook: string;
-      timeout: number;
-    };
-    condition?: {
-      type: 'text_match' | 'intent' | 'variable' | 'api_response';
-      operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
-      value: string;
-      variable: string;
-    };
-    variables: string[];
-    nextBlocks: string[];
+  data: {
+    name: string;
+    description: string;
+    aiAgentName?: string;
+    companyName?: string;
+    trainingText?: string;
+    examples?: string[];
+    forbiddenPhrases?: string[];
+    exceptions?: string[];
+    actions?: string[];
+    variables?: Record<string, string>;
+    conditions?: string[];
+    delayMs?: number;
+    zapiEndpoint?: string;
+    zapiParams?: Record<string, any>;
+    openaiPrompt?: string;
+    openaiModel?: string;
+    openaiTemperature?: number;
+    openaiMaxTokens?: number;
   };
-  connections: {
-    from: string;
-    to: string;
-    condition?: string;
-  }[];
+  connections: string[];
 }
 
-interface Flow {
+interface FlowAgent {
   id: string;
+  name: string;
+  company: string;
+  description: string;
+  personality: string;
+  expertise: string[];
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+}
+
+interface FlowVersion {
+  id: string;
+  version: string;
   name: string;
   description: string;
   blocks: FlowBlock[];
-  version: number;
-  isActive: boolean;
+  agent: FlowAgent;
   createdAt: string;
-  updatedAt: string;
   createdBy: string;
+  isPublished: boolean;
 }
 
-type ZapiConfig = { action: string; parameters: Record<string, any>; webhook: string; timeout: number };
-type ConditionConfig = { type: 'text_match' | 'intent' | 'variable' | 'api_response'; operator: 'equals' | 'contains' | 'greater_than' | 'less_than'; value: string; variable: string };
+interface FlowLog {
+  id: string;
+  action: 'create' | 'update' | 'delete' | 'publish' | 'restore';
+  version: string;
+  timestamp: string;
+  user: string;
+  details: string;
+}
 
-export default function FlowEditorPage() {
-  const { user } = useAuth();
-  const [flows, setFlows] = useState<Flow[]>([]);
-  const [selectedFlow, setSelectedFlow] = useState<Flow | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+export default function FlowEditorPremium() {
+  // Estados principais
+  const [blocks, setBlocks] = useState<FlowBlock[]>([]);
   const [selectedBlock, setSelectedBlock] = useState<FlowBlock | null>(null);
-  const [canvasPosition, setCanvasPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 800 });
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
 
-  // Verificar se usuário é admin
-  const isAdmin = user?.role === 'admin';
+  // Estados do agente IA
+  const [currentAgent, setCurrentAgent] = useState<FlowAgent>({
+    id: 'default',
+    name: 'Assistente Thermas',
+    company: 'Grupo Thermas',
+    description: 'Assistente virtual especializado em atendimento ao cliente',
+    personality: 'Empático, profissional e eficiente',
+    expertise: ['Atendimento ao Cliente', 'Vendas', 'Suporte Técnico'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isActive: true
+  });
 
-  // Firestore client-side
-  const getFirestore = () => {
-    if (typeof window !== 'undefined') {
-      // @ts-ignore
-      return window.firebase?.firestore?.();
-    }
-    return null;
-  };
+  // Estados de versão e histórico
+  const [currentVersion, setCurrentVersion] = useState<FlowVersion | null>(null);
+  const [versions, setVersions] = useState<FlowVersion[]>([]);
+  const [logs, setLogs] = useState<FlowLog[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
-  // Carregar fluxos
+  // Estados de interface
+  const [activeTab, setActiveTab] = useState<'editor' | 'agent' | 'training' | 'versions' | 'logs'>('editor');
+  const [showAgentModal, setShowAgentModal] = useState(false);
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Inicialização
   useEffect(() => {
-    if (!isAdmin) return;
-    loadFlows();
-  }, [isAdmin]);
+    loadFlowData();
+    loadVersions();
+    loadLogs();
+  }, []);
 
-  const loadFlows = async () => {
-    const db = getFirestore();
-    if (!db) return;
-    setLoading(true);
+  // Carregar dados do Firebase
+  const loadFlowData = async () => {
     try {
-      const snapshot = await db.collection('flow_editor')
-        .orderBy('updatedAt', 'desc')
-        .get();
-      
-      const flowsData = snapshot.docs.map((doc: any) => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setFlows(flowsData);
+      const response = await fetch('/api/admin/flow-data');
+      if (response.ok) {
+        const data = await response.json();
+        setBlocks(data.blocks || []);
+        setCurrentAgent(data.agent || currentAgent);
+        setCurrentVersion(data.currentVersion);
+      }
     } catch (error) {
-      setFeedback('Erro ao carregar fluxos');
-    } finally {
-      setLoading(false);
+      console.error('Erro ao carregar dados do fluxo:', error);
+      toast.error('Erro ao carregar dados do fluxo');
     }
   };
 
-  // Criar novo fluxo
-  const createNewFlow = async () => {
-    if (!isAdmin) return;
-    setLoading(true);
-    const db = getFirestore();
-    if (!db) return;
-    
+  const loadVersions = async () => {
     try {
-      const newFlow: Flow = {
-        id: `flow_${Date.now()}`,
-        name: 'Novo Fluxo de Atendimento',
-        description: 'Descrição do novo fluxo',
-        blocks: [
-          {
-            id: 'start_1',
-            type: 'start',
-            position: { x: 100, y: 100 },
-            title: 'Início',
-            description: 'Ponto de início do fluxo',
-            config: {
-              variables: [],
-              nextBlocks: []
-            },
-            connections: []
-          }
-        ],
-        version: 1,
-        isActive: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: user?.uid || 'unknown'
+      const response = await fetch('/api/admin/flow-versions');
+      if (response.ok) {
+        const data = await response.json();
+        setVersions(data.versions || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar versões:', error);
+    }
+  };
+
+  const loadLogs = async () => {
+    try {
+      const response = await fetch('/api/admin/flow-logs');
+      if (response.ok) {
+        const data = await response.json();
+        setLogs(data.logs || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar logs:', error);
+    }
+  };
+
+  // Salvar no Firebase
+  const saveFlow = async (isPublish = false) => {
+    setIsSaving(true);
+    try {
+      const flowData = {
+        blocks,
+        agent: currentAgent,
+        version: currentVersion,
+        isPublish
       };
 
-      await db.collection('flow_editor').doc(newFlow.id).set(newFlow);
-      setFlows([newFlow, ...flows]);
-      setSelectedFlow(newFlow);
-      setIsEditing(true);
-      setFeedback('Novo fluxo criado!');
+      const response = await fetch('/api/admin/flow-save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(flowData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setCurrentVersion(result.version);
+        toast.success(isPublish ? 'Fluxo publicado com sucesso!' : 'Fluxo salvo com sucesso!');
+        
+        // Atualizar logs
+        await loadLogs();
+        await loadVersions();
+      } else {
+        throw new Error('Erro ao salvar fluxo');
+      }
     } catch (error) {
-      setFeedback('Erro ao criar fluxo');
+      console.error('Erro ao salvar:', error);
+      toast.error('Erro ao salvar fluxo');
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
-
-  // Salvar fluxo
-  const saveFlow = async () => {
-    if (!selectedFlow || !isAdmin) return;
-    setLoading(true);
-    const db = getFirestore();
-    if (!db) return;
-    
-    try {
-      const updatedFlow = {
-        ...selectedFlow,
-        version: selectedFlow.version + 1,
-        updatedAt: new Date().toISOString()
-      };
-      
-      await db.collection('flow_editor').doc(selectedFlow.id).update(updatedFlow);
-      setFlows(flows.map(f => f.id === selectedFlow.id ? updatedFlow : f));
-      setSelectedFlow(updatedFlow);
-      setFeedback('Fluxo salvo com sucesso!');
-    } catch (error) {
-      setFeedback('Erro ao salvar fluxo');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Adicionar bloco
-  const addBlock = (type: FlowBlock['type']) => {
-    if (!selectedFlow) return;
-    
-    const newBlock: FlowBlock = {
-      id: `${type}_${Date.now()}`,
-      type,
-      position: { x: Math.random() * 400 + 200, y: Math.random() * 300 + 200 },
-      title: getBlockTitle(type),
-      description: getBlockDescription(type),
-      config: getDefaultConfig(type),
-      connections: []
-    };
-
-    const updatedFlow = {
-      ...selectedFlow,
-      blocks: [...selectedFlow.blocks, newBlock]
-    };
-    
-    setSelectedFlow(updatedFlow);
-    setSelectedBlock(newBlock);
-  };
-
-  const getBlockTitle = (type: FlowBlock['type']) => {
-    switch (type) {
-      case 'start': return 'Início';
-      case 'ai_response': return 'Resposta IA';
-      case 'zapi_action': return 'Ação Z-API';
-      case 'condition': return 'Condição';
-      case 'end': return 'Fim';
-      default: return 'Bloco';
-    }
-  };
-
-  const getBlockDescription = (type: FlowBlock['type']) => {
-    switch (type) {
-      case 'start': return 'Ponto de início do fluxo';
-      case 'ai_response': return 'Resposta gerada pela IA';
-      case 'zapi_action': return 'Ação executada via Z-API';
-      case 'condition': return 'Condição de decisão';
-      case 'end': return 'Fim do fluxo';
-      default: return 'Descrição do bloco';
-    }
-  };
-
-  const getDefaultConfig = (type: FlowBlock['type']) => {
-    const baseConfig = {
-      variables: [] as string[],
-      nextBlocks: [] as string[]
-    };
-
-    switch (type) {
-      case 'ai_response':
-        return {
-          ...baseConfig,
-          openai: {
-            prompt: '',
-            temperature: 0.7,
-            maxTokens: 150,
-            systemMessage: 'Você é um assistente virtual do Grupo Thermas.',
-            examples: [] as string[]
-          }
-        };
-      case 'zapi_action':
-        return {
-          ...baseConfig,
-          zapi: {
-            action: 'send_message',
-            parameters: {},
-            webhook: '',
-            timeout: 30
-          }
-        };
-      case 'condition':
-        return {
-          ...baseConfig,
-          condition: {
-            type: 'text_match' as 'text_match',
-            operator: 'contains' as 'contains',
-            value: '',
-            variable: ''
-          }
-        };
-      default:
-        return baseConfig;
-    }
-  };
-
-  // Renderizar bloco
-  const renderBlock = (block: FlowBlock) => {
-    const blockStyles = {
-      start: 'bg-green-500 text-white',
-      ai_response: 'bg-blue-500 text-white',
-      zapi_action: 'bg-purple-500 text-white',
-      condition: 'bg-yellow-500 text-black',
-      end: 'bg-red-500 text-white'
-    };
-
-    const blockIcons = {
-      start: <Play className="w-4 h-4" />,
-      ai_response: <Bot className="w-4 h-4" />,
-      zapi_action: <Zap className="w-4 h-4" />,
-      condition: <Code className="w-4 h-4" />,
-      end: <Database className="w-4 h-4" />
-    };
-
-    return (
-      <div
-        key={block.id}
-        className={`absolute p-4 rounded-lg shadow-lg cursor-pointer transition-all hover:scale-105 ${
-          blockStyles[block.type]
-        } ${selectedBlock?.id === block.id ? 'ring-2 ring-white ring-offset-2' : ''}`}
-        style={{
-          left: block.position.x + canvasPosition.x,
-          top: block.position.y + canvasPosition.y,
-          minWidth: '150px'
-        }}
-        onClick={() => setSelectedBlock(block)}
-        onMouseDown={(e) => {
-          if (e.button === 0) {
-            setIsDragging(true);
-            setDragStart({ x: e.clientX - block.position.x, y: e.clientY - block.position.y });
-          }
-        }}
-      >
-        <div className="flex items-center gap-2 mb-2">
-          {blockIcons[block.type]}
-          <span className="font-semibold text-sm">{block.title}</span>
-        </div>
-        <p className="text-xs opacity-80">{block.description}</p>
-      </div>
-    );
-  };
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <Card className="w-96">
-          <CardContent className="p-6 text-center">
-            <Lock className="w-12 h-12 mx-auto text-red-500 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Apenas administradores podem acessar o Editor de Fluxograma.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {/* Header */}
-      <header className="px-8 py-6 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header Premium */}
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              Editor de Fluxograma de Atendimento
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
-              Crie fluxos inteligentes com integração OpenAI e Z-API
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Editor de Fluxograma Premium
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                {currentAgent.name} • {currentAgent.company}
+              </p>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <Button onClick={createNewFlow} disabled={loading}>
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Fluxo
+
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowAgentModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Users className="w-4 h-4" />
+              Configurar Agente
             </Button>
-            {selectedFlow && (
-              <>
-                <Button onClick={saveFlow} disabled={loading} variant="outline">
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar
-                </Button>
-                <Button disabled={loading} variant="outline">
-                  <Play className="w-4 h-4 mr-2" />
-                  Testar
-                </Button>
-              </>
-            )}
+            
+            <Button
+              variant="outline"
+              onClick={() => saveFlow(false)}
+              disabled={isSaving}
+              className="flex items-center gap-2"
+            >
+              {isSaving ? (
+                <Activity className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Salvar
+            </Button>
+
+            <Button
+              onClick={() => saveFlow(true)}
+              disabled={isPublishing}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600"
+            >
+              {isPublishing ? (
+                <Activity className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              Publicar
+            </Button>
           </div>
         </div>
       </header>
 
-      <div className="flex flex-1">
-        {/* Sidebar */}
-        <div className="w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-6">
-          <Tabs defaultValue="flows" className="h-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="flows">Fluxos</TabsTrigger>
-              <TabsTrigger value="blocks">Blocos</TabsTrigger>
-            </TabsList>
+      <div className="flex h-[calc(100vh-80px)]">
+        {/* Sidebar de Ferramentas */}
+        <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
+          <div className="space-y-4">
+            {/* Tabs */}
+            <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+              {[
+                { id: 'editor', label: 'Editor', icon: Edit },
+                { id: 'agent', label: 'Agente', icon: Bot },
+                { id: 'training', label: 'Treino', icon: Brain },
+                { id: 'versions', label: 'Versões', icon: History },
+                { id: 'logs', label: 'Logs', icon: Activity }
+              ].map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id as any)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === id
+                      ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
 
-            <TabsContent value="flows" className="mt-4">
-              <div className="space-y-3">
-                {flows.map((flow) => (
-                  <Card
-                    key={flow.id}
-                    className={`cursor-pointer transition-colors ${
-                      selectedFlow?.id === flow.id
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'hover:border-gray-300'
-                    }`}
-                    onClick={() => setSelectedFlow(flow)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-sm">{flow.name}</h3>
-                        <Badge variant={flow.isActive ? "default" : "secondary"}>
-                          {flow.isActive ? 'Ativo' : 'Inativo'}
-                        </Badge>
+            {/* Conteúdo da Tab */}
+            {activeTab === 'editor' && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Blocos Disponíveis</h3>
+                
+                <div className="space-y-2">
+                  {[
+                    { type: 'start', label: 'Início', icon: Play, color: 'bg-green-500' },
+                    { type: 'ai_response', label: 'Resposta IA', icon: Bot, color: 'bg-blue-500' },
+                    { type: 'zapi_action', label: 'Ação Z-API', icon: Zap, color: 'bg-purple-500' },
+                    { type: 'condition', label: 'Condição', icon: GitBranch, color: 'bg-yellow-500' },
+                    { type: 'delay', label: 'Delay', icon: Clock, color: 'bg-orange-500' },
+                    { type: 'end', label: 'Fim', icon: CheckCircle, color: 'bg-red-500' }
+                  ].map(({ type, label, icon: Icon, color }) => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        const newBlock: FlowBlock = {
+                          id: `block-${Date.now()}`,
+                          type: type as any,
+                          position: { x: 100, y: 100 },
+                          data: {
+                            name: `Novo ${type.replace('_', ' ')}`,
+                            description: '',
+                            aiAgentName: currentAgent.name,
+                            companyName: currentAgent.company,
+                            trainingText: '',
+                            examples: [],
+                            forbiddenPhrases: [],
+                            exceptions: [],
+                            actions: [],
+                            variables: {},
+                            conditions: [],
+                            delayMs: 1000,
+                            zapiEndpoint: '',
+                            zapiParams: {},
+                            openaiPrompt: '',
+                            openaiModel: 'gpt-4',
+                            openaiTemperature: 0.7,
+                            openaiMaxTokens: 1000
+                          },
+                          connections: []
+                        };
+                        setBlocks(prev => [...prev, newBlock]);
+                        setSelectedBlock(newBlock);
+                        toast.success('Bloco criado com sucesso!');
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all ${color} text-white`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="font-medium">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'agent' && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Configuração do Agente</h3>
+                
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm">Nome do Agente</Label>
+                    <Input
+                      value={currentAgent.name}
+                      onChange={(e) => setCurrentAgent(prev => ({ ...prev, name: e.target.value }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm">Empresa</Label>
+                    <Input
+                      value={currentAgent.company}
+                      onChange={(e) => setCurrentAgent(prev => ({ ...prev, company: e.target.value }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm">Personalidade</Label>
+                    <Textarea
+                      value={currentAgent.personality}
+                      onChange={(e) => setCurrentAgent(prev => ({ ...prev, personality: e.target.value }))}
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'versions' && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Versões</h3>
+                
+                <div className="space-y-2">
+                  {versions.map((version) => (
+                    <div
+                      key={version.id}
+                      className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{version.name}</span>
+                        {version.isPublished && <CheckCircle className="w-4 h-4 text-green-500" />}
                       </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                        {flow.description}
+                      <p className="text-xs text-gray-500 mt-1">{version.description}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(version.createdAt).toLocaleDateString()}
                       </p>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>v{flow.version}</span>
-                        <span>{new Date(flow.updatedAt).toLocaleDateString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'logs' && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Logs de Atividade</h3>
+                
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {logs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="p-2 border border-gray-200 dark:border-gray-600 rounded text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{log.action}</span>
+                        <span className="text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      <p className="text-gray-600 dark:text-gray-400 mt-1">{log.details}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </TabsContent>
-
-            <TabsContent value="blocks" className="mt-4">
-              <div className="space-y-3">
-                <Button
-                  onClick={() => addBlock('ai_response')}
-                  className="w-full justify-start"
-                  variant="outline"
-                >
-                  <Bot className="w-4 h-4 mr-2" />
-                  Resposta IA
-                </Button>
-                <Button
-                  onClick={() => addBlock('zapi_action')}
-                  className="w-full justify-start"
-                  variant="outline"
-                >
-                  <Zap className="w-4 h-4 mr-2" />
-                  Ação Z-API
-                </Button>
-                <Button
-                  onClick={() => addBlock('condition')}
-                  className="w-full justify-start"
-                  variant="outline"
-                >
-                  <Code className="w-4 h-4 mr-2" />
-                  Condição
-                </Button>
-                <Button
-                  onClick={() => addBlock('end')}
-                  className="w-full justify-start"
-                  variant="outline"
-                >
-                  <Database className="w-4 h-4 mr-2" />
-                  Fim
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Canvas */}
-        <div className="flex-1 relative overflow-hidden">
-          <div
-            className="w-full h-full bg-gray-100 dark:bg-gray-800 relative"
-            onMouseMove={(e) => {
-              if (isDragging && selectedBlock) {
-                const newPosition = {
-                  x: e.clientX - dragStart.x,
-                  y: e.clientY - dragStart.y
-                };
-                const updatedBlock = { ...selectedBlock, position: newPosition };
-                const updatedBlocks = selectedFlow?.blocks.map(b => 
-                  b.id === selectedBlock.id ? updatedBlock : b
-                );
-                if (selectedFlow && updatedBlocks) {
-                  setSelectedFlow({ ...selectedFlow, blocks: updatedBlocks });
-                  setSelectedBlock(updatedBlock);
-                }
-              }
-            }}
-            onMouseUp={() => setIsDragging(false)}
-          >
-            {selectedFlow?.blocks.map(renderBlock)}
+            )}
           </div>
         </div>
 
-        {/* Properties Panel */}
-        {selectedBlock && (
-          <div className="w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Propriedades</h3>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setSelectedBlock(null)}
-              >
-                ×
-              </Button>
-            </div>
+        {/* Canvas do Fluxograma */}
+        <div className="flex-1 relative overflow-hidden">
+          <div
+            ref={canvasRef}
+            className="w-full h-full bg-gray-100 dark:bg-gray-900 relative"
+          >
+            {/* Grid de fundo */}
+            <div 
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `
+                  linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+                `,
+                backgroundSize: '20px 20px'
+              }}
+            />
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Título</label>
-                <Input
-                  value={selectedBlock.title}
-                  onChange={(e) => {
-                    const updatedBlock = { ...selectedBlock, title: e.target.value };
-                    setSelectedBlock(updatedBlock);
-                    if (selectedFlow) {
-                      const updatedBlocks = selectedFlow.blocks.map(b => 
-                        b.id === selectedBlock.id ? updatedBlock : b
-                      );
-                      setSelectedFlow({ ...selectedFlow, blocks: updatedBlocks });
-                    }
+            {/* Blocos */}
+            {blocks.map((block) => {
+              const isSelected = selectedBlock?.id === block.id;
+              
+              const getBlockIcon = () => {
+                switch (block.type) {
+                  case 'start': return <Play className="w-5 h-5" />;
+                  case 'ai_response': return <Bot className="w-5 h-5" />;
+                  case 'zapi_action': return <Zap className="w-5 h-5" />;
+                  case 'condition': return <GitBranch className="w-5 h-5" />;
+                  case 'delay': return <Clock className="w-5 h-5" />;
+                  case 'end': return <CheckCircle className="w-5 h-5" />;
+                  default: return <FileText className="w-5 h-5" />;
+                }
+              };
+
+              const getBlockColor = () => {
+                switch (block.type) {
+                  case 'start': return 'bg-green-500';
+                  case 'ai_response': return 'bg-blue-500';
+                  case 'zapi_action': return 'bg-purple-500';
+                  case 'condition': return 'bg-yellow-500';
+                  case 'delay': return 'bg-orange-500';
+                  case 'end': return 'bg-red-500';
+                  default: return 'bg-gray-500';
+                }
+              };
+
+              return (
+                <div
+                  key={block.id}
+                  style={{
+                    position: 'absolute',
+                    left: block.position.x,
+                    top: block.position.y,
+                    transform: `scale(${zoom})`,
+                    cursor: 'grab',
+                    zIndex: isSelected ? 10 : 1
                   }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Descrição</label>
-                <Textarea
-                  value={selectedBlock.description}
-                  onChange={(e) => {
-                    const updatedBlock = { ...selectedBlock, description: e.target.value };
-                    setSelectedBlock(updatedBlock);
-                    if (selectedFlow) {
-                      const updatedBlocks = selectedFlow.blocks.map(b => 
-                        b.id === selectedBlock.id ? updatedBlock : b
-                      );
-                      setSelectedFlow({ ...selectedFlow, blocks: updatedBlocks });
-                    }
-                  }}
-                  rows={3}
-                />
-              </div>
-
-              {/* Configurações específicas por tipo */}
-              {selectedBlock.type === 'ai_response' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Prompt da IA</label>
-                    <Textarea
-                      value={selectedBlock.config.openai?.prompt || ''}
-                      onChange={(e) => {
-                        const prevOpenai = selectedBlock.config.openai as Partial<{ prompt: string; temperature: number; maxTokens: number; systemMessage: string; examples: string[]; }> || {};
-                        const updatedBlock = {
-                          ...selectedBlock,
-                          config: {
-                            ...selectedBlock.config,
-                            openai: {
-                              prompt: e.target.value,
-                              temperature: prevOpenai.temperature ?? 0.7,
-                              maxTokens: prevOpenai.maxTokens ?? 150,
-                              systemMessage: prevOpenai.systemMessage ?? 'Você é um assistente virtual do Grupo Thermas.',
-                              examples: prevOpenai.examples ?? []
-                            }
-                          }
-                        };
-                        setSelectedBlock(updatedBlock);
-                        if (selectedFlow) {
-                          const updatedBlocks = selectedFlow.blocks.map(b =>
-                            b.id === selectedBlock.id ? updatedBlock : b
-                          );
-                          setSelectedFlow({ ...selectedFlow, blocks: updatedBlocks });
-                        }
-                      }}
-                      rows={4}
-                      placeholder="Digite o prompt para a IA..."
-                    />
+                  className={`
+                    w-48 p-4 rounded-lg shadow-lg border-2 transition-all
+                    ${getBlockColor()} text-white
+                    ${isSelected ? 'border-blue-400 shadow-xl' : 'border-transparent'}
+                    hover:shadow-xl hover:scale-105
+                  `}
+                  onClick={() => setSelectedBlock(block)}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    {getBlockIcon()}
+                    <span className="font-semibold text-sm">{block.data.name}</span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Temperatura</label>
+                  <p className="text-xs opacity-90">{block.data.description || 'Sem descrição'}</p>
+                  
+                  {/* Indicadores de configuração */}
+                  <div className="mt-2 flex gap-1">
+                    {block.data.trainingText && <BookOpen className="w-3 h-3" />}
+                    {Array.isArray(block.data.examples) && block.data.examples.length > 0 && <Lightbulb className="w-3 h-3" />}
+                    {Array.isArray(block.data.actions) && block.data.actions.length > 0 && <Target className="w-3 h-3" />}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Instruções quando não há blocos */}
+            {blocks.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center text-gray-500 dark:text-gray-400">
+                  <GitBranch className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">Comece criando seu fluxograma</h3>
+                  <p className="text-sm">Arraste blocos da barra lateral para começar</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Painel de Propriedades */}
+        <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700">
+          {selectedBlock && (
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Edit className="w-5 h-5" />
+                  Propriedades do Bloco
+                </CardTitle>
+                <CardDescription>
+                  Configure o comportamento e treinamento do bloco
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Informações básicas */}
+                <div className="space-y-2">
+                  <Label>Nome do Bloco</Label>
+                  <Input
+                    value={selectedBlock.data.name}
+                    onChange={(e) => {
+                      setBlocks(prev => prev.map(block => 
+                        block.id === selectedBlock.id 
+                          ? { ...block, data: { ...block.data, name: e.target.value } }
+                          : block
+                      ));
+                    }}
+                    placeholder="Nome do bloco..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Textarea
+                    value={selectedBlock.data.description}
+                    onChange={(e) => {
+                      setBlocks(prev => prev.map(block => 
+                        block.id === selectedBlock.id 
+                          ? { ...block, data: { ...block.data, description: e.target.value } }
+                          : block
+                      ));
+                    }}
+                    placeholder="Descrição do que este bloco faz..."
+                    rows={2}
+                  />
+                </div>
+
+                {/* Configurações específicas por tipo */}
+                {selectedBlock.type === 'ai_response' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Prompt de Treinamento</Label>
+                      <Textarea
+                        value={selectedBlock.data.trainingText || ''}
+                        onChange={(e) => {
+                          setBlocks(prev => prev.map(block => 
+                            block.id === selectedBlock.id 
+                              ? { ...block, data: { ...block.data, trainingText: e.target.value } }
+                              : block
+                          ));
+                        }}
+                        placeholder="Como a IA deve se comportar neste momento..."
+                        rows={4}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Modelo OpenAI</Label>
+                      <select 
+                        value={selectedBlock.data.openaiModel || 'gpt-4'}
+                        onChange={(e) => {
+                          setBlocks(prev => prev.map(block => 
+                            block.id === selectedBlock.id 
+                              ? { ...block, data: { ...block.data, openaiModel: e.target.value } }
+                              : block
+                          ));
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Temperatura</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="2"
+                          step="0.1"
+                          value={selectedBlock.data.openaiTemperature || 0.7}
+                          onChange={(e) => {
+                            setBlocks(prev => prev.map(block => 
+                              block.id === selectedBlock.id 
+                                ? { ...block, data: { ...block.data, openaiTemperature: parseFloat(e.target.value) } }
+                                : block
+                            ));
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Max Tokens</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="4000"
+                          value={selectedBlock.data.openaiMaxTokens || 1000}
+                          onChange={(e) => {
+                            setBlocks(prev => prev.map(block => 
+                              block.id === selectedBlock.id 
+                                ? { ...block, data: { ...block.data, openaiMaxTokens: parseInt(e.target.value) } }
+                                : block
+                            ));
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedBlock.type === 'zapi_action' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Endpoint Z-API</Label>
+                      <Input
+                        value={selectedBlock.data.zapiEndpoint || ''}
+                        onChange={(e) => {
+                          setBlocks(prev => prev.map(block => 
+                            block.id === selectedBlock.id 
+                              ? { ...block, data: { ...block.data, zapiEndpoint: e.target.value } }
+                              : block
+                          ));
+                        }}
+                        placeholder="https://api.z-api.io/..."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedBlock.type === 'delay' && (
+                  <div className="space-y-2">
+                    <Label>Delay (milissegundos)</Label>
                     <Input
                       type="number"
                       min="0"
-                      max="2"
-                      step="0.1"
-                      value={selectedBlock.config.openai?.temperature ?? 0.7}
+                      value={selectedBlock.data.delayMs || 1000}
                       onChange={(e) => {
-                        const temp = parseFloat(e.target.value);
-                        const prevOpenai = selectedBlock.config.openai as Partial<{ prompt: string; temperature: number; maxTokens: number; systemMessage: string; examples: string[]; }> || {};
-                        const updatedBlock = {
-                          ...selectedBlock,
-                          config: {
-                            ...selectedBlock.config,
-                            openai: {
-                              prompt: prevOpenai.prompt ?? '',
-                              temperature: isNaN(temp) ? 0.7 : temp,
-                              maxTokens: prevOpenai.maxTokens ?? 150,
-                              systemMessage: prevOpenai.systemMessage ?? 'Você é um assistente virtual do Grupo Thermas.',
-                              examples: prevOpenai.examples ?? []
-                            }
-                          }
-                        };
-                        setSelectedBlock(updatedBlock);
-                        if (selectedFlow) {
-                          const updatedBlocks = selectedFlow.blocks.map(b =>
-                            b.id === selectedBlock.id ? updatedBlock : b
-                          );
-                          setSelectedFlow({ ...selectedFlow, blocks: updatedBlocks });
-                        }
+                        setBlocks(prev => prev.map(block => 
+                          block.id === selectedBlock.id 
+                            ? { ...block, data: { ...block.data, delayMs: parseInt(e.target.value) } }
+                            : block
+                        ));
                       }}
                     />
                   </div>
-                </div>
-              )}
+                )}
 
-              {selectedBlock.type === 'zapi_action' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Ação Z-API</label>
-                    <Select
-                      value={selectedBlock.config.zapi?.action || 'send_message'}
-                      onChange={e => {
-                        const value = e.target.value;
-                        const prevZapi = selectedBlock.config.zapi as Partial<ZapiConfig> || {};
-                        const updatedBlock = {
-                          ...selectedBlock,
-                          config: {
-                            ...selectedBlock.config,
-                            zapi: {
-                              action: value,
-                              parameters: prevZapi.parameters !== undefined ? prevZapi.parameters : {},
-                              webhook: prevZapi.webhook !== undefined ? prevZapi.webhook : '',
-                              timeout: prevZapi.timeout !== undefined ? prevZapi.timeout : 30
-                            }
-                          }
-                        };
-                        setSelectedBlock(updatedBlock);
-                        if (selectedFlow) {
-                          const updatedBlocks = selectedFlow.blocks.map(b =>
-                            b.id === selectedBlock.id ? updatedBlock : b
-                          );
-                          setSelectedFlow({ ...selectedFlow, blocks: updatedBlocks });
-                        }
-                      }}
-                    >
-                      <option value="send_message">Enviar Mensagem</option>
-                      <option value="send_file">Enviar Arquivo</option>
-                      <option value="get_status">Consultar Status</option>
-                      <option value="webhook">Webhook Customizado</option>
-                    </Select>
-                  </div>
+                {/* Ações */}
+                <div className="space-y-2">
+                  <Label>Ações Específicas</Label>
+                  <Textarea
+                    value={selectedBlock.data.actions?.join('\n') || ''}
+                    onChange={(e) => {
+                      setBlocks(prev => prev.map(block => 
+                        block.id === selectedBlock.id 
+                          ? { ...block, data: { ...block.data, actions: e.target.value.split('\n').filter(Boolean) } }
+                          : block
+                      ));
+                    }}
+                    placeholder="Uma ação por linha..."
+                    rows={3}
+                  />
                 </div>
-              )}
 
-              {selectedBlock.type === 'condition' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Tipo de Condição</label>
-                    <Select
-                      value={selectedBlock.config.condition?.type || 'text_match'}
-                      onChange={e => {
-                        const value = e.target.value as 'text_match' | 'intent' | 'variable' | 'api_response';
-                        const prevCondition = selectedBlock.config.condition as Partial<ConditionConfig> || {};
-                        const updatedBlock = {
-                          ...selectedBlock,
-                          config: {
-                            ...selectedBlock.config,
-                            condition: {
-                              type: value,
-                              operator: prevCondition.operator ?? 'contains',
-                              value: prevCondition.value ?? '',
-                              variable: prevCondition.variable ?? ''
-                            }
-                          }
-                        };
-                        setSelectedBlock(updatedBlock);
-                        if (selectedFlow) {
-                          const updatedBlocks = selectedFlow.blocks.map(b =>
-                            b.id === selectedBlock.id ? updatedBlock : b
-                          );
-                          setSelectedFlow({ ...selectedFlow, blocks: updatedBlocks });
-                        }
-                      }}
-                    >
-                      <option value="text_match">Comparação de Texto</option>
-                      <option value="intent">Intenção do Usuário</option>
-                      <option value="variable">Variável</option>
-                      <option value="api_response">Resposta de API</option>
-                    </Select>
-                  </div>
+                {/* Botões de ação */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setBlocks(prev => prev.filter(block => block.id !== selectedBlock.id));
+                      setSelectedBlock(null);
+                      toast.success('Bloco removido com sucesso!');
+                    }}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Deletar
+                  </Button>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Feedback */}
-      {feedback && (
-        <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
-          {feedback}
+              </CardContent>
+            </Card>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 } 
