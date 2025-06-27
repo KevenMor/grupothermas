@@ -77,6 +77,7 @@ interface AdminConfig {
   // Novos campos para delay humanizado
   responseDelayMin: number
   responseDelayMax: number
+  responseDelaySeconds: number
 }
 
 export async function POST(request: NextRequest) {
@@ -466,30 +467,28 @@ function calculateTypingDelay(message: string, baseDelaySeconds: number): number
 
 async function sendMessage(config: AdminConfig, phone: string, message: string) {
   try {
-    // Aplicar delay humanizado antes de enviar
-    const delayMin = config.responseDelayMin || 2
-    const delayMax = config.responseDelayMax || 5
-    const baseDelay = generateHumanDelay(delayMin, delayMax)
-    const typingDelay = calculateTypingDelay(message, baseDelay)
-    
-    console.log(`💭 Simulando digitação: ${typingDelay}s para mensagem de ${message.split(' ').length} palavras`)
-    console.log(`⏱️ Aguardando ${typingDelay} segundos antes de enviar para ${phone}...`)
-    
-    // Aguardar o delay humanizado
-    await new Promise(resolve => setTimeout(resolve, typingDelay * 1000))
-    
-    console.log(`📤 Enviando mensagem para ${phone}: ${message.substring(0, 50)}...`)
-    
-    const url = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`
-    
+    // Delay controlado (único) do Admin IA
+    const delaySeconds = typeof config.responseDelaySeconds === 'number' ? config.responseDelaySeconds : 1.5;
+    console.log(`⏱️ Aguardando delay controlado de ${delaySeconds}s antes de enviar para ${phone}...`);
+    await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+    // Logar delay no Firestore
+    await adminDB.collection('ia_delay_logs').add({
+      phone,
+      delaySeconds,
+      delayMs: Math.round(delaySeconds * 1000),
+      type: 'sendMessage',
+      messagePreview: message.substring(0, 80),
+      timestamp: new Date().toISOString()
+    });
+    // Enviar mensagem
+    console.log(`📤 Enviando mensagem para ${phone}: ${message.substring(0, 50)}...`);
+    const url = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-text`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-    }
-
+    };
     if (config.zapiClientToken && config.zapiClientToken.trim()) {
-      headers['Client-Token'] = config.zapiClientToken.trim()
+      headers['Client-Token'] = config.zapiClientToken.trim();
     }
-
     const response = await fetch(url, {
       method: 'POST',
       headers: headers,
@@ -497,20 +496,17 @@ async function sendMessage(config: AdminConfig, phone: string, message: string) 
         phone: phone,
         message: message,
       }),
-    })
-
+    });
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Z-API error: ${response.status} - ${errorText}`)
+      const errorText = await response.text();
+      throw new Error(`Z-API error: ${response.status} - ${errorText}`);
     }
-
-    const result = await response.json()
-    console.log('✅ Mensagem enviada com sucesso:', result)
-    return result
-
+    const result = await response.json();
+    console.log('✅ Mensagem enviada com sucesso:', result);
+    return result;
   } catch (error) {
-    console.error('❌ Erro ao enviar mensagem via Z-API:', error)
-    throw error
+    console.error('❌ Erro ao enviar mensagem via Z-API:', error);
+    throw error;
   }
 }
 

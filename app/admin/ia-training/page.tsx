@@ -3,6 +3,9 @@ import { useState } from 'react';
 import AtendimentoForm from './AtendimentoForm';
 import AcoesForm from './AcoesForm';
 import DelayControlForm from './DelayControlForm';
+import BoasPraticasForm from './BoasPraticasForm';
+import ValoresForm from './ValoresForm';
+import MemoriaForm from './MemoriaForm';
 
 const TABS = [
   { key: 'atendimento', label: 'Atendimento' },
@@ -59,21 +62,27 @@ export default function IATrainingPage() {
             <div>
               <h2 className="text-xl font-semibold mb-4">Personalização e Boas Práticas</h2>
               <p className="text-gray-500 mb-6">Inclua exemplos de frases acolhedoras, abordagens para objeções e estratégias para situações delicadas, sempre personalizando o atendimento.</p>
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 min-h-[200px] flex items-center justify-center text-gray-400">[Formulário e lista de boas práticas]</div>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 min-h-[200px]">
+                <BoasPraticasForm />
+              </div>
             </div>
           )}
           {tab === 'valores' && (
             <div>
               <h2 className="text-xl font-semibold mb-4">Gestão de Valores</h2>
               <p className="text-gray-500 mb-6">Cadastre, edite e consulte valores de produtos, serviços e itens relacionados. Garanta informações comerciais precisas e atualizadas.</p>
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 min-h-[200px] flex items-center justify-center text-gray-400">[CRUD de valores]</div>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 min-h-[200px]">
+                <ValoresForm />
+              </div>
             </div>
           )}
           {tab === 'memoria' && (
             <div>
               <h2 className="text-xl font-semibold mb-4">Memória Ativa e Histórico</h2>
               <p className="text-gray-500 mb-6">A IA terá acesso ao histórico completo de cada cliente, considerando todas as interações anteriores para personalizar o atendimento.</p>
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 min-h-[200px] flex items-center justify-center text-gray-400">[Visualização e busca de histórico/memória]</div>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 min-h-[200px]">
+                <MemoriaForm />
+              </div>
             </div>
           )}
           {tab === 'delay' && (
