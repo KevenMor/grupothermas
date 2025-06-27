@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
 import { ChatMessage } from '@/lib/models'
-import { downloadAndSaveMedia, isFirebaseStorageUrl } from '@/lib/mediaStorage'
+import { downloadAndSaveMedia, isFirebaseStorageUrl } from '@/lib/mediaUpload'
 
 // Recebe eventos enviados pela Z-API (https://developer.z-api.io/en/webhooks)
 // Configure no painel da instância a URL: https://SEU_DOMINIO/api/zapi/webhook
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         )
         
         if (storageResult.success) {
-          storageUrl = storageResult.publicUrl!
+          storageUrl = storageResult.fileUrl!
           console.log('Imagem salva no Storage:', storageUrl)
         } else {
           console.error('Erro ao salvar imagem no Storage:', storageResult.error)
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         )
         
         if (storageResult.success) {
-          storageUrl = storageResult.publicUrl!
+          storageUrl = storageResult.fileUrl!
           console.log('Áudio salvo no Storage:', storageUrl)
         } else {
           console.error('Erro ao salvar áudio no Storage:', storageResult.error)
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
         )
         
         if (storageResult.success) {
-          storageUrl = storageResult.publicUrl!
+          storageUrl = storageResult.fileUrl!
           console.log('Vídeo salvo no Storage:', storageUrl)
         } else {
           console.error('Erro ao salvar vídeo no Storage:', storageResult.error)
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
         )
         
         if (storageResult.success) {
-          storageUrl = storageResult.publicUrl!
+          storageUrl = storageResult.fileUrl!
           console.log('Documento salvo no Storage:', storageUrl)
         } else {
           console.error('Erro ao salvar documento no Storage:', storageResult.error)

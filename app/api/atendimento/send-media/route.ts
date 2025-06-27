@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
 import { sendImage, sendAudio, sendDocument, sendVideo } from '@/lib/zapi'
-import { isFirebaseStorageUrl } from '@/lib/mediaStorage'
+import { isFirebaseStorageUrl } from '@/lib/mediaUpload'
 
 interface MediaMessage {
   phone: string
@@ -102,14 +102,18 @@ export async function POST(request: NextRequest) {
           break
         }
         case 'audio': {
-          // Validar formato
-          if (!localPath.endsWith('.mp3') && !localPath.endsWith('.ogg')) {
-            return NextResponse.json({ error: 'Formato de áudio não suportado. Use apenas mp3 ou ogg.' }, { status: 400 })
-          }
           console.log('=== PROCESSANDO ÁUDIO ===')
           console.log('Phone:', phone)
           console.log('LocalPath (Firebase URL):', localPath)
           console.log('ReplyTo:', replyTo)
+          
+          // Validar formato de áudio
+          const urlExtension = localPath.split('.').pop()?.toLowerCase()
+          if (!urlExtension || !['mp3', 'ogg', 'opus'].includes(urlExtension)) {
+            return NextResponse.json({ 
+              error: 'Formato de áudio não suportado. Use apenas MP3, OGG ou Opus do Firebase Storage.' 
+            }, { status: 400 })
+          }
           
           // Priorizar OGG/Opus se disponível, senão MP3
           let audioUrl = localPath
@@ -198,43 +202,57 @@ export async function POST(request: NextRequest) {
       
       let lastMessagePreview = '';
       switch (type) {
-        case 'audio':
-          lastMessagePreview = '🎵 Áudio';
-          break;
         case 'image':
-          lastMessagePreview = '🖼️ Imagem';
-          break;
-        case 'document':
-          lastMessagePreview = '📄 Documento';
-          break;
+          lastMessagePreview = caption || '📷 Imagem'
+          break
+        case 'audio':
+          lastMessagePreview = '🎵 Áudio'
+          break
         case 'video':
-          lastMessagePreview = '🎬 Vídeo';
-          break;
-        default:
-          lastMessagePreview = `[${String(type).toUpperCase()}]`;
+          lastMessagePreview = caption || '🎥 Vídeo'
+          break
+        case 'document':
+          lastMessagePreview = `📄 ${filename || 'Documento'}`
+          break
       }
-      
+
+      // Adicionar mensagem à conversa
       await conversationRef.collection('messages').add(messageData)
+      
+      // Atualizar preview da última mensagem
       await conversationRef.update({
         lastMessage: lastMessagePreview,
-        timestamp: new Date().toISOString(),
-        unreadCount: 0 // Reset unread count when agent sends message
+        lastMessageTime: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       })
-      
-      console.log('Mensagem salva no Firestore com sucesso')
-    } catch (e) {
-      console.error('Erro ao salvar mensagem no Firestore:', e)
-      // Não falha o envio por causa disso, mas loga o erro
+
+      console.log('=== MENSAGEM SALVA NO FIRESTORE ===')
+      console.log('Phone:', phone)
+      console.log('Type:', type)
+      console.log('MessageId:', zapiResult.messageId)
+      console.log('LastMessagePreview:', lastMessagePreview)
+
+      return NextResponse.json({
+        success: true,
+        messageId: zapiResult.messageId,
+        message: `${type} enviado com sucesso via Z-API`,
+        mediaUrl: mediaUrl
+      })
+
+    } catch (firestoreError) {
+      console.error('Erro ao salvar no Firestore:', firestoreError)
+      // Mesmo com erro no Firestore, retorna sucesso se Z-API funcionou
+      return NextResponse.json({
+        success: true,
+        messageId: zapiResult.messageId,
+        message: `${type} enviado via Z-API, mas erro ao salvar no histórico`,
+        mediaUrl: mediaUrl,
+        warning: 'Mensagem enviada mas não salva no histórico'
+      })
     }
-    
-    return NextResponse.json({ 
-      success: true, 
-      zapiResult,
-      message: `${type.charAt(0).toUpperCase() + type.slice(1)} enviado com sucesso!`
-    })
 
   } catch (error) {
-    console.error('Erro geral:', error)
+    console.error('Erro geral no envio de mídia:', error)
     return NextResponse.json({ 
       error: 'Erro interno do servidor',
       details: error instanceof Error ? error.message : 'Erro desconhecido'
