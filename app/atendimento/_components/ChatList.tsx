@@ -28,6 +28,15 @@ const formatTimestamp = (timestamp: string) => {
   return format(date, 'dd/MM/yy', { locale: ptBR })
 }
 
+// Badge visual de não lidas
+const UnreadBadge = ({ count }: { count: number }) => (
+  count > 0 ? (
+    <span className="ml-2 min-w-[22px] h-[22px] px-2 flex items-center justify-center text-xs font-bold bg-blue-600 text-white rounded-full shadow border-2 border-white/80 animate-bounce">
+      {count}
+    </span>
+  ) : null
+)
+
 const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelected: boolean, onSelectChat: (chat: Chat) => void }) => {
   const getStatusIcon = () => {
     switch (chat.conversationStatus) {
@@ -54,82 +63,57 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
     }
   }
 
-  // Badge de mensagens não lidas com animação
-  const renderUnreadBadge = () => {
-    if (chat.unreadCount > 0) {
-      return (
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold min-w-[20px] h-5 px-1.5 shadow-lg border-2 border-white dark:border-gray-800 animate-pulse">
-            {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
-          </span>
+  return (
+    <div
+      className={`flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all rounded-lg ${isSelected ? 'bg-blue-100 dark:bg-blue-800/40' : ''}`}
+      onClick={() => onSelectChat(chat)}
+    >
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <Avatar className="w-12 h-12 border-2 border-transparent">
+            <AvatarImage src={chat.customerAvatar} />
+            <AvatarFallback className="text-lg bg-gray-200 dark:bg-gray-700">
+              {chat.customerName.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
           {chat.unreadCount > 0 && (
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse"></div>
           )}
         </div>
-      )
-    }
-    return null
-  }
-
-  return (
-    <button
-      onClick={() => onSelectChat(chat)}
-      className={cn(
-        "w-full text-left flex items-start p-3 gap-3 transition-all duration-200 border-l-4 relative",
-        getStatusColor(),
-        isSelected ? "bg-white dark:bg-gray-800 shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-700/50",
-        chat.unreadCount > 0 && !isSelected ? "bg-red-50 dark:bg-red-900/10" : ""
-      )}
-    >
-      {/* Indicador de mensagens não lidas no avatar */}
-      <div className="relative">
-        <Avatar className="w-12 h-12 border-2 border-transparent">
-          <AvatarImage src={chat.customerAvatar} />
-          <AvatarFallback className="text-lg bg-gray-200 dark:bg-gray-700">
-            {chat.customerName.charAt(0)}
-          </AvatarFallback>
-        </Avatar>
-        {chat.unreadCount > 0 && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse"></div>
-        )}
-      </div>
-      
-      <div className="flex-grow truncate border-b border-gray-200 dark:border-gray-700 pb-3">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <h3 className={cn(
-              "font-semibold text-sm truncate flex items-center gap-2",
-              chat.unreadCount > 0 ? "text-gray-900 dark:text-gray-100 font-bold" : "text-gray-800 dark:text-gray-100"
-            )}>
-              {chat.customerName}
-              {renderUnreadBadge()}
-            </h3>
-            {getStatusIcon()}
-            {chat.aiEnabled && !chat.aiPaused && (
-              <div title="IA Ativa"><Bot className="w-3 h-3 text-blue-400" /></div>
-            )}
-            {chat.aiPaused && (
-              <div title="IA Pausada"><BotOff className="w-3 h-3 text-gray-400" /></div>
-            )}
+        <div className="flex-grow truncate border-b border-gray-200 dark:border-gray-700 pb-3">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <h3 className={cn(
+                "font-semibold text-sm truncate flex items-center gap-2",
+                chat.unreadCount > 0 ? "text-gray-900 dark:text-gray-100 font-bold" : "text-gray-800 dark:text-gray-100"
+              )}>
+                {chat.customerName}
+              </h3>
+              {getStatusIcon()}
+              {chat.aiEnabled && !chat.aiPaused && (
+                <div title="IA Ativa"><Bot className="w-3 h-3 text-blue-400" /></div>
+              )}
+              {chat.aiPaused && (
+                <div title="IA Pausada"><BotOff className="w-3 h-3 text-gray-400" /></div>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimestamp(chat.timestamp)}</span>
+            </div>
           </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimestamp(chat.timestamp)}</span>
-            {chat.unreadCount > 0 && (
-              <span className="text-xs text-red-600 dark:text-red-400 font-medium">
-                {chat.unreadCount} nova{chat.unreadCount > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{chat.customerPhone}</p>
+          <p className={cn(
+            "text-sm truncate",
+            chat.unreadCount > 0 ? "text-gray-900 dark:text-gray-100 font-medium" : "text-gray-500 dark:text-gray-400"
+          )}>
+            {chat.lastMessage}
+          </p>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{chat.customerPhone}</p>
-        <p className={cn(
-          "text-sm truncate",
-          chat.unreadCount > 0 ? "text-gray-900 dark:text-gray-100 font-medium" : "text-gray-500 dark:text-gray-400"
-        )}>
-          {chat.lastMessage}
-        </p>
       </div>
-    </button>
+      <div className="flex items-center gap-2">
+        <UnreadBadge count={chat.unreadCount} />
+      </div>
+    </div>
   )
 }
 

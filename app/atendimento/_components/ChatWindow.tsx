@@ -356,18 +356,9 @@ const MessageInput = ({
   const [previewType, setPreviewType] = useState<string>('')
   const [previewUrl, setPreviewUrl] = useState<string>('')
 
-  const [replyDraft, setReplyDraft] = useState<{ id: string, text: string, author: 'agent' | 'customer' } | null>(null)
-
   const handleSend = () => {
     if (!chat) return;
-    if (replyDraft) {
-      onSendMessage({
-        ...{ content: message },
-        replyTo: replyDraft
-      });
-    } else {
-      onSendMessage({ content: message });
-    }
+    onSendMessage({ content: message });
     setMessage('');
   }
 
@@ -1191,38 +1182,38 @@ export function ChatWindow({
   onMessageInfo,
   onCustomerUpdate
 }: ChatWindowProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const [replyDraft, setReplyDraft] = useState<{ id: string, text: string, author: 'agent' | 'customer' } | null>(null)
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [lastMessageCount, setLastMessageCount] = useState(0);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
 
-  const handleScroll = useCallback(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-    
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 10;
-    setAutoScroll(isAtBottom);
-  }, []);
+  // Função para rolar até o final
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
 
-  useEffect(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+  // Detectar se está no final do chat
+  const handleScroll = () => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    const atBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 40
+    setShowScrollToBottom(!atBottom)
+  }
 
   useEffect(() => {
-    // Só fazer scroll se autoScroll estiver ativo E houver novas mensagens
-    if (autoScroll && messages.length > lastMessageCount) {
-      const timeout = setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 50);
-      return () => clearTimeout(timeout);
+    const container = messagesContainerRef.current
+    if (!container) return
+    container.addEventListener('scroll', handleScroll)
+    // Checar inicialmente
+    handleScroll()
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
     }
-    setLastMessageCount(messages.length);
-  }, [messages.length, autoScroll, lastMessageCount]);
+  }, [messages])
+
+  // Sempre rolar para o final ao receber nova mensagem
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages.length])
 
   if (!chat) {
     return <WelcomeScreen />
@@ -1236,30 +1227,15 @@ export function ChatWindow({
 
   // Função para iniciar reply
   const handleReplyMessage = (message: ChatMessage) => {
-    setReplyDraft({
-      id: message.id,
-      text: message.content,
-      author: message.role === 'agent' ? 'agent' : 'customer'
-    })
-  }
-
-  // Função para cancelar reply
-  const handleCancelReply = () => {
-    setReplyDraft(null)
+    if (onReplyMessage) {
+      onReplyMessage(message)
+    }
   }
 
   // Função para enviar mensagem (adaptar para incluir reply)
   const handleSend = (data: { content: string }) => {
     if (!chat) return
-    if (replyDraft) {
-      onSendMessage({
-        ...data,
-        replyTo: replyDraft
-      })
-      setReplyDraft(null)
-    } else {
-      onSendMessage(data)
-    }
+    onSendMessage(data)
   }
 
   // Implementar funções das mensagens
@@ -1347,7 +1323,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
   let lastDate: Date | null = null
 
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0 bg-white dark:bg-gray-900">
+    <div className="relative h-full flex flex-col">
       <ChatHeader 
         chat={chat} 
         onToggleAI={onToggleAI} 
@@ -1356,21 +1332,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         onAssumeChat={handleAssumeChat}
         onCustomerUpdate={onCustomerUpdate}
       />
-      <div ref={messagesContainerRef} className="flex-1 min-h-0 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')] relative">
-        {/* Botão para ir para o fim */}
-        {!autoScroll && (
-          <button
-            onClick={() => {
-              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-              setAutoScroll(true);
-            }}
-            className="fixed lg:absolute right-6 bottom-28 lg:bottom-8 z-20 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg p-3 flex items-center justify-center transition-all border-4 border-white/80 dark:border-gray-900/80 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            style={{ boxShadow: '0 4px 24px 0 rgba(0,0,0,0.10)' }}
-            aria-label="Ir para a última mensagem"
-          >
-            <ArrowDown className="w-6 h-6" />
-          </button>
-        )}
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-2 pb-4" style={{ scrollBehavior: 'smooth' }}>
         {isLoading && messages.length === 0 ? (
           <div className="flex justify-center items-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -1404,23 +1366,22 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         <div ref={messagesEndRef} />
       </div>
       
-      {replyDraft && (
-        <div className="flex items-center bg-blue-100 border-l-4 border-blue-500 px-3 py-2 mb-2 rounded relative">
-          <div className="flex-1">
-            <div className="text-xs text-blue-700 font-semibold">Respondendo a:</div>
-            <div className="text-xs text-blue-900 truncate max-w-xs">{replyDraft.text}</div>
-          </div>
-          <Button size="icon" variant="ghost" className="ml-2" onClick={handleCancelReply}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
-
       <MessageInput
         chat={chat}
         onSendMessage={handleSend}
         onAssumeChat={handleAssumeChat}
       />
+
+      {/* Botão flutuante de seta para baixo */}
+      {showScrollToBottom && (
+        <button
+          className="fixed bottom-24 right-8 z-30 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg p-2 transition-all border-2 border-white/80"
+          onClick={scrollToBottom}
+          aria-label="Ir para a última mensagem"
+        >
+          <ArrowDown className="w-6 h-6" />
+        </button>
+      )}
     </div>
   )
 } 
