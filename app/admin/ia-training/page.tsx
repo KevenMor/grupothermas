@@ -911,9 +911,14 @@ ${trainingData.followUpActions.map(fu => `
       </button>
       {showSimulator && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 max-w-lg w-full relative">
-            <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-800" onClick={() => setShowSimulator(false)}>&times;</button>
-            <ChatSimulator agentName="Clara" />
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-[70vw] h-[80vh] flex flex-col relative p-0">
+            <button className="absolute top-4 right-6 text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-3xl z-10" onClick={() => setShowSimulator(false)}>&times;</button>
+            <div className="flex-1 flex items-center justify-center">
+              <ChatSimulator 
+                agentName={trainingData?.id === 'default' ? 'Clara' : trainingData?.id}
+                trainingPrompt={generateTrainingPrompt()}
+              />
+            </div>
           </div>
         </div>
       )}
