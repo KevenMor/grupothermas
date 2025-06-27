@@ -76,12 +76,14 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
     })
   }
 
-  // Função para formatar texto preservando quebras de linha
-  const formatMessageText = (text: string) => {
-    if (!text) return ''
-    // Garantir que quebras de linha sejam preservadas
-    return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-  }
+  // Função para renderizar texto com quebras de linha como <br />
+  const renderMessageWithBreaks = (text: string) =>
+    text.split(/\r?\n/).map((line, idx, arr) => (
+      <span key={idx}>
+        {line}
+        {idx < arr.length - 1 && <br />}
+      </span>
+    ))
 
   // Obter URL completa para mídia
   const getFullUrl = (url?: string) => {
@@ -500,13 +502,10 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
               {/* Conteúdo textual - Preserva quebras de linha e parágrafos */}
               {message.content && !message.mediaType && (
                 <div 
-                  className="break-words whitespace-pre-wrap leading-relaxed"
-                  style={{ 
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word'
-                  }}
+                  className="break-words leading-relaxed"
+                  style={{ wordBreak: 'break-word' }}
                 >
-                  {formatMessageText(message.content)}
+                  {renderMessageWithBreaks(message.content)}
                 </div>
               )}
               {!message.content && !message.mediaType ? <span style={{color: 'red'}}>[Sem conteúdo]</span> : null}
