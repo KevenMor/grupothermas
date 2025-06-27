@@ -34,6 +34,11 @@ import { ChatMessageItem } from './ChatMessageItem'
 import { EmojiPicker } from './EmojiPicker'
 import { isSameDay } from 'date-fns'
 import lamejs from 'lamejs'
+import { 
+  convertAudioToMultipleFormats, 
+  isFFmpegSupported, 
+  validateAudioBlob 
+} from '@/lib/audioConverter'
 
 interface ChatWindowProps {
   chat: Chat | null
@@ -700,24 +705,69 @@ const MessageInput = ({
       let oggBlob: Blob | null = null
       let mp3Blob: Blob | null = null
       
-      // Determinar formato baseado no MIME type
-      if (mimeType.includes('webm') || mimeType.includes('mp4')) {
-        // WebM/MP4 - converter para MP3
-        mp3Blob = await convertToMp3(audioBlob)
-      } else if (mimeType.includes('ogg') || mimeType.includes('opus')) {
-        // OGG/Opus - usar direto e converter para MP3
-        oggBlob = audioBlob
-        mp3Blob = await convertToMp3(audioBlob)
-      } else if (mimeType.includes('wav')) {
-        // WAV - converter para MP3
-        mp3Blob = await wavToMp3(audioBlob)
-      } else if (mimeType.includes('mp3')) {
-        // MP3 - usar direto
-        mp3Blob = audioBlob
+      // Verificar se o FFmpeg é suportado
+      if (!isFFmpegSupported()) {
+        console.warn('FFmpeg não suportado, usando conversão básica')
+        await sendLog('warn', 'audio', 'FFmpeg não suportado, usando conversão básica', {
+          userAgent: navigator.userAgent
+        })
+        
+        // Fallback para conversão básica
+        if (mimeType.includes('mp3')) {
+          mp3Blob = audioBlob
+        } else {
+          // Tentar conversão básica
+          const arrayBuffer = await audioBlob.arrayBuffer()
+          mp3Blob = new Blob([arrayBuffer], { type: 'audio/mp3' })
+        }
       } else {
-        // Formato desconhecido - tentar converter para MP3
-        console.warn('Formato de áudio desconhecido, tentando conversão para MP3')
-        mp3Blob = await convertToMp3(audioBlob)
+        // Usar conversão real com FFmpeg
+        console.log('🔄 Usando conversão real com FFmpeg...')
+        
+        try {
+          const convertedFormats = await convertAudioToMultipleFormats(audioBlob)
+          mp3Blob = convertedFormats.mp3Blob
+          oggBlob = convertedFormats.oggBlob
+          
+          console.log('✅ Conversão FFmpeg concluída:', {
+            mp3Success: !!mp3Blob,
+            oggSuccess: !!oggBlob,
+            mp3Size: mp3Blob?.size,
+            oggSize: oggBlob?.size
+          })
+          
+          await sendLog('info', 'audio', 'Conversão FFmpeg concluída', {
+            mp3Success: !!mp3Blob,
+            oggSuccess: !!oggBlob,
+            mp3Size: mp3Blob?.size,
+            oggSize: oggBlob?.size
+          })
+          
+        } catch (ffmpegError) {
+          console.error('❌ Erro na conversão FFmpeg:', ffmpegError)
+          await sendLog('error', 'audio', 'Erro na conversão FFmpeg', {
+            error: ffmpegError instanceof Error ? ffmpegError.message : 'Unknown error'
+          })
+          
+          // Fallback para conversão básica
+          if (mimeType.includes('mp3')) {
+            mp3Blob = audioBlob
+          } else {
+            const arrayBuffer = await audioBlob.arrayBuffer()
+            mp3Blob = new Blob([arrayBuffer], { type: 'audio/mp3' })
+          }
+        }
+      }
+      
+      // Validar blobs convertidos
+      if (mp3Blob && !validateAudioBlob(mp3Blob, 'audio/mpeg')) {
+        console.warn('MP3 convertido inválido, tentando novamente...')
+        mp3Blob = null
+      }
+      
+      if (oggBlob && !validateAudioBlob(oggBlob, 'audio/ogg')) {
+        console.warn('OGG convertido inválido, removendo...')
+        oggBlob = null
       }
       
       // Upload dos formatos disponíveis
@@ -730,6 +780,7 @@ const MessageInput = ({
         formData.append('type', 'audio')
         
         try {
+          console.log('📤 Fazendo upload OGG...')
           const uploadResponse = await fetch('/api/atendimento/upload', { 
             method: 'POST', 
             body: formData 
@@ -737,16 +788,22 @@ const MessageInput = ({
           if (uploadResponse.ok) {
             const uploadResult = await uploadResponse.json()
             oggUrl = uploadResult.fileUrl
-            console.log('Upload OGG concluído:', oggUrl)
-            await sendLog('info', 'media', 'Upload OGG concluído', { url: oggUrl })
+            console.log('✅ Upload OGG concluído:', oggUrl)
+            await sendLog('info', 'media', 'Upload OGG concluído', { 
+              url: oggUrl,
+              size: oggBlob.size,
+              type: oggBlob.type
+            })
           } else {
             const errorText = await uploadResponse.text()
-            console.warn('Falha no upload OGG:', errorText)
+            console.warn('❌ Falha no upload OGG:', errorText)
             await sendLog('warn', 'media', 'Falha no upload OGG', { error: errorText })
           }
         } catch (error) {
-          console.error('Erro no upload OGG:', error)
-          await sendLog('error', 'media', 'Erro no upload OGG', { error: error instanceof Error ? error.message : 'Unknown error' })
+          console.error('❌ Erro no upload OGG:', error)
+          await sendLog('error', 'media', 'Erro no upload OGG', { 
+            error: error instanceof Error ? error.message : 'Unknown error' 
+          })
         }
       }
       
@@ -756,6 +813,7 @@ const MessageInput = ({
         formData.append('type', 'audio')
         
         try {
+          console.log('📤 Fazendo upload MP3...')
           const uploadResponse = await fetch('/api/atendimento/upload', { 
             method: 'POST', 
             body: formData 
@@ -763,29 +821,42 @@ const MessageInput = ({
           if (uploadResponse.ok) {
             const uploadResult = await uploadResponse.json()
             mp3Url = uploadResult.fileUrl
-            console.log('Upload MP3 concluído:', mp3Url)
-            await sendLog('info', 'media', 'Upload MP3 concluído', { url: mp3Url })
+            console.log('✅ Upload MP3 concluído:', mp3Url)
+            await sendLog('info', 'media', 'Upload MP3 concluído', { 
+              url: mp3Url,
+              size: mp3Blob.size,
+              type: mp3Blob.type
+            })
           } else {
             const errorText = await uploadResponse.text()
-            console.error('Falha no upload MP3:', errorText)
+            console.error('❌ Falha no upload MP3:', errorText)
             await sendLog('error', 'media', 'Falha no upload MP3', { error: errorText })
             throw new Error('Falha no upload do áudio')
           }
         } catch (error) {
-          console.error('Erro no upload MP3:', error)
-          await sendLog('error', 'media', 'Erro no upload MP3', { error: error instanceof Error ? error.message : 'Unknown error' })
+          console.error('❌ Erro no upload MP3:', error)
+          await sendLog('error', 'media', 'Erro no upload MP3', { 
+            error: error instanceof Error ? error.message : 'Unknown error' 
+          })
           throw error
         }
+      }
+      
+      if (!mp3Url && !oggUrl) {
+        throw new Error('Nenhum formato de áudio foi enviado com sucesso')
       }
       
       // Enviar para o backend
       const mediaPayload: any = {
         phone: chat.customerPhone,
         type: 'audio',
-        localPath: oggUrl || mp3Url
+        localPath: oggUrl || mp3Url // Priorizar OGG se disponível
       }
       if (oggUrl) mediaPayload.oggUrl = oggUrl
       if (mp3Url) mediaPayload.mp3Url = mp3Url
+      
+      console.log('📤 Enviando áudio via Z-API...')
+      console.log('Payload:', mediaPayload)
       
       const mediaResponse = await fetch('/api/atendimento/send-media', {
         method: 'POST',
@@ -795,7 +866,7 @@ const MessageInput = ({
       
       if (!mediaResponse.ok) {
         const errorText = await mediaResponse.text()
-        console.error('Erro ao enviar via Z-API:', errorText)
+        console.error('❌ Erro ao enviar via Z-API:', errorText)
         await sendLog('error', 'zapi', 'Erro ao enviar áudio via Z-API', { 
           error: errorText,
           phone: chat.customerPhone,
@@ -804,11 +875,13 @@ const MessageInput = ({
         throw new Error(`Falha ao enviar áudio via Z-API: ${errorText}`)
       }
       
-      console.log('Áudio enviado com sucesso!')
+      const mediaResult = await mediaResponse.json()
+      console.log('✅ Áudio enviado com sucesso!', mediaResult)
       await sendLog('info', 'zapi', 'Áudio enviado com sucesso', {
         phone: chat.customerPhone,
         oggUrl,
-        mp3Url
+        mp3Url,
+        messageId: mediaResult.messageId
       })
       
     } catch (error) {
@@ -823,106 +896,6 @@ const MessageInput = ({
       })
       
       alert(`Erro ao enviar áudio: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
-    }
-  }
-
-  // 4. Função para converter qualquer formato para MP3
-  async function convertToMp3(audioBlob: Blob): Promise<Blob> {
-    try {
-      console.log('Convertendo para MP3...')
-      console.log('Formato original:', audioBlob.type)
-      console.log('Tamanho:', audioBlob.size)
-      
-      // Se já for MP3, retornar direto
-      if (audioBlob.type.includes('mp3')) {
-        return audioBlob
-      }
-      
-      // Para outros formatos, tentar conversão via lamejs se possível
-      if (audioBlob.type.includes('wav')) {
-        return await wavToMp3(audioBlob)
-      }
-      
-      // Para WebM/OGG, tentar conversão básica
-      const arrayBuffer = await audioBlob.arrayBuffer()
-      return new Blob([arrayBuffer], { type: 'audio/mp3' })
-      
-    } catch (error) {
-      console.error('Erro na conversão para MP3:', error)
-      // Fallback: retornar o blob original como MP3
-      const arrayBuffer = await audioBlob.arrayBuffer()
-      return new Blob([arrayBuffer], { type: 'audio/mp3' })
-    }
-  }
-
-  // 5. Função utilitária para converter WAV para MP3
-  async function wavToMp3(wavBlob: Blob): Promise<Blob> {
-    try {
-      console.log('Iniciando conversão WAV->MP3...');
-      console.log('Blob size:', wavBlob.size);
-      console.log('Blob type:', wavBlob.type);
-      
-      const arrayBuffer = await wavBlob.arrayBuffer();
-      console.log('ArrayBuffer size:', arrayBuffer.byteLength);
-      
-      // Verificar se o arquivo tem tamanho mínimo para ser um WAV válido
-      if (arrayBuffer.byteLength < 44) {
-        throw new Error('Arquivo muito pequeno para ser um WAV válido');
-      }
-      
-      const dataView = new DataView(arrayBuffer);
-      
-      // Verificar se é realmente um arquivo WAV
-      const riffHeader = String.fromCharCode(
-        dataView.getUint8(0),
-        dataView.getUint8(1), 
-        dataView.getUint8(2),
-        dataView.getUint8(3)
-      );
-      
-      if (riffHeader !== 'RIFF') {
-        console.warn('Arquivo não é um WAV válido, enviando como MP3 direto');
-        // Se não é WAV, retornar como MP3 (assumindo que já foi convertido)
-        return new Blob([arrayBuffer], { type: 'audio/mp3' });
-      }
-      
-      console.log('Header RIFF encontrado, processando WAV...');
-      
-      const wav = lamejs.WavHeader.readHeader(dataView);
-      console.log('WAV Header:', wav);
-      
-      if (!wav || !wav.dataOffset || !wav.dataLen) {
-        throw new Error('Header WAV inválido');
-      }
-      
-      const samples = new Int16Array(arrayBuffer, wav.dataOffset, wav.dataLen / 2);
-      console.log('Samples extraídos:', samples.length);
-      
-      const mp3enc = new lamejs.Mp3Encoder(wav.channels, wav.sampleRate, 128);
-      const mp3Data = [];
-      let remaining = samples.length;
-      let samplesPerFrame = 1152;
-      
-      for (let i = 0; remaining >= samplesPerFrame; i += samplesPerFrame) {
-        let mono = samples.subarray(i, i + samplesPerFrame);
-        let mp3buf = mp3enc.encodeBuffer(mono);
-        if (mp3buf.length > 0) mp3Data.push(new Int8Array(mp3buf));
-        remaining -= samplesPerFrame;
-      }
-      
-      let mp3buf = mp3enc.flush();
-      if (mp3buf.length > 0) mp3Data.push(new Int8Array(mp3buf));
-      
-      console.log('Conversão MP3 concluída, chunks:', mp3Data.length);
-      return new Blob(mp3Data, { type: 'audio/mp3' });
-      
-    } catch (error) {
-      console.error('Erro na conversão WAV->MP3:', error);
-      console.log('Fallback: enviando arquivo original como MP3');
-      
-      // Fallback: se a conversão falhar, enviar o arquivo original como MP3
-      const arrayBuffer = await wavBlob.arrayBuffer();
-      return new Blob([arrayBuffer], { type: 'audio/mp3' });
     }
   }
 

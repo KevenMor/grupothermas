@@ -45,6 +45,7 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['localhost:3000']
     },
+    serverComponentsExternalPackages: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
   },
   images: {
     domains: ['firebasestorage.googleapis.com'],
@@ -70,6 +71,9 @@ const nextConfig = {
         path: false,
         child_process: false
       }
+      
+      // Permitir SharedArrayBuffer
+      config.output.crossOriginLoading = 'anonymous'
     }
     
     // Ignorar módulos problemáticos do WhatsApp Web.js
@@ -98,7 +102,24 @@ const nextConfig = {
     })
     
     return config
-  }
+  },
+  async headers() {
+    return [
+      {
+        source: '/ffmpeg/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+        ],
+      },
+    ]
+  },
 }
 
 module.exports = withPWA(nextConfig) 
