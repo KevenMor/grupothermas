@@ -500,34 +500,60 @@ const MessageInput = ({
   // Função para confirmar envio do áudio
   const confirmSendAudio = async () => {
     if (!recordedAudio || !chat) return
+    
+    console.log('=== INICIANDO ENVIO DE ÁUDIO ===')
+    console.log('Chat:', chat.customerPhone)
+    console.log('Recorded Audio Size:', recordedAudio.size)
+    
     try {
       // Converter WAV para MP3 antes do upload
+      console.log('1. Convertendo WAV para MP3...')
       const mp3Blob = await wavToMp3(recordedAudio)
+      console.log('MP3 convertido. Tamanho:', mp3Blob.size)
+      
       // Upload do áudio
+      console.log('2. Fazendo upload para Firebase...')
       const formData = new FormData()
       formData.append('file', mp3Blob, `audio_${Date.now()}.mp3`)
       formData.append('type', 'audio')
+      
       const uploadResponse = await fetch('/api/atendimento/upload', {
         method: 'POST',
         body: formData
       })
+      
+      console.log('Upload Response Status:', uploadResponse.status)
+      
       if (!uploadResponse.ok) {
-        throw new Error('Erro no upload do áudio')
+        const errorText = await uploadResponse.text()
+        console.error('Erro no upload:', errorText)
+        throw new Error(`Erro no upload do áudio: ${errorText}`)
       }
+      
       const uploadResult = await uploadResponse.json()
+      console.log('3. Upload concluído:', uploadResult)
+      
       // Enviar áudio via Z-API usando nova API local
+      console.log('4. Enviando via Z-API...')
+      const mediaPayload = {
+        phone: chat.customerPhone,
+        type: 'audio',
+        localPath: uploadResult.fileUrl
+      }
+      console.log('Payload para Z-API:', mediaPayload)
+      
       const mediaResponse = await fetch('/api/atendimento/send-media', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: chat.customerPhone,
-          type: 'audio',
-          localPath: uploadResult.fileUrl
-        })
+        body: JSON.stringify(mediaPayload)
       })
+      
+      console.log('Z-API Response Status:', mediaResponse.status)
+      
       if (mediaResponse.ok) {
         const mediaResult = await mediaResponse.json()
-        console.log('Áudio enviado com sucesso:', mediaResult)
+        console.log('5. Áudio enviado com sucesso via Z-API:', mediaResult)
+        
         // Criar mensagem otimista para mostrar imediatamente
         const optimisticMessage: ChatMessage = {
           id: `temp-audio-${Date.now()}`,
@@ -546,16 +572,22 @@ const MessageInput = ({
             filename: `audio_${Date.now()}.mp3`
           }
         }
+        
         window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
         setShowSendConfirmation(false)
         setRecordedAudio(null)
-        console.log('Áudio adicionado à conversa sem reload')
+        console.log('6. Áudio adicionado à conversa com sucesso!')
+        
       } else {
-        throw new Error('Falha ao enviar áudio via Z-API')
+        const errorText = await mediaResponse.text()
+        console.error('Erro ao enviar via Z-API:', errorText)
+        throw new Error(`Falha ao enviar áudio via Z-API: ${errorText}`)
       }
     } catch (error) {
-      console.error('Erro ao enviar áudio:', error)
-      alert('Erro ao enviar áudio. Tente novamente.')
+      console.error('=== ERRO NO ENVIO DE ÁUDIO ===')
+      console.error('Error:', error)
+      console.error('Stack:', error instanceof Error ? error.stack : 'No stack')
+      alert(`Erro ao enviar áudio: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
     }
   }
 
