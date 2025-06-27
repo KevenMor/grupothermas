@@ -210,7 +210,7 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         mediaInfo.url = `/api/media/${encodeURIComponent(message.image.imageUrl)}`
       }
     } else if (message.audio) {
-      userMessage = '🎤 Áudio enviado'
+      userMessage = '🎵 Áudio'
       mediaInfo = {
         type: 'audio',
         url: message.audio.audioUrl,
@@ -221,7 +221,7 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         mediaInfo.url = `/api/media/${encodeURIComponent(message.audio.audioUrl)}`
       }
     } else if (message.video) {
-      userMessage = `🎬 Vídeo enviado${message.video.caption ? `: ${message.video.caption}` : ''}`
+      userMessage = `🎬 Vídeo${message.video.caption ? `: ${message.video.caption}` : ''}`
       mediaInfo = {
         type: 'video',
         url: message.video.videoUrl,
@@ -233,7 +233,7 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         mediaInfo.url = `/api/media/${encodeURIComponent(message.video.videoUrl)}`
       }
     } else if (message.document) {
-      userMessage = `📄 Documento enviado: ${message.document.title || 'arquivo'}`
+      userMessage = `📄 ${message.document.title || 'Documento'}`
       mediaInfo = {
         type: 'document',
         url: message.document.documentUrl,
@@ -246,14 +246,14 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         mediaInfo.url = `/api/media/${encodeURIComponent(message.document.documentUrl)}`
       }
     } else if (message.contact) {
-      userMessage = `👤 Contato compartilhado: ${message.contact.displayName}`
+      userMessage = `👤 ${message.contact.displayName}`
       mediaInfo = {
         type: 'contact',
         displayName: message.contact.displayName,
         vcard: message.contact.vcard
       }
     } else if (message.location) {
-      userMessage = `📍 Localização compartilhada${message.location.address ? `: ${message.location.address}` : ''}`
+      userMessage = `📍 ${message.location.address || 'Localização'}`
       mediaInfo = {
         type: 'location',
         latitude: message.location.latitude,

@@ -338,7 +338,7 @@ export async function sendAudio(
     // Criar objeto de mensagem local para atualização imediata da UI
     const localMessageObj = {
       id: `local_${Date.now()}`,
-      content: '🎤 Áudio enviado',
+              content: '🎵 Áudio',
       timestamp: new Date().toISOString(),
       role: 'agent',
       status: 'sent',

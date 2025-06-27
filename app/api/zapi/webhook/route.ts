@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       }
     } else if (body.audio) {
       console.log('Processando áudio:', body.audio)
-      content = '🎤 Áudio enviado'
+      content = '🎵 Áudio'
       mediaInfo = {
         type: 'audio',
         url: body.audio.audioUrl,
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       }
     } else if (body.video) {
       console.log('Processando vídeo:', body.video)
-      content = `🎬 Vídeo enviado${body.video.caption ? `: ${body.video.caption}` : ''}`
+      content = `🎬 Vídeo${body.video.caption ? `: ${body.video.caption}` : ''}`
       mediaInfo = {
         type: 'video',
         url: body.video.videoUrl,
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       }
     } else if (body.document) {
       console.log('Processando documento:', body.document)
-      content = `📄 Documento enviado: ${body.document.title || 'arquivo'}`
+      content = `📄 ${body.document.title || 'Documento'}`
       mediaInfo = {
         type: 'document',
         url: body.document.documentUrl,
@@ -137,14 +137,14 @@ export async function POST(request: NextRequest) {
         mediaInfo.url = `/api/media/${encodeURIComponent(body.document.documentUrl)}`
       }
     } else if (body.contact) {
-      content = `👤 Contato compartilhado: ${body.contact.displayName}`
+      content = `👤 ${body.contact.displayName}`
       mediaInfo = {
         type: 'contact',
         displayName: body.contact.displayName,
         vcard: body.contact.vcard
       }
     } else if (body.location) {
-      content = `📍 Localização compartilhada${body.location.address ? `: ${body.location.address}` : ''}`
+      content = `📍 ${body.location.address || 'Localização'}`
       mediaInfo = {
         type: 'location',
         latitude: body.location.latitude,
