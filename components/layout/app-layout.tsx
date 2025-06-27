@@ -17,7 +17,8 @@ import {
   SidebarNavSubmenu,
   SidebarNavSubItem,
   SidebarGroup,
-  useSidebar
+  useSidebar,
+  SidebarNavNestedSubmenu
 } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Button } from '@/components/ui/button'
@@ -45,7 +46,13 @@ import {
   BookOpen,
   GitBranch,
   TestTube,
-  Wifi
+  Wifi,
+  Key,
+  Shield,
+  Package,
+  Database,
+  Clock,
+  ArrowRight
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -109,11 +116,11 @@ function AppSidebar() {
               Dashboard
             </SidebarNavItem>
 
-            {/* Atendimento com submenus */}
+            {/* Atendimento com submenus hierárquicos */}
             <SidebarNavSubmenu
               title="Atendimento"
               icon={<HeadphonesIcon className="h-4 w-4" />}
-              defaultOpen={pathname.startsWith('/atendimento') || pathname === '/kanban' || pathname === '/admin'}
+              defaultOpen={pathname.startsWith('/atendimento') || pathname === '/kanban' || pathname.startsWith('/admin')}
             >
               <SidebarNavSubItem
                 icon={<MessageSquare className="h-4 w-4" />}
@@ -129,52 +136,103 @@ function AppSidebar() {
               >
                 Kanban
               </SidebarNavSubItem>
-              <SidebarNavSubItem
+              
+              {/* OpenAI Submenu */}
+              <SidebarNavNestedSubmenu
+                title="OpenAI"
                 icon={<Bot className="h-4 w-4" />}
-                active={pathname === '/admin'}
-                onClick={() => router.push('/admin' as any)}
+                defaultOpen={pathname === '/admin'}
               >
-                Admin IA
-              </SidebarNavSubItem>
-            </SidebarNavSubmenu>
+                <SidebarNavSubItem
+                  icon={<Key className="h-4 w-4" />}
+                  active={pathname === '/admin'}
+                  onClick={() => router.push('/admin' as any)}
+                >
+                  Chaves e Tokens
+                </SidebarNavSubItem>
+                <SidebarNavSubItem
+                  icon={<Settings className="h-4 w-4" />}
+                  active={pathname === '/admin'}
+                  onClick={() => router.push('/admin' as any)}
+                >
+                  Ajustes de Uso
+                </SidebarNavSubItem>
+              </SidebarNavNestedSubmenu>
 
-            {/* IA e Automação com submenus */}
-            <SidebarNavSubmenu
-              title="IA & Automação"
-              icon={<Zap className="h-4 w-4" />}
-              defaultOpen={pathname.startsWith('/admin/ia-training') || pathname.startsWith('/admin/flow-editor') || pathname.startsWith('/admin/ai-config')}
-            >
-              <SidebarNavSubItem
+              {/* Z-API Submenu */}
+              <SidebarNavNestedSubmenu
+                title="Z-API"
                 icon={<Wifi className="h-4 w-4" />}
-                active={pathname === '/admin'}
-                onClick={() => router.push('/admin' as any)}
+                defaultOpen={pathname === '/admin'}
               >
-                Configuração OpenAI
-              </SidebarNavSubItem>
-              <SidebarNavSubItem
+                <SidebarNavSubItem
+                  icon={<Shield className="h-4 w-4" />}
+                  active={pathname === '/admin'}
+                  onClick={() => router.push('/admin' as any)}
+                >
+                  Configurar Credenciais
+                </SidebarNavSubItem>
+                <SidebarNavSubItem
+                  icon={<TestTube className="h-4 w-4" />}
+                  active={pathname === '/admin'}
+                  onClick={() => router.push('/admin' as any)}
+                >
+                  Testar Conexão
+                </SidebarNavSubItem>
+              </SidebarNavNestedSubmenu>
+
+              {/* Treinamento IA Submenu */}
+              <SidebarNavNestedSubmenu
+                title="Treinamento IA"
                 icon={<BookOpen className="h-4 w-4" />}
-                active={pathname === '/admin/ia-training'}
-                onClick={() => router.push('/admin/ia-training' as any)}
+                defaultOpen={pathname === '/admin/ia-training'}
               >
-                Treinamento IA
-              </SidebarNavSubItem>
+                <SidebarNavSubItem
+                  icon={<FileText className="h-4 w-4" />}
+                  active={pathname === '/admin/ia-training'}
+                  onClick={() => router.push('/admin/ia-training' as any)}
+                >
+                  Prompt de Ensinamento
+                </SidebarNavSubItem>
+                <SidebarNavSubItem
+                  icon={<Package className="h-4 w-4" />}
+                  active={pathname === '/admin/ia-training'}
+                  onClick={() => router.push('/admin/ia-training' as any)}
+                >
+                  Produtos / Serviços
+                </SidebarNavSubItem>
+                <SidebarNavSubItem
+                  icon={<Database className="h-4 w-4" />}
+                  active={pathname === '/admin/ia-training'}
+                  onClick={() => router.push('/admin/ia-training' as any)}
+                >
+                  Memória Efetiva
+                </SidebarNavSubItem>
+                <SidebarNavSubItem
+                  icon={<Clock className="h-4 w-4" />}
+                  active={pathname === '/admin/ia-training'}
+                  onClick={() => router.push('/admin/ia-training' as any)}
+                >
+                  Delay entre Mensagens
+                </SidebarNavSubItem>
+                <SidebarNavSubItem
+                  icon={<ArrowRight className="h-4 w-4" />}
+                  active={pathname === '/admin/ia-training'}
+                  onClick={() => router.push('/admin/ia-training' as any)}
+                >
+                  Ações de Follow-up
+                </SidebarNavSubItem>
+              </SidebarNavNestedSubmenu>
+
+              {/* Fluxograma - Acesso Amplo */}
               <SidebarNavSubItem
-                icon={<TestTube className="h-4 w-4" />}
-                active={pathname === '/admin/ai-test'}
-                onClick={() => router.push('/admin/ai-test' as any)}
+                icon={<GitBranch className="h-4 w-4" />}
+                active={pathname === '/admin/flow-editor'}
+                onClick={() => router.push('/admin/flow-editor' as any)}
               >
-                Testes de IA
+                Fluxograma
               </SidebarNavSubItem>
             </SidebarNavSubmenu>
-
-            {/* Editor de Fluxograma - Acesso Amplo */}
-            <SidebarNavItem
-              icon={<GitBranch className="h-4 w-4" />}
-              active={pathname === '/admin/flow-editor'}
-              onClick={() => router.push('/admin/flow-editor' as any)}
-            >
-              Editor de Fluxograma
-            </SidebarNavItem>
 
             {/* Vendas com submenus */}
             <SidebarNavSubmenu
