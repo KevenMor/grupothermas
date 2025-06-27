@@ -179,7 +179,25 @@ const ChatHeader = ({
   useEffect(() => {
     setName(chat.customerName)
     setAvatar(chat.customerAvatar)
-  }, [chat.customerName, chat.customerAvatar])
+    // Buscar avatar do WhatsApp via Z-API se não houver ou for padrão
+    const isDefaultAvatar = !chat.customerAvatar || chat.customerAvatar.includes('ui-avatars.com') || chat.customerAvatar.includes('default');
+    if (isDefaultAvatar && chat.customerPhone) {
+      fetch(`/api/zapi/avatar?phone=${encodeURIComponent(chat.customerPhone)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.avatarUrl && data.avatarUrl !== chat.customerAvatar) {
+            setAvatar(data.avatarUrl);
+            // Atualizar no backend
+            fetch(`/api/atendimento/chats/${chat.customerPhone}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ customerAvatar: data.avatarUrl })
+            });
+            onCustomerUpdate?.({ customerAvatar: data.avatarUrl });
+          }
+        });
+    }
+  }, [chat.customerName, chat.customerAvatar, chat.customerPhone]);
 
   const handleNameSave = async () => {
     if (!name.trim() || name === chat.customerName) {
@@ -831,18 +849,26 @@ const MessageInput = ({
           </div>
 
           <div className="flex-1 relative">
-            <Input
+            <textarea
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={e => {
+                setMessage(e.target.value)
+                const textarea = e.target as HTMLTextAreaElement;
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
+              }}
               placeholder={canInteract() ? "Digite uma mensagem..." : "Assuma o atendimento para enviar mensagens"}
               disabled={!canInteract()}
-              onKeyPress={(e) => {
+              onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSend()
+                  e.preventDefault();
+                  handleSend();
                 }
+                // Shift+Enter permite nova linha
               }}
-              className="pr-10"
+              rows={1}
+              className="block w-full resize-none pr-10 px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none min-h-[40px] max-h-40 shadow-inner text-base transition-all"
+              style={{ lineHeight: '1.5', overflow: 'auto' }}
             />
             <Button
               variant="ghost"
