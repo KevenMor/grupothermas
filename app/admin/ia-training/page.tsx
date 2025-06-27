@@ -917,6 +917,7 @@ ${trainingData.followUpActions.map(fu => `
               <ChatSimulator 
                 agentName={trainingData?.id === 'default' ? 'Clara' : trainingData?.id}
                 trainingPrompt={generateTrainingPrompt()}
+                delayConfig={trainingData?.delayConfig}
               />
             </div>
           </div>
