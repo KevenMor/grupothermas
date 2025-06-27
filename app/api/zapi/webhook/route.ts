@@ -57,6 +57,15 @@ export async function POST(request: NextRequest) {
       hasReaction: !!body.reaction
     })
 
+    // Referência da conversa (documento por telefone)
+    const conversationRef = adminDB.collection('conversations').doc(phone)
+    const conversationDoc = await conversationRef.get()
+    
+    let conversationData = null
+    let replyToFirestoreId = null
+    let replyToContent = null
+    let replyToSender = null
+
     if (text?.message) {
       content = text.message
       console.log('Processando texto:', content)
@@ -298,15 +307,6 @@ export async function POST(request: NextRequest) {
 
     // Extrair referência de resposta (reply) se houver
     const replyTo = body.referenceMessageId || body.quotedMsgId || body.context?.id || null;
-
-    // Referência da conversa (documento por telefone)
-    const conversationRef = adminDB.collection('conversations').doc(phone)
-    const conversationDoc = await conversationRef.get()
-    
-    let conversationData = null
-    let replyToFirestoreId = null
-    let replyToContent = null
-    let replyToSender = null
 
     // Processar reply se houver
     if (replyTo) {
