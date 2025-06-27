@@ -3,7 +3,7 @@ import { adminDB } from '@/lib/firebaseAdmin'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { sendImage, sendAudio, sendDocument } from '@/lib/zapi'
+import { sendImage, sendAudio, sendDocument, sendVideo } from '@/lib/zapi'
 
 interface MediaMessage {
   phone: string
@@ -108,6 +108,13 @@ export async function POST(request: NextRequest) {
           zapiResult = docResult
           break
         }
+        case 'video': {
+          const vidFilename = filename || localPath.split('/').pop() || 'video.mp4';
+          const vidResult = await sendVideo(phone, localPath, vidFilename, caption, replyTo);
+          if (!vidResult.success) throw new Error(vidResult.error || 'Erro ao enviar vídeo');
+          zapiResult = vidResult;
+          break;
+        }
         default:
           return NextResponse.json({ error: 'Tipo de mídia não suportado para URL pública' }, { status: 400 })
       }
@@ -152,7 +159,7 @@ export async function POST(request: NextRequest) {
           lastMessagePreview = '🎬 Vídeo';
           break;
         default:
-          lastMessagePreview = `[${type.toUpperCase()}]`;
+          lastMessagePreview = `[${String(type).toUpperCase()}]`;
       }
       await conversationRef.collection('messages').add(messageData)
       await conversationRef.update({

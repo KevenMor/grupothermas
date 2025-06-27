@@ -467,6 +467,79 @@ export async function sendDocument(
 }
 
 /**
+ * Envia um vídeo via Z-API
+ */
+export async function sendVideo(
+  phone: string,
+  videoUrl: string,
+  fileName?: string,
+  caption?: string,
+  replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
+): Promise<MessageResponse> {
+  try {
+    const config = await getZAPIConfig();
+    // Headers da requisição
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (config.zapiClientToken && config.zapiClientToken.trim()) {
+      headers['Client-Token'] = config.zapiClientToken.trim();
+    }
+    const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-video`;
+    let payload: any = { phone };
+    payload.video = videoUrl;
+    if (caption) payload.caption = caption;
+    if (fileName) payload.fileName = fileName;
+    if (replyTo?.id) payload.messageId = replyTo.id;
+    console.log('Enviando vídeo para Z-API:', {
+      url: zapiUrl,
+      phone,
+      payload,
+      caption,
+      fileName,
+      replyTo: replyTo?.id
+    });
+    const zapiResponse = await fetch(zapiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    const zapiResultText = await zapiResponse.text();
+    let zapiResult: any = {};
+    try { zapiResult = JSON.parse(zapiResultText); } catch { zapiResult = zapiResultText; }
+    console.log('Resposta da Z-API (vídeo):', zapiResult);
+    if (!zapiResponse.ok) {
+      throw new Error(`Erro Z-API: ${zapiResultText}`);
+    }
+    // Criar objeto de mensagem local para atualização imediata da UI
+    const localMessageObj = {
+      id: `local_${Date.now()}`,
+      content: caption || '',
+      timestamp: new Date().toISOString(),
+      role: 'agent',
+      status: 'sent',
+      mediaType: 'video',
+      mediaUrl: videoUrl,
+      mediaInfo: {
+        type: 'video',
+        caption,
+        fileName
+      },
+      replyTo
+    };
+    return {
+      success: true,
+      messageId: zapiResult.messageId,
+      localMessageObj
+    };
+  } catch (error) {
+    console.error('Erro ao enviar vídeo:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    };
+  }
+}
+
+/**
  * Atualiza o status de uma mensagem no Firestore
  */
 export async function updateMessageStatus(
