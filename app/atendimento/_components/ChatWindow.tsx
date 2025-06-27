@@ -544,56 +544,48 @@ const MessageInput = ({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioChunks, setAudioChunks] = useState<Blob[]>([])
 
+  // 1. Detectar suporte a OGG/Opus
+  const supportsOggOpus = MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')
+
+  // 2. Ajustar toggleRecording para gravar OGG/Opus se suportado
   const toggleRecording = async () => {
     if (!canInteract()) return
 
     if (!isRecording) {
-      // Iniciar gravação
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        const recorder = new MediaRecorder(stream)
+        // Gravar OGG/Opus se suportado, senão WAV
+        const mimeType = supportsOggOpus ? 'audio/ogg; codecs=opus' : 'audio/wav'
+        const recorder = new MediaRecorder(stream, { mimeType })
         const chunks: Blob[] = []
-
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
             chunks.push(e.data)
           }
         }
-
         recorder.onstop = async () => {
-          const audioBlob = new Blob(chunks, { type: 'audio/wav' })
-          
-          // Parar timer
+          const audioBlob = new Blob(chunks, { type: mimeType })
           if (recordingInterval) {
             clearInterval(recordingInterval)
             setRecordingInterval(null)
           }
           setRecordingTime(0)
-          
-          // Limpar stream
           stream.getTracks().forEach(track => track.stop())
-          
-          // Enviar automaticamente sem confirmação
-          await sendAudioDirectly(audioBlob)
+          await sendAudioDirectly(audioBlob, mimeType)
         }
-
         setMediaRecorder(recorder)
         setAudioChunks(chunks)
         recorder.start()
         setIsRecording(true)
-        
-        // Iniciar timer
         const interval = setInterval(() => {
           setRecordingTime(prev => prev + 1)
         }, 1000)
         setRecordingInterval(interval)
-
       } catch (error) {
         console.error('Erro ao acessar microfone:', error)
         alert('Erro ao acessar microfone. Verifique as permissões.')
       }
     } else {
-      // Parar gravação
       if (mediaRecorder) {
         mediaRecorder.stop()
         setIsRecording(false)
@@ -673,79 +665,64 @@ const MessageInput = ({
     }
   }
 
-  // Função para enviar áudio diretamente (sem confirmação)
-  const sendAudioDirectly = async (audioBlob: Blob) => {
+  // 3. Ajustar sendAudioDirectly para lidar com OGG/Opus e MP3
+  const sendAudioDirectly = async (audioBlob: Blob, mimeType: string) => {
     if (!audioBlob || !chat) return
-    
-    console.log('=== INICIANDO ENVIO DE ÁUDIO ===')
-    console.log('Chat:', chat.customerPhone)
-    console.log('Audio Blob Size:', audioBlob.size)
-    
     try {
-      // Converter WAV para MP3 antes do upload
-      console.log('1. Convertendo WAV para MP3...')
-      const mp3Blob = await wavToMp3(audioBlob)
-      console.log('MP3 convertido. Tamanho:', mp3Blob.size)
-      
-      // Upload do áudio
-      console.log('2. Fazendo upload para Firebase...')
-      const formData = new FormData()
-      formData.append('file', mp3Blob, `audio_${Date.now()}.mp3`)
-      formData.append('type', 'audio')
-      
-      const uploadResponse = await fetch('/api/atendimento/upload', {
-        method: 'POST',
-        body: formData
-      })
-      
-      console.log('Upload Response Status:', uploadResponse.status)
-      
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text()
-        console.error('Erro no upload:', errorText)
-        throw new Error(`Erro no upload do áudio: ${errorText}`)
+      let oggBlob: Blob | null = null
+      let mp3Blob: Blob | null = null
+      // Se já for OGG/Opus, usar direto
+      if (mimeType.includes('ogg') || mimeType.includes('opus')) {
+        oggBlob = audioBlob
+        // Converter para MP3 também
+        mp3Blob = await wavToMp3(audioBlob)
+      } else if (mimeType.includes('wav')) {
+        // Converter para MP3
+        mp3Blob = await wavToMp3(audioBlob)
+      } else if (mimeType.includes('mp3')) {
+        mp3Blob = audioBlob
       }
-      
-      const uploadResult = await uploadResponse.json()
-      console.log('3. Upload concluído:', uploadResult)
-      
-      // Enviar áudio via Z-API usando nova API local
-      console.log('4. Enviando via Z-API...')
-      const mediaPayload = {
-          phone: chat.customerPhone,
-          type: 'audio',
-          localPath: uploadResult.fileUrl
+      // Upload dos formatos disponíveis
+      let oggUrl = ''
+      let mp3Url = ''
+      if (oggBlob) {
+        const formData = new FormData()
+        formData.append('file', oggBlob, `audio_${Date.now()}.ogg`)
+        formData.append('type', 'audio')
+        const uploadResponse = await fetch('/api/atendimento/upload', { method: 'POST', body: formData })
+        if (uploadResponse.ok) {
+          const uploadResult = await uploadResponse.json()
+          oggUrl = uploadResult.fileUrl
+        }
       }
-      console.log('Payload para Z-API:', mediaPayload)
-      
-      const mediaResponse = await fetch('/api/atendimento/send-media', {
+      if (mp3Blob) {
+        const formData = new FormData()
+        formData.append('file', mp3Blob, `audio_${Date.now()}.mp3`)
+        formData.append('type', 'audio')
+        const uploadResponse = await fetch('/api/atendimento/upload', { method: 'POST', body: formData })
+        if (uploadResponse.ok) {
+          const uploadResult = await uploadResponse.json()
+          mp3Url = uploadResult.fileUrl
+        }
+      }
+      // Enviar para o backend ambos URLs, priorizando OGG/Opus
+      const mediaPayload: any = {
+        phone: chat.customerPhone,
+        type: 'audio',
+        localPath: oggUrl || mp3Url // para compatibilidade
+      }
+      if (oggUrl) mediaPayload.oggUrl = oggUrl
+      if (mp3Url) mediaPayload.mp3Url = mp3Url
+      await fetch('/api/atendimento/send-media', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mediaPayload)
       })
-      
-      console.log('Z-API Response Status:', mediaResponse.status)
-      
-      if (mediaResponse.ok) {
-        const mediaResult = await mediaResponse.json()
-        console.log('5. Áudio enviado com sucesso via Z-API:', mediaResult)
-        
-        console.log('6. Áudio enviado com sucesso! Aguardando confirmação via webhook...')
-        
-      } else {
-        const errorText = await mediaResponse.text()
-        console.error('Erro ao enviar via Z-API:', errorText)
-        throw new Error(`Falha ao enviar áudio via Z-API: ${errorText}`)
-      }
     } catch (error) {
       console.error('=== ERRO NO ENVIO DE ÁUDIO ===')
       console.error('Error:', error)
-      console.error('Stack:', error instanceof Error ? error.stack : 'No stack')
-      alert(`Erro ao enviar áudio: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+    }
   }
-  }
-
-
 
   // Função para formatar tempo de gravação
   const formatRecordingTime = (seconds: number) => {
@@ -962,8 +939,6 @@ const MessageInput = ({
           </div>
         </div>
       )}
-
-
 
       {/* Modal de Confirmação de Mensagem Longa */}
       {showLongMessageConfirmation && (

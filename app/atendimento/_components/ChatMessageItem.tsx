@@ -1,6 +1,6 @@
 import { ChatMessage, ChatStatus } from '@/lib/models'
 import { cn } from '@/lib/utils'
-import { Check, CheckCheck, Clock, AlertCircle, Reply, Edit, Trash2, Info, MoreVertical, FileText, ExternalLink, User, MapPin, X, Play, Pause } from 'lucide-react'
+import { Check, CheckCheck, Clock, AlertCircle, Reply, Edit, Trash2, Info, MoreVertical, FileText, ExternalLink, User, MapPin, X, Play, Pause, Loader2 } from 'lucide-react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -342,43 +342,67 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                     ? 'bg-blue-600/20' 
                     : 'bg-gray-200 dark:bg-gray-600'
                 }`}>
-                  {/* Botão Play/Pause */}
+                  {/* Botão Play/Pause com loading */}
                   <Button
                     onClick={toggleAudioPlayback}
                     size="icon"
+                    disabled={!audioLoaded}
                     className={`w-10 h-10 rounded-full ${
                       isFromAgent 
                         ? 'bg-white/20 hover:bg-white/30 text-white' 
                         : 'bg-blue-500 hover:bg-blue-600 text-white'
                     }`}
                   >
-                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                    {!audioLoaded ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : isPlaying ? (
+                      <Pause className="w-5 h-5" />
+                    ) : (
+                      <Play className="w-5 h-5 ml-0.5" />
+                    )}
                   </Button>
                   
-                  {/* Visualizador de onda sonora */}
-                  <div className="flex-1 flex items-center gap-1">
-                    {[12, 8, 16, 14, 10, 18, 16, 12, 14, 8, 16, 12].map((height, i) => (
-                      <div
-                        key={i}
-                        className={`w-1 rounded-full ${
-                          isFromAgent ? 'bg-white/40' : 'bg-gray-400'
+                  {/* Progress bar e controles */}
+                  <div className="flex-1 flex flex-col gap-1">
+                    {/* Visualizador de onda sonora animado */}
+                    <div className="flex items-center gap-1 h-4">
+                      {[12, 8, 16, 14, 10, 18, 16, 12, 14, 8, 16, 12].map((height, i) => (
+                        <div
+                          key={i}
+                          className={`w-1 rounded-full transition-all duration-200 ${
+                            isFromAgent ? 'bg-white/40' : 'bg-gray-400'
+                          } ${isPlaying ? 'animate-pulse' : ''}`}
+                          style={{ 
+                            height: `${height}px`,
+                            opacity: isPlaying ? 0.8 : 0.5
+                          }}
+                        />
+                      ))}
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-1">
+                      <div 
+                        className={`h-1 rounded-full transition-all duration-100 ${
+                          isFromAgent ? 'bg-white/60' : 'bg-blue-500'
                         }`}
-                        style={{ height: `${height}px` }}
+                        style={{ 
+                          width: audioDuration > 0 ? `${(audioCurrentTime / audioDuration) * 100}%` : '0%' 
+                        }}
                       />
-                    ))}
+                    </div>
                   </div>
                   
                   {/* Duração */}
-                  <span className={`text-xs font-mono ${
+                  <span className={`text-xs font-mono min-w-[40px] text-right ${
                     isFromAgent ? 'text-white/80' : 'text-gray-600 dark:text-gray-300'
                   }`}>
                     {isPlaying ? formatAudioTime(audioCurrentTime) : formatAudioTime(audioDuration || 0)}
                   </span>
                   
-                  {/* Elemento audio oculto */}
+                  {/* Elemento audio oculto com fallback */}
                   <audio 
                     ref={audioRef}
-                    src={getFullUrl(message.mediaUrl)}
                     onLoadedMetadata={() => {
                       setAudioLoaded(true)
                       if (audioRef.current && audioRef.current.duration) {
@@ -402,10 +426,24 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                       setAudioCurrentTime(0)
                     }}
                     onError={(e) => {
-                      console.error('Erro ao carregar áudio:', message.mediaUrl, e);
+                      console.error('Erro ao carregar áudio:', e)
+                      setAudioLoaded(false)
+                      // Tentar fallback para MP3 se for OGG
+                      if (message.mediaUrl && (message.mediaUrl.includes('.ogg') || message.mediaUrl.includes('.opus'))) {
+                        const mp3Url = message.mediaUrl.replace(/\.(ogg|opus)$/i, '.mp3')
+                        if (audioRef.current) {
+                          audioRef.current.src = mp3Url
+                          audioRef.current.load()
+                        }
+                      }
                     }}
-                    style={{ display: 'none' }}
-                  />
+                  >
+                    {/* Fallback sources */}
+                    <source src={getFullUrl(message.mediaUrl)} type="audio/ogg" />
+                    <source src={getFullUrl(message.mediaUrl.replace(/\.(ogg|opus)$/i, '.mp3'))} type="audio/mpeg" />
+                    <source src={getFullUrl(message.mediaUrl)} type="audio/mpeg" />
+                    Seu navegador não suporta reprodução de áudio.
+                  </audio>
                 </div>
               )}
               {/* Conteúdo textual */}

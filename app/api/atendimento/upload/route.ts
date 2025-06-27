@@ -41,14 +41,16 @@ export async function POST(request: NextRequest) {
           extension = 'mp3'
         } else if (file.type.includes('wav')) {
           extension = 'wav'
+        } else if (file.type.includes('ogg') || file.type.includes('opus')) {
+          extension = 'ogg'
         } else {
           extension = 'mp3' // Default para áudio
         }
       }
       
-      // Aceitar mp3 e wav (wav será convertido)
-      if (!['mp3', 'wav'].includes(extension)) {
-        return NextResponse.json({ error: 'Apenas arquivos MP3 e WAV são suportados para envio de áudio.' }, { status: 400 })
+      // Aceitar mp3, wav, ogg/opus
+      if (!['mp3', 'wav', 'ogg', 'opus'].includes(extension)) {
+        return NextResponse.json({ error: 'Apenas arquivos MP3, WAV, OGG ou Opus são suportados para envio de áudio.' }, { status: 400 })
       }
     }
     
@@ -62,23 +64,22 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     
-    // Para áudio, sempre garantir que seja MP3
+    // Para áudio, manter formato original
     let finalBuffer = buffer
     let finalExtension = extension
     let finalFileName = fileName
     let finalContentType = file.type || (type === 'audio' ? 'audio/mpeg' : 'application/pdf')
     
     if (type === 'audio') {
-      // Se já é MP3, usar diretamente
+      // Manter formato original, não converter
       if (extension === 'mp3') {
         finalContentType = 'audio/mpeg'
       } else if (extension === 'wav') {
-        // Tentar converter WAV para MP3 (sem ffmpeg no Railway)
-        console.log('Áudio WAV detectado, mas conversão via ffmpeg não disponível no Railway')
-        console.log('Arquivo será salvo como MP3 assumindo que já foi convertido no cliente')
-        finalExtension = 'mp3'
-        finalFileName = `${timestamp}.mp3`
-        finalContentType = 'audio/mpeg'
+        finalContentType = 'audio/wav'
+      } else if (extension === 'ogg') {
+        finalContentType = 'audio/ogg'
+      } else if (extension === 'opus') {
+        finalContentType = 'audio/opus'
       }
     }
     const storagePath = `${type}/${finalFileName}`

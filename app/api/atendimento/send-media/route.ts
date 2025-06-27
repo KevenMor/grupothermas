@@ -13,6 +13,8 @@ interface MediaMessage {
   caption?: string // Legenda para mídia
   filename?: string // Para documentos
   replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
+  oggUrl?: string
+  mp3Url?: string
 }
 
 interface MessageData {
@@ -35,7 +37,7 @@ interface MessageData {
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, type, content, localPath, caption, filename, replyTo }: MediaMessage = await request.json()
+    const { phone, type, content, localPath, caption, filename, replyTo, oggUrl, mp3Url }: MediaMessage = await request.json()
     
     console.log(`=== RECEBIDO PEDIDO DE ENVIO ===`)
     console.log('Phone:', phone)
@@ -45,6 +47,8 @@ export async function POST(request: NextRequest) {
     console.log('Caption:', caption)
     console.log('Filename:', filename)
     console.log('ReplyTo:', replyTo)
+    console.log('OGG URL:', oggUrl)
+    console.log('MP3 URL:', mp3Url)
     
     if (!phone || !type) {
       return NextResponse.json({ 
@@ -89,7 +93,26 @@ export async function POST(request: NextRequest) {
           console.log('LocalPath (Firebase URL):', localPath)
           console.log('ReplyTo:', replyTo)
           
-          const audioResult = await sendAudio(phone, localPath, replyTo)
+          // Priorizar OGG/Opus se disponível, senão MP3
+          let audioUrl = localPath
+          
+          if (oggUrl && (oggUrl.endsWith('.ogg') || oggUrl.endsWith('.opus'))) {
+            audioUrl = oggUrl
+            console.log('Usando URL OGG/Opus:', audioUrl)
+          } else if (mp3Url && mp3Url.endsWith('.mp3')) {
+            audioUrl = mp3Url
+            console.log('Usando URL MP3:', audioUrl)
+          } else if (localPath.endsWith('.ogg') || localPath.endsWith('.opus')) {
+            audioUrl = localPath
+            console.log('Usando URL OGG/Opus (localPath):', audioUrl)
+          } else if (localPath.endsWith('.mp3')) {
+            audioUrl = localPath
+            console.log('Usando URL MP3 (localPath):', audioUrl)
+          } else {
+            return NextResponse.json({ error: 'Formato de áudio não suportado para URL pública' }, { status: 400 })
+          }
+          
+          const audioResult = await sendAudio(phone, audioUrl, replyTo)
           
           console.log('=== RESULTADO ENVIO ÁUDIO ===')
           console.log('Success:', audioResult.success)
