@@ -41,6 +41,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+// Controle: commit de teste para verificação de push e build
+
 interface TrainingSection {
   id: string;
   title: string;
@@ -182,16 +184,14 @@ export default function IATrainingPage() {
   const syncWithOpenAI = async () => {
     try {
       const trainingPrompt = generateTrainingPrompt();
-      
       const response = await fetch('/api/admin/openai-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trainingData,
+          agent: trainingData,
           trainingPrompt
         })
       });
-
       if (response.ok) {
         toast.success('Sincronizado com OpenAI!');
       } else {
