@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     // }
 
     const body = await request.json();
-    const { trainingPrompt, testMessage } = body;
+    const { trainingPrompt, testMessage, history } = body;
 
     if (!trainingPrompt || !testMessage) {
       return NextResponse.json(
@@ -39,19 +39,15 @@ export async function POST(request: NextRequest) {
     const openai = getOpenAI();
 
     try {
-      // Criar chat de teste com o prompt de treinamento
+      // Montar contexto com histórico, se fornecido
+      const messages = [
+        { role: 'system', content: trainingPrompt },
+        ...(Array.isArray(history) ? history : []),
+        { role: 'user', content: testMessage }
+      ];
       const completion = await openai.chat.completions.create({
         model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: trainingPrompt
-          },
-          {
-            role: 'user',
-            content: testMessage
-          }
-        ],
+        messages,
         temperature: 0.7,
         max_tokens: 1000
       });
