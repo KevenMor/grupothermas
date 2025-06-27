@@ -180,7 +180,23 @@ async function handleMessageStatus(body: any) {
 
 async function handleMessage(message: ZAPIWebhookEvent) {
   try {
-    console.log('Processando mensagem via Z-API AI Webhook:', message.messageId)
+    console.log('=== PROCESSANDO MENSAGEM Z-API ===')
+    console.log('Message ID:', message.messageId)
+    console.log('Phone:', message.phone)
+    console.log('From Me:', message.fromMe)
+    console.log('Type:', message.type)
+    console.log('Moment:', message.momment)
+
+    // Validações básicas
+    if (!message.phone) {
+      console.error('Erro: Phone não fornecido na mensagem')
+      return NextResponse.json({ error: 'Phone is required' }, { status: 400 })
+    }
+
+    if (!message.messageId) {
+      console.error('Erro: Message ID não fornecido')
+      return NextResponse.json({ error: 'Message ID is required' }, { status: 400 })
+    }
 
     // Obter configurações da IA do Firebase
     const configDoc = await adminDB.collection('admin_config').doc('ai_settings').get()
@@ -191,13 +207,14 @@ async function handleMessage(message: ZAPIWebhookEvent) {
 
     const config = configDoc.data()!
 
-    // Processar diferentes tipos de conteúdo
+    // Processar diferentes tipos de conteúdo com validação robusta
     let userMessage = ''
     let mediaInfo = null
 
-    // Identificar tipo de conteúdo e extrair informações
+    // Identificar tipo de conteúdo e extrair informações com validação
     if (message.text?.message) {
-      userMessage = message.text.message
+      userMessage = message.text.message.trim()
+      console.log('Mensagem de texto:', userMessage)
     } else if (message.image) {
       userMessage = `📷 Imagem enviada${message.image.caption ? `: ${message.image.caption}` : ''}`
       mediaInfo = {
@@ -206,9 +223,21 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         caption: message.image.caption,
         mimeType: message.image.mimeType
       }
-      // Usar URL local para proxy de mídia
+      // Validar URL da imagem
       if (message.image.imageUrl) {
-        mediaInfo.url = `/api/media/${encodeURIComponent(message.image.imageUrl)}`
+        try {
+          const testResponse = await fetch(message.image.imageUrl, { method: 'HEAD' })
+          if (testResponse.ok) {
+            mediaInfo.url = `/api/media/${encodeURIComponent(message.image.imageUrl)}`
+            console.log('URL da imagem válida:', mediaInfo.url)
+          } else {
+            console.warn('URL da imagem inválida:', message.image.imageUrl)
+            mediaInfo.url = message.image.imageUrl // Usar URL original como fallback
+          }
+        } catch (error) {
+          console.error('Erro ao validar URL da imagem:', error)
+          mediaInfo.url = message.image.imageUrl // Usar URL original como fallback
+        }
       }
     } else if (message.audio) {
       userMessage = '🎵 Áudio'
@@ -217,9 +246,21 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         url: message.audio.audioUrl,
         mimeType: message.audio.mimeType
       }
-      // Usar URL local para proxy de mídia
+      // Validar URL do áudio
       if (message.audio.audioUrl) {
-        mediaInfo.url = `/api/media/${encodeURIComponent(message.audio.audioUrl)}`
+        try {
+          const testResponse = await fetch(message.audio.audioUrl, { method: 'HEAD' })
+          if (testResponse.ok) {
+            mediaInfo.url = `/api/media/${encodeURIComponent(message.audio.audioUrl)}`
+            console.log('URL do áudio válida:', mediaInfo.url)
+          } else {
+            console.warn('URL do áudio inválida:', message.audio.audioUrl)
+            mediaInfo.url = message.audio.audioUrl // Usar URL original como fallback
+          }
+        } catch (error) {
+          console.error('Erro ao validar URL do áudio:', error)
+          mediaInfo.url = message.audio.audioUrl // Usar URL original como fallback
+        }
       }
     } else if (message.video) {
       userMessage = `🎬 Vídeo${message.video.caption ? `: ${message.video.caption}` : ''}`
@@ -229,9 +270,21 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         caption: message.video.caption,
         mimeType: message.video.mimeType
       }
-      // Usar URL local para proxy de mídia
+      // Validar URL do vídeo
       if (message.video.videoUrl) {
-        mediaInfo.url = `/api/media/${encodeURIComponent(message.video.videoUrl)}`
+        try {
+          const testResponse = await fetch(message.video.videoUrl, { method: 'HEAD' })
+          if (testResponse.ok) {
+            mediaInfo.url = `/api/media/${encodeURIComponent(message.video.videoUrl)}`
+            console.log('URL do vídeo válida:', mediaInfo.url)
+          } else {
+            console.warn('URL do vídeo inválida:', message.video.videoUrl)
+            mediaInfo.url = message.video.videoUrl // Usar URL original como fallback
+          }
+        } catch (error) {
+          console.error('Erro ao validar URL do vídeo:', error)
+          mediaInfo.url = message.video.videoUrl // Usar URL original como fallback
+        }
       }
     } else if (message.document) {
       userMessage = `📄 ${message.document.title || 'Documento'}`
@@ -242,9 +295,21 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         mimeType: message.document.mimeType,
         pageCount: message.document.pageCount
       }
-      // Usar URL local para proxy de mídia
+      // Validar URL do documento
       if (message.document.documentUrl) {
-        mediaInfo.url = `/api/media/${encodeURIComponent(message.document.documentUrl)}`
+        try {
+          const testResponse = await fetch(message.document.documentUrl, { method: 'HEAD' })
+          if (testResponse.ok) {
+            mediaInfo.url = `/api/media/${encodeURIComponent(message.document.documentUrl)}`
+            console.log('URL do documento válida:', mediaInfo.url)
+          } else {
+            console.warn('URL do documento inválida:', message.document.documentUrl)
+            mediaInfo.url = message.document.documentUrl // Usar URL original como fallback
+          }
+        } catch (error) {
+          console.error('Erro ao validar URL do documento:', error)
+          mediaInfo.url = message.document.documentUrl // Usar URL original como fallback
+        }
       }
     } else if (message.contact) {
       userMessage = `👤 ${message.contact.displayName}`
@@ -273,8 +338,17 @@ async function handleMessage(message: ZAPIWebhookEvent) {
 
     console.log(`Processando mensagem de ${userName} (${userPhone}): ${userMessage}`)
 
-    // Check if this is the first message (welcome)
+    // Verificar se a mensagem já foi processada (evitar duplicatas)
     const conversationRef = adminDB.collection('conversations').doc(userPhone)
+    const messagesRef = conversationRef.collection('messages')
+    
+    // Verificar se a mensagem já existe
+    const existingMessage = await messagesRef.doc(message.messageId!).get()
+    if (existingMessage.exists) {
+      console.log('Mensagem já processada, ignorando:', message.messageId)
+      return NextResponse.json({ status: 'ignored', reason: 'message already processed' })
+    }
+
     const conversationDoc = await conversationRef.get()
     
     let conversationHistory: any[] = []
@@ -284,26 +358,28 @@ async function handleMessage(message: ZAPIWebhookEvent) {
     if (!conversationDoc.exists) {
       isFirstMessage = true
       console.log('Criando nova conversa para:', userPhone)
+      
       // Create new conversation
       const newConversationData = {
-        phone: userPhone,
-        name: userName,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        status: 'active',
-        messages: [],
-        source: 'zapi',
-        // Campos de controle de IA
+        customerPhone: userPhone,
+        customerName: userName,
+        customerAvatar: message.senderPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random`,
+        lastMessage: userMessage,
+        timestamp: new Date().toISOString(),
+        unreadCount: 0,
+        status: 'open',
         aiEnabled: true,
         aiPaused: false,
         conversationStatus: 'ai_active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
-      console.log('--- DADOS PARA CRIAR NOVA CONVERSA (set) ---', JSON.stringify(newConversationData, null, 2))
+      
+      console.log('Dados da nova conversa:', newConversationData)
       await conversationRef.set(newConversationData)
       conversationData = newConversationData
     } else {
       conversationData = conversationDoc.data()
-      conversationHistory = conversationData?.messages || []
       
       // Se a conversa estava resolvida e o cliente enviou nova mensagem, reabrir para IA
       if (conversationData?.conversationStatus === 'resolved') {
@@ -312,24 +388,33 @@ async function handleMessage(message: ZAPIWebhookEvent) {
           aiEnabled: true,
           aiPaused: false,
           conversationStatus: 'ai_active',
-          // Limpar campos de resolução
+          lastMessage: userMessage,
+          timestamp: new Date().toISOString(),
+          unreadCount: 0,
           resolvedAt: null,
           resolvedBy: null,
-          // Atualizar timestamp
           updatedAt: new Date().toISOString(),
         })
         conversationData = { ...conversationData, conversationStatus: 'ai_active' }
+      } else {
+        // Atualizar última mensagem e incrementar contador de não lidas
+        await conversationRef.update({
+          lastMessage: userMessage,
+          timestamp: new Date().toISOString(),
+          unreadCount: (conversationData.unreadCount || 0) + 1,
+          updatedAt: new Date().toISOString()
+        })
       }
     }
 
-    // Add user message to history
+    // Salvar mensagem do usuário no Firestore
     const userMessageData = {
       id: message.messageId!,
+      chatId: userPhone,
       role: 'user',
       content: userMessage,
       timestamp: new Date(message.momment! * 1000).toISOString(),
-      phone: userPhone,
-      name: userName,
+      status: 'received',
       // Adicionar informações de mídia se houver
       ...(mediaInfo && { 
         mediaType: mediaInfo.type as 'image' | 'audio' | 'video' | 'document' | 'contact' | 'location',
@@ -338,7 +423,20 @@ async function handleMessage(message: ZAPIWebhookEvent) {
       })
     }
 
-    conversationHistory.push(userMessageData)
+    // Salvar mensagem do usuário
+    await messagesRef.doc(message.messageId!).set(userMessageData)
+    console.log('Mensagem do usuário salva:', message.messageId)
+
+    // Buscar histórico de mensagens para IA
+    const messagesSnapshot = await messagesRef
+      .orderBy('timestamp', 'asc')
+      .limit(20)
+      .get()
+    
+    conversationHistory = messagesSnapshot.docs.map((doc: any) => ({
+      role: doc.data().role,
+      content: doc.data().content
+    }))
 
     // Prepare messages for OpenAI
     const messages = [
@@ -346,10 +444,7 @@ async function handleMessage(message: ZAPIWebhookEvent) {
         role: 'system',
         content: config.systemPrompt
       },
-      ...conversationHistory.slice(-10).map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }))
+      ...conversationHistory.slice(-10)
     ]
 
     // If first message, prepend welcome context
@@ -362,7 +457,7 @@ async function handleMessage(message: ZAPIWebhookEvent) {
 
     console.log('Enviando para OpenAI:', messages.length, 'mensagens')
 
-    // Call OpenAI API
+    // Call OpenAI API with error handling
     let aiResponse: string
     try {
       // Garantir que os valores numéricos sejam do tipo correto
@@ -390,6 +485,7 @@ async function handleMessage(message: ZAPIWebhookEvent) {
 
       if (!openaiResponse.ok) {
         const errorText = await openaiResponse.text()
+        console.error('Erro na API OpenAI:', openaiResponse.status, errorText)
         throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`)
       }
 

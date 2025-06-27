@@ -549,25 +549,85 @@ const MessageInput = ({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioChunks, setAudioChunks] = useState<Blob[]>([])
 
-  // 1. Detectar suporte a OGG/Opus
-  const supportsOggOpus = MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')
+  // 1. Detectar suporte a formatos de áudio de forma robusta
+  const getSupportedAudioFormat = () => {
+    const formats = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+      'audio/wav'
+    ]
+    
+    for (const format of formats) {
+      if (MediaRecorder.isTypeSupported(format)) {
+        console.log(`Formato de áudio suportado: ${format}`)
+        return format
+      }
+    }
+    
+    console.warn('Nenhum formato de áudio suportado pelo navegador')
+    return null
+  }
 
-  // 2. Ajustar toggleRecording para gravar OGG/Opus se suportado
+  // Função para enviar logs para o sistema
+  const sendLog = async (level: 'info' | 'warn' | 'error' | 'debug', category: 'audio' | 'media' | 'webhook' | 'zapi' | 'openai' | 'system', message: string, details?: any) => {
+    try {
+      await fetch('/api/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level,
+          category,
+          message,
+          details,
+          phone: chat?.customerPhone,
+          messageId: details?.messageId
+        })
+      })
+    } catch (error) {
+      console.error('Erro ao enviar log:', error)
+    }
+  }
+
+  // 2. Ajustar toggleRecording para usar formato detectado
   const toggleRecording = async () => {
     if (!canInteract()) return
 
     if (!isRecording) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        // Gravar OGG/Opus se suportado, senão WAV
-        const mimeType = supportsOggOpus ? 'audio/ogg; codecs=opus' : 'audio/wav'
+        const mimeType = getSupportedAudioFormat()
+        
+        if (!mimeType) {
+          const errorMsg = 'Seu navegador não suporta gravação de áudio. Tente usar Chrome, Edge ou Firefox.'
+          await sendLog('error', 'audio', errorMsg, {
+            userAgent: navigator.userAgent,
+            supportedFormats: ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/ogg', 'audio/wav'].map(f => ({
+              format: f,
+              supported: MediaRecorder.isTypeSupported(f)
+            }))
+          })
+          alert(errorMsg)
+          return
+        }
+        
+        await sendLog('info', 'audio', 'Iniciando gravação de áudio', {
+          mimeType,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        })
+        
         const recorder = new MediaRecorder(stream, { mimeType })
         const chunks: Blob[] = []
+        
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
             chunks.push(e.data)
           }
         }
+        
         recorder.onstop = async () => {
           const audioBlob = new Blob(chunks, { type: mimeType })
           if (recordingInterval) {
@@ -576,19 +636,49 @@ const MessageInput = ({
           }
           setRecordingTime(0)
           stream.getTracks().forEach(track => track.stop())
+          
+          await sendLog('info', 'audio', 'Gravação finalizada', {
+            blobSize: audioBlob.size,
+            mimeType,
+            duration: recordingTime,
+            timestamp: new Date().toISOString()
+          })
+          
           await sendAudioDirectly(audioBlob, mimeType)
         }
+        
         setMediaRecorder(recorder)
         setAudioChunks(chunks)
         recorder.start()
         setIsRecording(true)
+        
         const interval = setInterval(() => {
           setRecordingTime(prev => prev + 1)
         }, 1000)
         setRecordingInterval(interval)
       } catch (error) {
         console.error('Erro ao acessar microfone:', error)
-        alert('Erro ao acessar microfone. Verifique as permissões.')
+        
+        const errorDetails = {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          errorName: error instanceof Error ? error.name : 'Unknown',
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        }
+        
+        await sendLog('error', 'audio', 'Erro ao acessar microfone', errorDetails)
+        
+        if (error instanceof Error) {
+          if (error.name === 'NotAllowedError') {
+            alert('Permissão de microfone negada. Por favor, permita o acesso ao microfone e tente novamente.')
+          } else if (error.name === 'NotFoundError') {
+            alert('Nenhum microfone encontrado. Verifique se há um dispositivo de áudio conectado.')
+          } else {
+            alert(`Erro ao acessar microfone: ${error.message}`)
+          }
+        } else {
+          alert('Erro desconhecido ao acessar microfone. Verifique as permissões.')
+        }
       }
     } else {
       if (mediaRecorder) {
@@ -599,7 +689,181 @@ const MessageInput = ({
     }
   }
 
-  // Função utilitária para converter WAV para MP3
+  // 3. Ajustar sendAudioDirectly para lidar com diferentes formatos
+  const sendAudioDirectly = async (audioBlob: Blob, mimeType: string) => {
+    if (!audioBlob || !chat) return
+    
+    console.log('=== INICIANDO ENVIO DE ÁUDIO ===')
+    console.log('Formato original:', mimeType)
+    console.log('Tamanho do blob:', audioBlob.size)
+    
+    await sendLog('info', 'audio', 'Iniciando envio de áudio', {
+      mimeType,
+      blobSize: audioBlob.size,
+      phone: chat.customerPhone,
+      timestamp: new Date().toISOString()
+    })
+    
+    try {
+      let oggBlob: Blob | null = null
+      let mp3Blob: Blob | null = null
+      
+      // Determinar formato baseado no MIME type
+      if (mimeType.includes('webm') || mimeType.includes('mp4')) {
+        // WebM/MP4 - converter para MP3
+        mp3Blob = await convertToMp3(audioBlob)
+      } else if (mimeType.includes('ogg') || mimeType.includes('opus')) {
+        // OGG/Opus - usar direto e converter para MP3
+        oggBlob = audioBlob
+        mp3Blob = await convertToMp3(audioBlob)
+      } else if (mimeType.includes('wav')) {
+        // WAV - converter para MP3
+        mp3Blob = await wavToMp3(audioBlob)
+      } else if (mimeType.includes('mp3')) {
+        // MP3 - usar direto
+        mp3Blob = audioBlob
+      } else {
+        // Formato desconhecido - tentar converter para MP3
+        console.warn('Formato de áudio desconhecido, tentando conversão para MP3')
+        mp3Blob = await convertToMp3(audioBlob)
+      }
+      
+      // Upload dos formatos disponíveis
+      let oggUrl = ''
+      let mp3Url = ''
+      
+      if (oggBlob) {
+        const formData = new FormData()
+        formData.append('file', oggBlob, `audio_${Date.now()}.ogg`)
+        formData.append('type', 'audio')
+        
+        try {
+          const uploadResponse = await fetch('/api/atendimento/upload', { 
+            method: 'POST', 
+            body: formData 
+          })
+          if (uploadResponse.ok) {
+            const uploadResult = await uploadResponse.json()
+            oggUrl = uploadResult.fileUrl
+            console.log('Upload OGG concluído:', oggUrl)
+            await sendLog('info', 'media', 'Upload OGG concluído', { url: oggUrl })
+          } else {
+            const errorText = await uploadResponse.text()
+            console.warn('Falha no upload OGG:', errorText)
+            await sendLog('warn', 'media', 'Falha no upload OGG', { error: errorText })
+          }
+        } catch (error) {
+          console.error('Erro no upload OGG:', error)
+          await sendLog('error', 'media', 'Erro no upload OGG', { error: error instanceof Error ? error.message : 'Unknown error' })
+        }
+      }
+      
+      if (mp3Blob) {
+        const formData = new FormData()
+        formData.append('file', mp3Blob, `audio_${Date.now()}.mp3`)
+        formData.append('type', 'audio')
+        
+        try {
+          const uploadResponse = await fetch('/api/atendimento/upload', { 
+            method: 'POST', 
+            body: formData 
+          })
+          if (uploadResponse.ok) {
+            const uploadResult = await uploadResponse.json()
+            mp3Url = uploadResult.fileUrl
+            console.log('Upload MP3 concluído:', mp3Url)
+            await sendLog('info', 'media', 'Upload MP3 concluído', { url: mp3Url })
+          } else {
+            const errorText = await uploadResponse.text()
+            console.error('Falha no upload MP3:', errorText)
+            await sendLog('error', 'media', 'Falha no upload MP3', { error: errorText })
+            throw new Error('Falha no upload do áudio')
+          }
+        } catch (error) {
+          console.error('Erro no upload MP3:', error)
+          await sendLog('error', 'media', 'Erro no upload MP3', { error: error instanceof Error ? error.message : 'Unknown error' })
+          throw error
+        }
+      }
+      
+      // Enviar para o backend
+      const mediaPayload: any = {
+        phone: chat.customerPhone,
+        type: 'audio',
+        localPath: oggUrl || mp3Url
+      }
+      if (oggUrl) mediaPayload.oggUrl = oggUrl
+      if (mp3Url) mediaPayload.mp3Url = mp3Url
+      
+      const mediaResponse = await fetch('/api/atendimento/send-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mediaPayload)
+      })
+      
+      if (!mediaResponse.ok) {
+        const errorText = await mediaResponse.text()
+        console.error('Erro ao enviar via Z-API:', errorText)
+        await sendLog('error', 'zapi', 'Erro ao enviar áudio via Z-API', { 
+          error: errorText,
+          phone: chat.customerPhone,
+          payload: mediaPayload
+        })
+        throw new Error(`Falha ao enviar áudio via Z-API: ${errorText}`)
+      }
+      
+      console.log('Áudio enviado com sucesso!')
+      await sendLog('info', 'zapi', 'Áudio enviado com sucesso', {
+        phone: chat.customerPhone,
+        oggUrl,
+        mp3Url
+      })
+      
+    } catch (error) {
+      console.error('=== ERRO NO ENVIO DE ÁUDIO ===')
+      console.error('Error:', error)
+      
+      await sendLog('error', 'audio', 'Erro no envio de áudio', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        phone: chat.customerPhone,
+        mimeType,
+        blobSize: audioBlob.size
+      })
+      
+      alert(`Erro ao enviar áudio: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+    }
+  }
+
+  // 4. Função para converter qualquer formato para MP3
+  async function convertToMp3(audioBlob: Blob): Promise<Blob> {
+    try {
+      console.log('Convertendo para MP3...')
+      console.log('Formato original:', audioBlob.type)
+      console.log('Tamanho:', audioBlob.size)
+      
+      // Se já for MP3, retornar direto
+      if (audioBlob.type.includes('mp3')) {
+        return audioBlob
+      }
+      
+      // Para outros formatos, tentar conversão via lamejs se possível
+      if (audioBlob.type.includes('wav')) {
+        return await wavToMp3(audioBlob)
+      }
+      
+      // Para WebM/OGG, tentar conversão básica
+      const arrayBuffer = await audioBlob.arrayBuffer()
+      return new Blob([arrayBuffer], { type: 'audio/mp3' })
+      
+    } catch (error) {
+      console.error('Erro na conversão para MP3:', error)
+      // Fallback: retornar o blob original como MP3
+      const arrayBuffer = await audioBlob.arrayBuffer()
+      return new Blob([arrayBuffer], { type: 'audio/mp3' })
+    }
+  }
+
+  // 5. Função utilitária para converter WAV para MP3
   async function wavToMp3(wavBlob: Blob): Promise<Blob> {
     try {
       console.log('Iniciando conversão WAV->MP3...');
@@ -667,65 +931,6 @@ const MessageInput = ({
       // Fallback: se a conversão falhar, enviar o arquivo original como MP3
       const arrayBuffer = await wavBlob.arrayBuffer();
       return new Blob([arrayBuffer], { type: 'audio/mp3' });
-    }
-  }
-
-  // 3. Ajustar sendAudioDirectly para lidar com OGG/Opus e MP3
-  const sendAudioDirectly = async (audioBlob: Blob, mimeType: string) => {
-    if (!audioBlob || !chat) return
-    try {
-      let oggBlob: Blob | null = null
-      let mp3Blob: Blob | null = null
-      // Se já for OGG/Opus, usar direto
-      if (mimeType.includes('ogg') || mimeType.includes('opus')) {
-        oggBlob = audioBlob
-        // Converter para MP3 também
-        mp3Blob = await wavToMp3(audioBlob)
-      } else if (mimeType.includes('wav')) {
-        // Converter para MP3
-        mp3Blob = await wavToMp3(audioBlob)
-      } else if (mimeType.includes('mp3')) {
-        mp3Blob = audioBlob
-      }
-      // Upload dos formatos disponíveis
-      let oggUrl = ''
-      let mp3Url = ''
-      if (oggBlob) {
-        const formData = new FormData()
-        formData.append('file', oggBlob, `audio_${Date.now()}.ogg`)
-        formData.append('type', 'audio')
-        const uploadResponse = await fetch('/api/atendimento/upload', { method: 'POST', body: formData })
-        if (uploadResponse.ok) {
-          const uploadResult = await uploadResponse.json()
-          oggUrl = uploadResult.fileUrl
-        }
-      }
-      if (mp3Blob) {
-        const formData = new FormData()
-        formData.append('file', mp3Blob, `audio_${Date.now()}.mp3`)
-        formData.append('type', 'audio')
-        const uploadResponse = await fetch('/api/atendimento/upload', { method: 'POST', body: formData })
-        if (uploadResponse.ok) {
-          const uploadResult = await uploadResponse.json()
-          mp3Url = uploadResult.fileUrl
-        }
-      }
-      // Enviar para o backend ambos URLs, priorizando OGG/Opus
-      const mediaPayload: any = {
-        phone: chat.customerPhone,
-        type: 'audio',
-        localPath: oggUrl || mp3Url // para compatibilidade
-      }
-      if (oggUrl) mediaPayload.oggUrl = oggUrl
-      if (mp3Url) mediaPayload.mp3Url = mp3Url
-      await fetch('/api/atendimento/send-media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mediaPayload)
-      })
-    } catch (error) {
-      console.error('=== ERRO NO ENVIO DE ÁUDIO ===')
-      console.error('Error:', error)
     }
   }
 

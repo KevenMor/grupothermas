@@ -79,8 +79,56 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   // Obter URL completa para mídia
   const getFullUrl = (url?: string) => {
     if (!url) return ''
-    if (url.startsWith('data:')) return url
-    return url.startsWith('http') ? url : `${window.location.origin}${url}`
+    if (url.startsWith('http')) return url
+    if (url.startsWith('/api/media/')) return `${window.location.origin}${url}`
+    return `${window.location.origin}/api/media/${encodeURIComponent(url)}`
+  }
+
+  // Função para validar URL de mídia
+  const validateMediaUrl = async (url: string): Promise<boolean> => {
+    try {
+      const fullUrl = getFullUrl(url)
+      const response = await fetch(fullUrl, { method: 'HEAD' })
+      return response.ok
+    } catch (error) {
+      console.error('Erro ao validar URL de mídia:', url, error)
+      return false
+    }
+  }
+
+  // Função para tratar erro de carregamento de mídia
+  const handleMediaError = (mediaType: string, url: string, element: HTMLElement) => {
+    console.error(`Erro ao carregar ${mediaType}:`, url)
+    
+    // Log detalhado para troubleshooting
+    console.log('Detalhes do erro:', {
+      mediaType,
+      originalUrl: url,
+      fullUrl: getFullUrl(url),
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      element: element.tagName
+    })
+    
+    // Ocultar elemento com erro
+    element.style.display = 'none'
+    
+    // Mostrar mensagem de erro amigável
+    const errorDiv = document.createElement('div')
+    errorDiv.className = 'p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg'
+    errorDiv.innerHTML = `
+      <div class="flex items-center gap-2 text-red-700 dark:text-red-300">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="text-sm">Erro ao carregar ${mediaType}</span>
+      </div>
+      <p class="text-xs text-red-600 dark:text-red-400 mt-1">
+        O arquivo pode ter sido removido ou a URL está inválida.
+      </p>
+    `
+    
+    element.parentNode?.insertBefore(errorDiv, element.nextSibling)
   }
 
   // Não fazer autoplay - usuário controla reprodução manualmente
@@ -246,8 +294,10 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                     className="max-w-48 max-h-48 rounded-lg cursor-pointer hover:opacity-90 transition-opacity border border-gray-300"
                     onClick={handleImageClick}
                     onError={(e) => {
-                      console.error('Erro ao carregar imagem:', message.mediaUrl)
-                      e.currentTarget.style.display = 'none'
+                      handleMediaError('imagem', message.mediaUrl!, e.currentTarget)
+                    }}
+                    onLoad={() => {
+                      console.log('Imagem carregada com sucesso:', message.mediaUrl)
                     }}
                   />
                   {message.mediaInfo?.caption && (
@@ -263,6 +313,11 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                         alt="Imagem ampliada"
                         className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-lg border-4 border-white"
                         onClick={e => e.stopPropagation()}
+                        onError={(e) => {
+                          console.error('Erro ao carregar imagem no popup:', message.mediaUrl)
+                          e.currentTarget.style.display = 'none'
+                          alert('Erro ao carregar imagem. Tente novamente.')
+                        }}
                       />
                       <Button className="absolute top-4 right-4 z-60" size="icon" variant="ghost" onClick={() => setShowImagePopup(false)}>
                         <X className="w-6 h-6 text-white" />
@@ -314,21 +369,10 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                         className="w-full h-full"
                         title={message.mediaInfo?.filename || 'Documento'}
                         onError={(e) => {
-                          console.error('Erro ao carregar PDF:', message.mediaUrl)
-                          e.currentTarget.style.display = 'none'
-                          // Mostrar mensagem de erro
-                          const errorDiv = document.createElement('div')
-                          errorDiv.innerHTML = `
-                            <div class="flex flex-col items-center justify-center h-full text-center p-4">
-                              <p class="text-red-500 mb-2">Erro ao carregar PDF</p>
-                              <p class="text-sm text-gray-600 mb-4">O documento pode não estar disponível ou a URL está inválida.</p>
-                              <button onclick="window.open('${getFullUrl(message.mediaUrl)}', '_blank')" 
-                                      class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                                Tentar abrir em nova aba
-                              </button>
-                            </div>
-                          `
-                          e.currentTarget.parentNode?.appendChild(errorDiv)
+                          handleMediaError('documento', message.mediaUrl!, e.currentTarget)
+                        }}
+                        onLoad={() => {
+                          console.log('Documento carregado com sucesso:', message.mediaUrl)
                         }}
                       />
                     </div>
