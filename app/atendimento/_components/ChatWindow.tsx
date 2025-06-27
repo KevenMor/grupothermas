@@ -27,7 +27,8 @@ import {
   Trash2,
   Info,
   X,
-  Square
+  Square,
+  ArrowDown
 } from 'lucide-react'
 import { ChatMessageItem } from './ChatMessageItem'
 import { EmojiPicker } from './EmojiPicker'
@@ -1045,9 +1046,11 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
               messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
               setAutoScroll(true);
             }}
-            className="absolute right-4 bottom-24 z-10 bg-blue-500 text-white px-3 py-1 rounded shadow hover:bg-blue-600 transition"
+            className="fixed lg:absolute right-6 bottom-28 lg:bottom-8 z-20 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg p-3 flex items-center justify-center transition-all border-4 border-white/80 dark:border-gray-900/80 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            style={{ boxShadow: '0 4px 24px 0 rgba(0,0,0,0.10)' }}
+            aria-label="Ir para a última mensagem"
           >
-            Ir para a última mensagem
+            <ArrowDown className="w-6 h-6" />
           </button>
         )}
         {isLoading && messages.length === 0 ? (
