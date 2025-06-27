@@ -40,7 +40,10 @@ import {
   Bot,
   ShoppingCart,
   FileText,
-  Users
+  Users,
+  Zap,
+  BookOpen,
+  GitBranch
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -130,6 +133,28 @@ function AppSidebar() {
                 onClick={() => router.push('/admin' as any)}
               >
                 Admin IA
+              </SidebarNavSubItem>
+            </SidebarNavSubmenu>
+
+            {/* IA e Automação com submenus */}
+            <SidebarNavSubmenu
+              title="IA & Automação"
+              icon={<Zap className="h-4 w-4" />}
+              defaultOpen={pathname.startsWith('/admin/ia-training') || pathname.startsWith('/admin/flow-editor')}
+            >
+              <SidebarNavSubItem
+                icon={<BookOpen className="h-4 w-4" />}
+                active={pathname === '/admin/ia-training'}
+                onClick={() => router.push('/admin/ia-training' as any)}
+              >
+                Treinamento IA
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<GitBranch className="h-4 w-4" />}
+                active={pathname === '/admin/flow-editor'}
+                onClick={() => router.push('/admin/flow-editor' as any)}
+              >
+                Editor de Fluxograma
               </SidebarNavSubItem>
             </SidebarNavSubmenu>
 
