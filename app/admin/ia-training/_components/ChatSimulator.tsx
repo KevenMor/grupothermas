@@ -54,15 +54,17 @@ export const ChatSimulator: React.FC<ChatSimulatorProps> = ({ agentName = 'Clara
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trainingPrompt: trainingPrompt || '',
-          testMessage: userMsg.content,
+          trainingPrompt: trainingPrompt || 'Treinamento não informado',
+          testMessage: userMsg.content || 'Mensagem não informada',
           history
         })
       });
-      if (!response.ok) {
-        throw new Error('Erro ao se comunicar com a IA.');
-      }
       const data = await response.json();
+      if (!response.ok) {
+        setError(data?.error || 'Erro ao se comunicar com a IA.');
+        setIsTyping(false);
+        return;
+      }
       if (!data.response) {
         setError('A IA não retornou resposta. Verifique o treinamento ou tente novamente.');
         setIsTyping(false);
@@ -100,7 +102,7 @@ export const ChatSimulator: React.FC<ChatSimulatorProps> = ({ agentName = 'Clara
   }, [messages, isTyping]);
 
   return (
-    <div className="flex flex-col h-[500px] w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+    <div className="flex flex-col h-[650px] w-full max-w-xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
       {/* Header com avatar centralizado */}
       <div className="flex flex-col items-center justify-center gap-2 p-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30">
         <img src="/ia-avatar.svg" alt="avatar" className="w-16 h-16 rounded-full border-4 border-green-300 shadow-md bg-white -mt-8" />
