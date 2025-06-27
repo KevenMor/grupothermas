@@ -43,7 +43,9 @@ import {
   Users,
   Zap,
   BookOpen,
-  GitBranch
+  GitBranch,
+  TestTube,
+  Wifi
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -140,8 +142,15 @@ function AppSidebar() {
             <SidebarNavSubmenu
               title="IA & Automação"
               icon={<Zap className="h-4 w-4" />}
-              defaultOpen={pathname.startsWith('/admin/ia-training') || pathname.startsWith('/admin/flow-editor')}
+              defaultOpen={pathname.startsWith('/admin/ia-training') || pathname.startsWith('/admin/flow-editor') || pathname.startsWith('/admin/ai-config')}
             >
+              <SidebarNavSubItem
+                icon={<Wifi className="h-4 w-4" />}
+                active={pathname === '/admin'}
+                onClick={() => router.push('/admin' as any)}
+              >
+                Configuração OpenAI
+              </SidebarNavSubItem>
               <SidebarNavSubItem
                 icon={<BookOpen className="h-4 w-4" />}
                 active={pathname === '/admin/ia-training'}
@@ -150,13 +159,22 @@ function AppSidebar() {
                 Treinamento IA
               </SidebarNavSubItem>
               <SidebarNavSubItem
-                icon={<GitBranch className="h-4 w-4" />}
-                active={pathname === '/admin/flow-editor'}
-                onClick={() => router.push('/admin/flow-editor' as any)}
+                icon={<TestTube className="h-4 w-4" />}
+                active={pathname === '/admin/ai-test'}
+                onClick={() => router.push('/admin/ai-test' as any)}
               >
-                Editor de Fluxograma
+                Testes de IA
               </SidebarNavSubItem>
             </SidebarNavSubmenu>
+
+            {/* Editor de Fluxograma - Acesso Amplo */}
+            <SidebarNavItem
+              icon={<GitBranch className="h-4 w-4" />}
+              active={pathname === '/admin/flow-editor'}
+              onClick={() => router.push('/admin/flow-editor' as any)}
+            >
+              Editor de Fluxograma
+            </SidebarNavItem>
 
             {/* Vendas com submenus */}
             <SidebarNavSubmenu
