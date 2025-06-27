@@ -606,27 +606,7 @@ const MessageInput = ({
         const mediaResult = await mediaResponse.json()
         console.log('5. Áudio enviado com sucesso via Z-API:', mediaResult)
         
-        // Criar mensagem otimista para mostrar imediatamente
-        const optimisticMessage: ChatMessage = {
-          id: `temp-audio-${Date.now()}`,
-          content: '[ÁUDIO] Mensagem de voz',
-          role: 'agent',
-          timestamp: new Date().toISOString(),
-          status: 'sent',
-          userName: 'Você',
-          agentId: 'current-agent',
-          agentName: 'Você',
-          mediaType: 'audio',
-          mediaUrl: uploadResult.fileUrl,
-          mediaInfo: {
-            type: 'audio',
-            url: uploadResult.fileUrl,
-            filename: `audio_${Date.now()}.mp3`
-          }
-        }
-        
-        window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
-        console.log('6. Áudio adicionado à conversa com sucesso!')
+        console.log('6. Áudio enviado com sucesso! Aguardando confirmação via webhook...')
         
       } else {
         const errorText = await mediaResponse.text()
@@ -668,17 +648,13 @@ const MessageInput = ({
                 </span>
               </div>
               
-              {/* Visualizador de onda sonora simulado */}
+              {/* Visualizador de onda sonora fixo */}
               <div className="flex-1 flex items-center gap-1 px-4">
-                {[...Array(20)].map((_, i) => (
+                {[12, 8, 16, 20, 14, 10, 18, 22, 16, 12, 14, 8, 20, 16, 10, 18, 14, 12, 16, 8].map((height, i) => (
                   <div
                     key={i}
-                    className="w-1 bg-blue-500 rounded-full animate-pulse"
-                    style={{
-                      height: `${Math.random() * 20 + 8}px`,
-                      animationDelay: `${i * 0.1}s`,
-                      animationDuration: '1s'
-                    }}
+                    className="w-1 bg-blue-500 rounded-full"
+                    style={{ height: `${height}px` }}
                   />
                 ))}
               </div>

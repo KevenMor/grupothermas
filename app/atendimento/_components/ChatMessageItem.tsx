@@ -97,6 +97,9 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   }
 
   const formatAudioTime = (seconds: number) => {
+    if (!seconds || isNaN(seconds) || !isFinite(seconds)) {
+      return '0:00'
+    }
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
@@ -354,16 +357,13 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   
                   {/* Visualizador de onda sonora */}
                   <div className="flex-1 flex items-center gap-1">
-                    {[...Array(12)].map((_, i) => (
+                    {[12, 8, 16, 14, 10, 18, 16, 12, 14, 8, 16, 12].map((height, i) => (
                       <div
                         key={i}
                         className={`w-1 rounded-full ${
                           isFromAgent ? 'bg-white/40' : 'bg-gray-400'
-                        } ${isPlaying ? 'animate-pulse' : ''}`}
-                        style={{
-                          height: `${Math.random() * 16 + 8}px`,
-                          animationDelay: `${i * 0.1}s`,
-                        }}
+                        }`}
+                        style={{ height: `${height}px` }}
                       />
                     ))}
                   </div>
@@ -372,17 +372,22 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   <span className={`text-xs font-mono ${
                     isFromAgent ? 'text-white/80' : 'text-gray-600 dark:text-gray-300'
                   }`}>
-                    {formatAudioTime(audioCurrentTime)} / {formatAudioTime(audioDuration)}
+                    {isPlaying ? formatAudioTime(audioCurrentTime) : formatAudioTime(audioDuration || 0)}
                   </span>
                   
                   {/* Elemento audio oculto */}
                   <audio 
                     ref={audioRef}
                     src={getFullUrl(message.mediaUrl)}
-                    onLoadedData={() => {
+                    onLoadedMetadata={() => {
                       setAudioLoaded(true)
-                      if (audioRef.current) {
-                        setAudioDuration(audioRef.current.duration || 0)
+                      if (audioRef.current && audioRef.current.duration) {
+                        setAudioDuration(audioRef.current.duration)
+                      }
+                    }}
+                    onDurationChange={() => {
+                      if (audioRef.current && audioRef.current.duration) {
+                        setAudioDuration(audioRef.current.duration)
                       }
                     }}
                     onTimeUpdate={() => {
