@@ -22,12 +22,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tipo de arquivo não permitido' }, { status: 400 })
     }
 
-    console.log('Upload iniciado:', {
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      uploadType: type
-    })
+    console.log('=== UPLOAD INICIADO ===')
+    console.log('FileName:', file.name)
+    console.log('FileSize:', file.size)
+    console.log('FileType:', file.type)
+    console.log('UploadType:', type)
 
     // Gerar nome único para o arquivo
     const timestamp = Date.now()
@@ -60,6 +59,14 @@ export async function POST(request: NextRequest) {
     
     const fileName = `${timestamp}.${extension}`
 
+    // Para áudio, converter para mp3 se necessário (exemplo simplificado)
+    if (type === 'audio' && extension !== 'mp3' && extension !== 'ogg') {
+      // Aqui você pode adicionar lógica de conversão real se necessário
+      // Exemplo: usar ffmpeg ou biblioteca de conversão
+      // Por enquanto, apenas loga
+      console.warn('Áudio não está em mp3/ogg. Recomenda-se converter antes do upload.')
+    }
+    
     // Salvar arquivo no Firebase Storage
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
@@ -84,36 +91,45 @@ export async function POST(request: NextRequest) {
     }
     const storagePath = `${type}/${finalFileName}`
 
-    console.log('Salvando arquivo:', {
+    console.log('Salvando arquivo no Firebase Storage:', {
       fileName: finalFileName,
       storagePath,
-      extension: finalExtension
+      extension: finalExtension,
+      contentType: finalContentType,
+      fileSize: finalBuffer.length
     })
 
     // Salvar arquivo no Firebase Storage
     const bucket = adminStorage.bucket('grupo-thermas-a99fc.firebasestorage.app')
     const fileRef = bucket.file(storagePath)
     await fileRef.save(finalBuffer, {
-      contentType: finalContentType
+      contentType: finalContentType,
+      metadata: {
+        originalFileName: file.name,
+        uploadType: type,
+        uploadedAt: new Date().toISOString(),
+        fileSize: finalBuffer.length
+      }
     })
 
-    // Gerar signed URL (válido por 1 hora)
-    const fileUrl = await generateSignedUrl(storagePath, 60 * 60)
+    // FLUXO OBRIGATÓRIO: Gerar URL pública (signed URL válida por 1 ano)
+    const fileUrl = await generateSignedUrl(storagePath, 365 * 24 * 60 * 60) // 1 ano
+    console.log('URL pública gerada:', fileUrl)
 
-    console.log('Upload concluído:', {
-      fileName: finalFileName,
-      fileUrl,
-      fileSize: finalBuffer.length,
-      storagePath
-    })
+    console.log('=== UPLOAD CONCLUÍDO ===')
+    console.log('FileName:', finalFileName)
+    console.log('FileUrl:', fileUrl)
+    console.log('FileSize:', finalBuffer.length)
+    console.log('StoragePath:', storagePath)
 
     return NextResponse.json({
       success: true,
       fileName: finalFileName,
-      fileUrl,
+      fileUrl, // URL pública do Firebase Storage
       fileSize: finalBuffer.length,
       fileType: finalContentType,
-      storagePath
+      storagePath,
+      message: 'Arquivo salvo no Firebase Storage com sucesso!'
     })
 
   } catch (error) {

@@ -1,48 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
 import { ChatMessage } from '@/lib/models'
+import { downloadAndSaveMedia, isFirebaseStorageUrl } from '@/lib/mediaStorage'
 
 // Recebe eventos enviados pela Z-API (https://developer.z-api.io/en/webhooks)
 // Configure no painel da instância a URL: https://SEU_DOMINIO/api/zapi/webhook
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== WEBHOOK Z-API RECEBIDO ===')
-    console.log('Headers:', Object.fromEntries(request.headers.entries()))
-    
     const body = await request.json()
+    
+    console.log('=== WEBHOOK Z-API RECEBIDO ===')
     console.log('Body completo:', JSON.stringify(body, null, 2))
 
-    // Ignorar eventos de presença e outros tipos não relacionados a mensagens
-    const ignoredTypes = [
-      'PresenceChatCallback',
-      'PresenceCallback',
-      'StatusCallback',
-      'AckCallback',
-      'MessageStatusCallback'
-    ];
-    if (ignoredTypes.includes(body?.type)) {
-      // Se quiser, logue só em modo debug:
-      // console.debug('Evento ignorado:', body.type);
-      return NextResponse.json({ ignored: true, reason: 'not a chat message', type: body.type });
-    }
-
-    // Z-API envia diferentes tipos de eventos; focamos em mensagens recebidas
-    if (!body || body.fromMe) {
-      console.log('Mensagem ignorada:', { 
-        hasBody: !!body, 
-        fromMe: body?.fromMe, 
-        type: body?.type 
-      })
-      return NextResponse.json({ ignored: true })
-    }
-
-    // Aceitar apenas mensagens recebidas de clientes
-    if (body.type !== 'ReceivedCallback') {
-      console.log('Não é uma mensagem recebida do cliente:', { 
-        type: body?.type,
-        fromMe: body?.fromMe
-      })
-      return NextResponse.json({ ignored: true })
+    // Validações básicas
+    if (!body.phone || !body.messageId) {
+      console.error('Dados obrigatórios ausentes:', { phone: body.phone, messageId: body.messageId })
+      return NextResponse.json({ error: 'Phone e messageId são obrigatórios' }, { status: 400 })
     }
 
     // Verificar se já processamos esta mensagem (evitar duplicatas)
@@ -65,7 +38,8 @@ export async function POST(request: NextRequest) {
       momment,
       senderName,
       text,
-      chatName
+      chatName,
+      fromMe
     } = body
 
     // Processar diferentes tipos de conteúdo
@@ -88,53 +62,121 @@ export async function POST(request: NextRequest) {
     } else if (body.image) {
       console.log('Processando imagem:', body.image)
       content = `📷 Imagem enviada${body.image.caption ? `: ${body.image.caption}` : ''}`
+      
+      // FLUXO OBRIGATÓRIO: Download e salvamento no Firebase Storage
+      let storageUrl = body.image.imageUrl
+      if (body.image.imageUrl && !isFirebaseStorageUrl(body.image.imageUrl)) {
+        console.log('Download e salvamento de imagem no Firebase Storage...')
+        const storageResult = await downloadAndSaveMedia(
+          body.image.imageUrl,
+          'image',
+          `image_${Date.now()}.jpg`
+        )
+        
+        if (storageResult.success) {
+          storageUrl = storageResult.publicUrl!
+          console.log('Imagem salva no Storage:', storageUrl)
+        } else {
+          console.error('Erro ao salvar imagem no Storage:', storageResult.error)
+          // Usar URL original como fallback
+          storageUrl = body.image.imageUrl
+        }
+      }
+      
       mediaInfo = {
         type: 'image',
-        url: body.image.imageUrl,
+        url: storageUrl,
         caption: body.image.caption,
         mimeType: body.image.mimeType
-      }
-      // Usar URL local para proxy de mídia
-      if (body.image.imageUrl) {
-        mediaInfo.url = `/api/media/${encodeURIComponent(body.image.imageUrl)}`
       }
     } else if (body.audio) {
       console.log('Processando áudio:', body.audio)
       content = '🎵 Áudio'
+      
+      // FLUXO OBRIGATÓRIO: Download e salvamento no Firebase Storage
+      let storageUrl = body.audio.audioUrl
+      if (body.audio.audioUrl && !isFirebaseStorageUrl(body.audio.audioUrl)) {
+        console.log('Download e salvamento de áudio no Firebase Storage...')
+        const storageResult = await downloadAndSaveMedia(
+          body.audio.audioUrl,
+          'audio',
+          `audio_${Date.now()}.mp3`
+        )
+        
+        if (storageResult.success) {
+          storageUrl = storageResult.publicUrl!
+          console.log('Áudio salvo no Storage:', storageUrl)
+        } else {
+          console.error('Erro ao salvar áudio no Storage:', storageResult.error)
+          // Usar URL original como fallback
+          storageUrl = body.audio.audioUrl
+        }
+      }
+      
       mediaInfo = {
         type: 'audio',
-        url: body.audio.audioUrl,
+        url: storageUrl,
         mimeType: body.audio.mimeType
-      }
-      // Usar URL local para proxy de mídia
-      if (body.audio.audioUrl) {
-        mediaInfo.url = `/api/media/${encodeURIComponent(body.audio.audioUrl)}`
       }
     } else if (body.video) {
       console.log('Processando vídeo:', body.video)
       content = `🎬 Vídeo${body.video.caption ? `: ${body.video.caption}` : ''}`
+      
+      // FLUXO OBRIGATÓRIO: Download e salvamento no Firebase Storage
+      let storageUrl = body.video.videoUrl
+      if (body.video.videoUrl && !isFirebaseStorageUrl(body.video.videoUrl)) {
+        console.log('Download e salvamento de vídeo no Firebase Storage...')
+        const storageResult = await downloadAndSaveMedia(
+          body.video.videoUrl,
+          'video',
+          `video_${Date.now()}.mp4`
+        )
+        
+        if (storageResult.success) {
+          storageUrl = storageResult.publicUrl!
+          console.log('Vídeo salvo no Storage:', storageUrl)
+        } else {
+          console.error('Erro ao salvar vídeo no Storage:', storageResult.error)
+          // Usar URL original como fallback
+          storageUrl = body.video.videoUrl
+        }
+      }
+      
       mediaInfo = {
         type: 'video',
-        url: body.video.videoUrl,
+        url: storageUrl,
         caption: body.video.caption,
         mimeType: body.video.mimeType
-      }
-      // Usar URL local para proxy de mídia
-      if (body.video.videoUrl) {
-        mediaInfo.url = `/api/media/${encodeURIComponent(body.video.videoUrl)}`
       }
     } else if (body.document) {
       console.log('Processando documento:', body.document)
       content = `📄 ${body.document.title || 'Documento'}`
+      
+      // FLUXO OBRIGATÓRIO: Download e salvamento no Firebase Storage
+      let storageUrl = body.document.documentUrl
+      if (body.document.documentUrl && !isFirebaseStorageUrl(body.document.documentUrl)) {
+        console.log('Download e salvamento de documento no Firebase Storage...')
+        const storageResult = await downloadAndSaveMedia(
+          body.document.documentUrl,
+          'document',
+          body.document.title || `document_${Date.now()}.pdf`
+        )
+        
+        if (storageResult.success) {
+          storageUrl = storageResult.publicUrl!
+          console.log('Documento salvo no Storage:', storageUrl)
+        } else {
+          console.error('Erro ao salvar documento no Storage:', storageResult.error)
+          // Usar URL original como fallback
+          storageUrl = body.document.documentUrl
+        }
+      }
+      
       mediaInfo = {
         type: 'document',
-        url: body.document.documentUrl,
+        url: storageUrl,
         title: body.document.title,
         mimeType: body.document.mimeType
-      }
-      // Usar URL local para proxy de mídia
-      if (body.document.documentUrl) {
-        mediaInfo.url = `/api/media/${encodeURIComponent(body.document.documentUrl)}`
       }
     } else if (body.contact) {
       content = `👤 ${body.contact.displayName}`
@@ -154,6 +196,7 @@ export async function POST(request: NextRequest) {
     } else {
       content = '[Mensagem sem texto]'
     }
+
     const timestamp = momment ? new Date(momment).toISOString() : new Date().toISOString()
     
     console.log('Dados extraídos:', { phone, content, messageId, senderName })
@@ -163,99 +206,87 @@ export async function POST(request: NextRequest) {
 
     // Referência da conversa (documento por telefone)
     const conversationRef = adminDB.collection('conversations').doc(phone)
-
-    // Garantir documento da conversa
-    const convSnapshot = await conversationRef.get()
-    let conversationData = null
+    const conversationDoc = await conversationRef.get()
     
-    if (!convSnapshot.exists) {
-      console.log('Criando nova conversa para:', phone)
-      await conversationRef.set({
-        customerName: senderName || chatName || phone,
-        customerPhone: phone,
-        customerAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName || chatName || phone)}&background=random`,
+    let conversationData = null
+    let replyToFirestoreId = null
+    let replyToContent = null
+    let replyToSender = null
+
+    // Processar reply se houver
+    if (replyTo) {
+      try {
+        const replyQuery = await conversationRef.collection('messages')
+          .where('zapiMessageId', '==', replyTo)
+          .limit(1)
+          .get()
+        
+        if (!replyQuery.empty) {
+          const replyDoc = replyQuery.docs[0]
+          replyToFirestoreId = replyDoc.id
+          replyToContent = replyDoc.data().content
+          replyToSender = replyDoc.data().agentName || 'Cliente'
+        }
+      } catch (error) {
+        console.warn('Erro ao buscar mensagem de resposta:', error)
+      }
+    }
+
+    // Criar ou atualizar conversa
+    if (!conversationDoc.exists) {
+      console.log('Criando nova conversa')
+      conversationData = {
+        phone: phone,
+        name: senderName || chatName || phone,
+        createdAt: timestamp,
+        updatedAt: timestamp,
         lastMessage: content,
-        timestamp,
-        unreadCount: 0,
-        status: 'open',
-        source: 'zapi',
-        // Campos padrão de controle de IA
+        timestamp: timestamp,
+        status: 'active',
+        unreadCount: 1,
         aiEnabled: true,
         aiPaused: false,
-        conversationStatus: 'ai_active', // Nova conversa inicia com IA ativa
-      })
-      conversationData = { conversationStatus: 'ai_active' }
+        conversationStatus: 'ai_active',
+        source: 'zapi'
+      }
+      await conversationRef.set(conversationData)
     } else {
-      conversationData = convSnapshot.data()
-      const currentStatus = conversationData?.conversationStatus
+      conversationData = conversationDoc.data()
       
-      // Se a conversa estava resolvida e o cliente enviou nova mensagem, reabrir para IA
-      if (currentStatus === 'resolved') {
-        console.log('Reabrindo conversa resolvida para IA ativa')
-        await conversationRef.update({
-          lastMessage: content,
-          timestamp,
-          aiEnabled: true,
-          aiPaused: false,
-          conversationStatus: 'ai_active',
-          // Limpar campos de resolução
-          resolvedAt: null,
-          resolvedBy: null,
-          // Incrementar unread count se necessário
-          unreadCount: (conversationData.unreadCount || 0) + 1
-        })
-        conversationData = { ...conversationData, conversationStatus: 'ai_active' }
-      } else {
-        await conversationRef.update({
-          lastMessage: content,
-          timestamp
-        })
-      }
+      // Atualizar última mensagem e incrementar contador de não lidas
+      await conversationRef.update({
+        lastMessage: content,
+        timestamp: timestamp,
+        unreadCount: (conversationData.unreadCount || 0) + 1,
+        updatedAt: timestamp
+      })
     }
 
-    // Salvar na subcoleção messages
-    let replyToContent: string | undefined = undefined;
-    let replyToSender: string | undefined = undefined;
-    let replyToFirestoreId: string | undefined = undefined;
-    if (replyTo) {
-      // Buscar a mensagem original pelo zapiMessageId primeiro
-      try {
-        const querySnap = await conversationRef.collection('messages').where('zapiMessageId', '==', replyTo).limit(1).get();
-        let originalMsgSnap;
-        if (!querySnap.empty) {
-          originalMsgSnap = querySnap.docs[0];
-          replyToFirestoreId = originalMsgSnap.id;
-        } else {
-          // Fallback: tentar pelo id direto (caso replyTo seja o id Firestore)
-          const docSnap = await conversationRef.collection('messages').doc(replyTo).get();
-          if (docSnap.exists) {
-            originalMsgSnap = docSnap;
-            replyToFirestoreId = docSnap.id;
-          }
-        }
-        if (originalMsgSnap) {
-          const originalMsgData = originalMsgSnap.data() as Partial<ChatMessage>;
-          replyToContent = originalMsgData?.content || '[Mensagem original não encontrada]';
-          if (originalMsgData?.role === 'agent') replyToSender = originalMsgData.agentName || originalMsgData.userName || 'Atendente';
-          else if (originalMsgData?.role === 'ai') replyToSender = 'IA Assistente';
-          else if (originalMsgData?.role === 'user') replyToSender = senderName || chatName || 'Cliente';
-          else replyToSender = 'Sistema';
-        } else {
-          replyToContent = '[Mensagem original não encontrada]';
-          replyToSender = 'Desconhecido';
-        }
-      } catch (err) {
-        console.error('Erro ao buscar mensagem original para reply:', err);
-        replyToContent = '[Erro ao buscar mensagem original]';
-        replyToSender = 'Erro';
-      }
+    // Atualizar unreadCount
+    if (!fromMe) {
+      // Mensagem recebida do cliente: incrementar unreadCount
+      await conversationRef.update({
+        unreadCount: (conversationData?.unreadCount || 0) + 1,
+        updatedAt: new Date().toISOString()
+      })
+    } else {
+      // Mensagem enviada pelo painel: resetar unreadCount
+      await conversationRef.update({
+        unreadCount: 0,
+        updatedAt: new Date().toISOString()
+      })
     }
 
+    // Salvar mensagem no Firestore
     const msg: Partial<ChatMessage> = {
       content,
-      role: 'user',
+      role: fromMe ? 'agent' : 'user',
       timestamp,
       status: 'sent',
+      origin: fromMe ? 'panel' : 'device',
+      fromMe: !!fromMe,
+      chatId: phone,
+      customerPhone: phone,
       ...(mediaInfo && { 
         mediaType: mediaInfo.type as 'image' | 'audio' | 'video' | 'document' | 'contact' | 'location',
         mediaUrl: mediaInfo.url,
@@ -277,64 +308,19 @@ export async function POST(request: NextRequest) {
 
     console.log('Mensagem salva com sucesso no Firestore')
 
-    // Chamar IA automaticamente se a conversa estiver ativa para IA
-    const finalConversationData = conversationData || convSnapshot.data()
-    
-    if (finalConversationData && (finalConversationData.conversationStatus === 'waiting' || finalConversationData.conversationStatus === 'ai_active')) {
-      console.log('Chamando IA para responder automaticamente...')
-      
-      try {
-        // Chamar API da IA
-        const aiResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://app.grupothermas.com.br'}/api/ai/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            chatId: phone,
-            customerMessage: content,
-            customerName: senderName || chatName || phone
-          })
-        })
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Mensagem processada com sucesso',
+      messageId: messageId,
+      phone: phone
+    })
 
-        if (aiResponse.ok) {
-          const aiResult = await aiResponse.json()
-          console.log('IA respondeu:', aiResult.aiMessage)
-        } else {
-          console.error('Erro ao chamar IA:', await aiResponse.text())
-        }
-      } catch (error) {
-        console.error('Erro ao processar resposta da IA:', error)
-      }
-    } else {
-      console.log('IA não está ativa para esta conversa, status:', finalConversationData?.conversationStatus)
-    }
-
-    // Novo: tratar eventos de status de mensagem (MessageStatusCallback)
-    if (body.type === 'MessageStatusCallback' && body.ids && Array.isArray(body.ids)) {
-      const status = body.status || 'unknown';
-      const phone = body.phone;
-      const momment = body.momment || Date.now();
-      const timestamp = new Date(momment).toISOString();
-      for (const messageId of body.ids) {
-        // Atualiza status e timestamp de entrega
-        await adminDB
-          .collection('conversations')
-          .doc(phone)
-          .collection('messages')
-          .doc(messageId)
-          .update({ 
-            status,
-            statusTimestamp: timestamp // novo campo para rastrear quando recebeu esse status
-          });
-      }
-      return NextResponse.json({ success: true, updated: body.ids.length, status });
-    }
-
-    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Erro webhook Z-API:', error)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    console.error('Erro no webhook:', error)
+    return NextResponse.json({ 
+      error: 'Erro interno do servidor',
+      details: error instanceof Error ? error.message : 'Erro desconhecido'
+    }, { status: 500 })
   }
 }
 

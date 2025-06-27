@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
-import { readFile } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
 import { sendImage, sendAudio, sendDocument, sendVideo } from '@/lib/zapi'
+import { isFirebaseStorageUrl } from '@/lib/mediaStorage'
 
 interface MediaMessage {
   phone: string
   type: 'image' | 'audio' | 'video' | 'document'
   content?: string // Para texto
-  localPath?: string // Para mídia local
+  localPath?: string // Para mídia local (deve ser URL do Firebase Storage)
   caption?: string // Legenda para mídia
   filename?: string // Para documentos
   replyTo?: { id: string, text: string, author: 'agent' | 'customer' }
@@ -19,11 +17,11 @@ interface MediaMessage {
 
 interface MessageData {
   content: string
-  role: string
+  role: 'agent' | 'user' | 'ai'
   timestamp: string
-  status: string
-  zapiMessageId: any
-  agentName: string
+  status: 'sent' | 'received' | 'pending'
+  zapiMessageId?: string | null
+  agentName?: string
   mediaType?: 'image' | 'audio' | 'video' | 'document'
   mediaUrl?: string
   mediaInfo?: {
@@ -58,21 +56,32 @@ export async function POST(request: NextRequest) {
 
     console.log(`=== ENVIANDO ${type.toUpperCase()} VIA Z-API (ATENDIMENTO) ===`)
     
-    // Permitir apenas URL pública por enquanto (robustez)
+    // FLUXO OBRIGATÓRIO: Validar que a URL é do Firebase Storage
     if (!localPath || !localPath.startsWith('http')) {
-      return NextResponse.json({ error: 'localPath precisa ser uma URL pública do Firebase Storage' }, { status: 400 })
+      return NextResponse.json({ 
+        error: 'localPath precisa ser uma URL pública do Firebase Storage' 
+      }, { status: 400 })
+    }
+
+    // Verificar se é uma URL do Firebase Storage
+    if (!isFirebaseStorageUrl(localPath)) {
+      return NextResponse.json({ 
+        error: 'A URL deve ser do Firebase Storage para garantir persistência e histórico completo' 
+      }, { status: 400 })
     }
 
     // Testar se a URL está realmente acessível (HEAD request)
-    if (localPath) {
-      try {
-        const testResponse = await fetch(localPath, { method: 'HEAD' });
-        if (!testResponse.ok) {
-          return NextResponse.json({ error: `A URL do ${type} não está acessível publicamente para a Z-API.` }, { status: 400 })
-        }
-      } catch (e) {
-        return NextResponse.json({ error: `Falha ao testar a URL do ${type}. Verifique se está realmente pública.` }, { status: 400 })
+    try {
+      const testResponse = await fetch(localPath, { method: 'HEAD' });
+      if (!testResponse.ok) {
+        return NextResponse.json({ 
+          error: `A URL do ${type} não está acessível publicamente para a Z-API. Status: ${testResponse.status}` 
+        }, { status: 400 })
       }
+    } catch (e) {
+      return NextResponse.json({ 
+        error: `Falha ao testar a URL do ${type}. Verifique se está realmente pública.` 
+      }, { status: 400 })
     }
 
     let zapiResult: any = {}
@@ -82,12 +91,21 @@ export async function POST(request: NextRequest) {
     try {
       switch (type) {
         case 'image': {
+          console.log('=== ENVIANDO IMAGEM ===')
+          console.log('URL do Firebase Storage:', localPath)
+          console.log('Caption:', caption)
+          console.log('ReplyTo:', replyTo)
+          
           const imageResult = await sendImage(phone, localPath, caption, replyTo)
           if (!imageResult.success) throw new Error(imageResult.error || 'Erro ao enviar imagem')
           zapiResult = imageResult
           break
         }
         case 'audio': {
+          // Validar formato
+          if (!localPath.endsWith('.mp3') && !localPath.endsWith('.ogg')) {
+            return NextResponse.json({ error: 'Formato de áudio não suportado. Use apenas mp3 ou ogg.' }, { status: 400 })
+          }
           console.log('=== PROCESSANDO ÁUDIO ===')
           console.log('Phone:', phone)
           console.log('LocalPath (Firebase URL):', localPath)
@@ -96,12 +114,12 @@ export async function POST(request: NextRequest) {
           // Priorizar OGG/Opus se disponível, senão MP3
           let audioUrl = localPath
           
-          if (oggUrl && (oggUrl.endsWith('.ogg') || oggUrl.endsWith('.opus'))) {
+          if (oggUrl && isFirebaseStorageUrl(oggUrl) && (oggUrl.endsWith('.ogg') || oggUrl.endsWith('.opus'))) {
             audioUrl = oggUrl
-            console.log('Usando URL OGG/Opus:', audioUrl)
-          } else if (mp3Url && mp3Url.endsWith('.mp3')) {
+            console.log('Usando URL OGG/Opus do Storage:', audioUrl)
+          } else if (mp3Url && isFirebaseStorageUrl(mp3Url) && mp3Url.endsWith('.mp3')) {
             audioUrl = mp3Url
-            console.log('Usando URL MP3:', audioUrl)
+            console.log('Usando URL MP3 do Storage:', audioUrl)
           } else if (localPath.endsWith('.ogg') || localPath.endsWith('.opus')) {
             audioUrl = localPath
             console.log('Usando URL OGG/Opus (localPath):', audioUrl)
@@ -109,7 +127,9 @@ export async function POST(request: NextRequest) {
             audioUrl = localPath
             console.log('Usando URL MP3 (localPath):', audioUrl)
           } else {
-            return NextResponse.json({ error: 'Formato de áudio não suportado para URL pública' }, { status: 400 })
+            return NextResponse.json({ 
+              error: 'Formato de áudio não suportado. Use MP3 ou OGG/Opus do Firebase Storage.' 
+            }, { status: 400 })
           }
           
           const audioResult = await sendAudio(phone, audioUrl, replyTo)
@@ -123,28 +143,36 @@ export async function POST(request: NextRequest) {
           zapiResult = audioResult
           break
         }
-        case 'document': {
-          const docFilename = filename || localPath.split('/').pop() || 'documento'
-          const docMimeType = 'application/pdf'
-          const docResult = await sendDocument(phone, localPath, docFilename, docMimeType, replyTo)
-          if (!docResult.success) throw new Error(docResult.error || 'Erro ao enviar documento')
-          zapiResult = docResult
+        case 'video': {
+          console.log('=== ENVIANDO VÍDEO ===')
+          console.log('URL do Firebase Storage:', localPath)
+          console.log('Caption:', caption)
+          console.log('ReplyTo:', replyTo)
+          
+          const videoResult = await sendVideo(phone, localPath, filename, caption, replyTo)
+          if (!videoResult.success) throw new Error(videoResult.error || 'Erro ao enviar vídeo')
+          zapiResult = videoResult
           break
         }
-        case 'video': {
-          const vidFilename = filename || localPath.split('/').pop() || 'video.mp4';
-          const vidResult = await sendVideo(phone, localPath, vidFilename, caption, replyTo);
-          if (!vidResult.success) throw new Error(vidResult.error || 'Erro ao enviar vídeo');
-          zapiResult = vidResult;
-          break;
+        case 'document': {
+          console.log('=== ENVIANDO DOCUMENTO ===')
+          console.log('URL do Firebase Storage:', localPath)
+          console.log('Filename:', filename)
+          console.log('ReplyTo:', replyTo)
+          
+          const safeFilename = filename || 'documento.pdf';
+          const documentResult = await sendDocument(phone, localPath, safeFilename, undefined, replyTo)
+          if (!documentResult.success) throw new Error(documentResult.error || 'Erro ao enviar documento')
+          zapiResult = documentResult
+          break
         }
         default:
-          return NextResponse.json({ error: 'Tipo de mídia não suportado para URL pública' }, { status: 400 })
+          throw new Error(`Tipo de mídia não suportado: ${type}`)
       }
-    } catch (err) {
-      zapiError = err instanceof Error ? err.message : 'Erro desconhecido'
-      console.error('Erro Z-API:', zapiError)
-      return NextResponse.json({ error: 'Erro ao enviar via Z-API', details: zapiError }, { status: 500 })
+    } catch (error) {
+      console.error('Erro ao enviar mídia via Z-API:', error)
+      zapiError = error instanceof Error ? error.message : 'Erro desconhecido'
+      throw error
     }
 
     // Só grava no Firestore se não houve erro
@@ -167,6 +195,7 @@ export async function POST(request: NextRequest) {
         },
         ...(replyTo && { replyTo })
       }
+      
       let lastMessagePreview = '';
       switch (type) {
         case 'audio':
@@ -184,15 +213,25 @@ export async function POST(request: NextRequest) {
         default:
           lastMessagePreview = `[${String(type).toUpperCase()}]`;
       }
+      
       await conversationRef.collection('messages').add(messageData)
       await conversationRef.update({
         lastMessage: lastMessagePreview,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        unreadCount: 0 // Reset unread count when agent sends message
       })
+      
+      console.log('Mensagem salva no Firestore com sucesso')
     } catch (e) {
       console.error('Erro ao salvar mensagem no Firestore:', e)
+      // Não falha o envio por causa disso, mas loga o erro
     }
-    return NextResponse.json({ success: true, zapiResult })
+    
+    return NextResponse.json({ 
+      success: true, 
+      zapiResult,
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)} enviado com sucesso!`
+    })
 
   } catch (error) {
     console.error('Erro geral:', error)

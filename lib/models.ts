@@ -161,6 +161,10 @@ export interface ChatMessage {
   }
   // Novo campo para timestamp de status (entregue/lido)
   statusTimestamp?: string
+  // Auditoria
+  origin?: 'panel' | 'device' | 'system' | 'unknown'
+  fromMe?: boolean
+  customerPhone?: string
 }
 
 export interface ChatCustomer {

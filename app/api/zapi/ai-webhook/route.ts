@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
+import { downloadAndSaveMedia, isFirebaseStorageUrl } from '@/lib/mediaStorage'
 
 interface ZAPIWebhookEvent {
   event?: string
@@ -232,99 +233,119 @@ async function handleMessage(message: ZAPIWebhookEvent) {
       console.log('Mensagem de texto:', userMessage)
     } else if (message.image) {
       userMessage = `📷 Imagem enviada${message.image.caption ? `: ${message.image.caption}` : ''}`
+      
+      // FLUXO OBRIGATÓRIO: Download e salvamento no Firebase Storage
+      let storageUrl = message.image.imageUrl
+      if (message.image.imageUrl && !isFirebaseStorageUrl(message.image.imageUrl)) {
+        console.log('Download e salvamento de imagem no Firebase Storage...')
+        const storageResult = await downloadAndSaveMedia(
+          message.image.imageUrl,
+          'image',
+          `image_${Date.now()}.jpg`
+        )
+        
+        if (storageResult.success) {
+          storageUrl = storageResult.publicUrl!
+          console.log('Imagem salva no Storage:', storageUrl)
+        } else {
+          console.error('Erro ao salvar imagem no Storage:', storageResult.error)
+          // Usar URL original como fallback
+          storageUrl = message.image.imageUrl
+        }
+      }
+      
       mediaInfo = {
         type: 'image',
-        url: message.image.imageUrl,
+        url: storageUrl,
         caption: message.image.caption,
         mimeType: message.image.mimeType
       }
-      // Validar URL da imagem
-      if (message.image.imageUrl) {
-        try {
-          const testResponse = await fetch(message.image.imageUrl, { method: 'HEAD' })
-          if (testResponse.ok) {
-            mediaInfo.url = `/api/media/${encodeURIComponent(message.image.imageUrl)}`
-            console.log('URL da imagem válida:', mediaInfo.url)
-          } else {
-            console.warn('URL da imagem inválida:', message.image.imageUrl)
-            mediaInfo.url = message.image.imageUrl // Usar URL original como fallback
-          }
-        } catch (error) {
-          console.error('Erro ao validar URL da imagem:', error)
-          mediaInfo.url = message.image.imageUrl // Usar URL original como fallback
-        }
-      }
     } else if (message.audio) {
       userMessage = '🎵 Áudio'
+      
+      // FLUXO OBRIGATÓRIO: Download e salvamento no Firebase Storage
+      let storageUrl = message.audio.audioUrl
+      if (message.audio.audioUrl && !isFirebaseStorageUrl(message.audio.audioUrl)) {
+        console.log('Download e salvamento de áudio no Firebase Storage...')
+        const storageResult = await downloadAndSaveMedia(
+          message.audio.audioUrl,
+          'audio',
+          `audio_${Date.now()}.mp3`
+        )
+        
+        if (storageResult.success) {
+          storageUrl = storageResult.publicUrl!
+          console.log('Áudio salvo no Storage:', storageUrl)
+        } else {
+          console.error('Erro ao salvar áudio no Storage:', storageResult.error)
+          // Usar URL original como fallback
+          storageUrl = message.audio.audioUrl
+        }
+      }
+      
       mediaInfo = {
         type: 'audio',
-        url: message.audio.audioUrl,
+        url: storageUrl,
         mimeType: message.audio.mimeType
-      }
-      // Validar URL do áudio
-      if (message.audio.audioUrl) {
-        try {
-          const testResponse = await fetch(message.audio.audioUrl, { method: 'HEAD' })
-          if (testResponse.ok) {
-            mediaInfo.url = `/api/media/${encodeURIComponent(message.audio.audioUrl)}`
-            console.log('URL do áudio válida:', mediaInfo.url)
-          } else {
-            console.warn('URL do áudio inválida:', message.audio.audioUrl)
-            mediaInfo.url = message.audio.audioUrl // Usar URL original como fallback
-          }
-        } catch (error) {
-          console.error('Erro ao validar URL do áudio:', error)
-          mediaInfo.url = message.audio.audioUrl // Usar URL original como fallback
-        }
       }
     } else if (message.video) {
       userMessage = `🎬 Vídeo${message.video.caption ? `: ${message.video.caption}` : ''}`
+      
+      // FLUXO OBRIGATÓRIO: Download e salvamento no Firebase Storage
+      let storageUrl = message.video.videoUrl
+      if (message.video.videoUrl && !isFirebaseStorageUrl(message.video.videoUrl)) {
+        console.log('Download e salvamento de vídeo no Firebase Storage...')
+        const storageResult = await downloadAndSaveMedia(
+          message.video.videoUrl,
+          'video',
+          `video_${Date.now()}.mp4`
+        )
+        
+        if (storageResult.success) {
+          storageUrl = storageResult.publicUrl!
+          console.log('Vídeo salvo no Storage:', storageUrl)
+        } else {
+          console.error('Erro ao salvar vídeo no Storage:', storageResult.error)
+          // Usar URL original como fallback
+          storageUrl = message.video.videoUrl
+        }
+      }
+      
       mediaInfo = {
         type: 'video',
-        url: message.video.videoUrl,
+        url: storageUrl,
         caption: message.video.caption,
         mimeType: message.video.mimeType
       }
-      // Validar URL do vídeo
-      if (message.video.videoUrl) {
-        try {
-          const testResponse = await fetch(message.video.videoUrl, { method: 'HEAD' })
-          if (testResponse.ok) {
-            mediaInfo.url = `/api/media/${encodeURIComponent(message.video.videoUrl)}`
-            console.log('URL do vídeo válida:', mediaInfo.url)
-          } else {
-            console.warn('URL do vídeo inválida:', message.video.videoUrl)
-            mediaInfo.url = message.video.videoUrl // Usar URL original como fallback
-          }
-        } catch (error) {
-          console.error('Erro ao validar URL do vídeo:', error)
-          mediaInfo.url = message.video.videoUrl // Usar URL original como fallback
-        }
-      }
     } else if (message.document) {
       userMessage = `📄 ${message.document.title || 'Documento'}`
+      
+      // FLUXO OBRIGATÓRIO: Download e salvamento no Firebase Storage
+      let storageUrl = message.document.documentUrl
+      if (message.document.documentUrl && !isFirebaseStorageUrl(message.document.documentUrl)) {
+        console.log('Download e salvamento de documento no Firebase Storage...')
+        const storageResult = await downloadAndSaveMedia(
+          message.document.documentUrl,
+          'document',
+          message.document.title || `document_${Date.now()}.pdf`
+        )
+        
+        if (storageResult.success) {
+          storageUrl = storageResult.publicUrl!
+          console.log('Documento salvo no Storage:', storageUrl)
+        } else {
+          console.error('Erro ao salvar documento no Storage:', storageResult.error)
+          // Usar URL original como fallback
+          storageUrl = message.document.documentUrl
+        }
+      }
+      
       mediaInfo = {
         type: 'document',
-        url: message.document.documentUrl,
+        url: storageUrl,
         title: message.document.title,
         mimeType: message.document.mimeType,
         pageCount: message.document.pageCount
-      }
-      // Validar URL do documento
-      if (message.document.documentUrl) {
-        try {
-          const testResponse = await fetch(message.document.documentUrl, { method: 'HEAD' })
-          if (testResponse.ok) {
-            mediaInfo.url = `/api/media/${encodeURIComponent(message.document.documentUrl)}`
-            console.log('URL do documento válida:', mediaInfo.url)
-          } else {
-            console.warn('URL do documento inválida:', message.document.documentUrl)
-            mediaInfo.url = message.document.documentUrl // Usar URL original como fallback
-          }
-        } catch (error) {
-          console.error('Erro ao validar URL do documento:', error)
-          mediaInfo.url = message.document.documentUrl // Usar URL original como fallback
-        }
       }
     } else if (message.contact) {
       userMessage = `👤 ${message.contact.displayName}`

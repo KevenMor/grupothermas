@@ -17,12 +17,33 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    console.log('=== CARREGANDO MENSAGENS ===')
+    console.log('ChatId:', chatId)
+    
+    // Verificar se a conversa existe
+    const conversationDoc = await adminDB.collection('conversations').doc(chatId).get()
+    
+    if (!conversationDoc.exists) {
+      console.log('Conversa não encontrada:', chatId)
+      return NextResponse.json([])
+    }
+    
+    const conversationData = conversationDoc.data()
+    console.log('Dados da conversa:', {
+      customerPhone: conversationData?.customerPhone,
+      customerName: conversationData?.customerName,
+      lastMessage: conversationData?.lastMessage
+    })
+
+    // Buscar mensagens APENAS desta conversa específica
     const messagesSnapshot = await adminDB
       .collection('conversations')
       .doc(chatId)
       .collection('messages')
       .orderBy('timestamp', 'asc')
       .get()
+
+    console.log(`Encontradas ${messagesSnapshot.size} mensagens para o chat ${chatId}`)
 
     if (messagesSnapshot.empty) {
       return NextResponse.json([])
@@ -32,6 +53,8 @@ export async function GET(request: NextRequest) {
     for (const doc of messagesSnapshot.docs) {
       try {
         const data = doc.data()
+        // Filtrar mensagens que não pertencem ao chatId
+        if (data.chatId && data.chatId !== chatId) continue;
         let isoTimestamp: string
         const rawTs = data.timestamp
         if (!rawTs) {
@@ -45,30 +68,32 @@ export async function GET(request: NextRequest) {
           const parsed = new Date(rawTs)
           isoTimestamp = isNaN(parsed.valueOf()) ? new Date().toISOString() : parsed.toISOString()
         }
-
         messages.push({
           id: doc.id,
           content: data.content || '',
           timestamp: isoTimestamp,
           role: data.role || data.sender || 'user',
           status: data.status || 'sent',
-          // Incluir informações do agente se disponíveis
           userName: data.userName,
           agentId: data.agentId,
           agentName: data.agentName,
-          // Incluir informações de mídia se disponíveis
           mediaType: data.mediaType,
           mediaUrl: data.mediaUrl,
           mediaInfo: data.mediaInfo,
-          // Incluir informações de resposta se disponíveis
-          replyTo: data.replyTo
+          replyTo: data.replyTo,
+          origin: data.origin || 'unknown',
+          fromMe: data.fromMe || false,
+          chatId: data.chatId || chatId,
+          customerPhone: data.customerPhone || chatId
         })
       } catch (err) {
         console.error('Erro ao mapear mensagem', doc.id, err)
       }
     }
 
+    console.log(`Total de mensagens válidas carregadas: ${messages.length}`)
     return NextResponse.json(messages)
+    
   } catch (error) {
     console.error(`Erro ao buscar mensagens para o chat ${chatId}:`, error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -87,6 +112,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Verificar se a conversa existe
+    const conversationDoc = await adminDB.collection('conversations').doc(chatId).get()
+    if (!conversationDoc.exists) {
+      return NextResponse.json({ error: 'Conversa não encontrada' }, { status: 404 })
+    }
+
     // Preparar objeto de mensagem com status inicial "sending"
     const baseMessage: Partial<ChatMessage> = {
       content,
@@ -96,6 +127,9 @@ export async function POST(request: NextRequest) {
       userName: userName || 'Atendente',
       agentId: agentId,
       agentName: userName || 'Atendente',
+      chatId: chatId, // Garantir que o chatId está correto
+      origin: 'panel', // Marcar origem como painel
+      fromMe: true, // Marcar como enviada pelo painel
       ...(replyTo ? { replyTo } : {})
     }
 
@@ -150,7 +184,8 @@ export async function POST(request: NextRequest) {
     await adminDB.collection('conversations').doc(chatId).set({
       lastMessage: content,
       timestamp: baseMessage.timestamp,
-      customerPhone: phone
+      customerPhone: phone,
+      unreadCount: 0 // Reset unread count when agent sends message
     }, { merge: true })
 
     const savedData = (await messageRef.get()).data() as Omit<ChatMessage, 'id'>

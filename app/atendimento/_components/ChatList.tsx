@@ -8,7 +8,7 @@ import { Archive, ListFilter, Loader2, Search, Plus, Bot, BotOff, User, CheckCir
 import { cn } from '@/lib/utils'
 import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface ChatListProps {
   chats: Chat[]
@@ -166,6 +166,13 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
       setIsSaving(false)
     }
   }
+
+  useEffect(() => {
+    if (totalUnread > 0) {
+      const audio = new Audio('https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa1c82.mp3')
+      audio.play().catch(() => {})
+    }
+  }, [totalUnread])
 
   return (
     <div className="w-[380px] border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800/50">
