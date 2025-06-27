@@ -227,6 +227,14 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
     }
   }
 
+  // --- NOVA LÓGICA: Só renderizar se houver conteúdo real ---
+  const hasRealContent = (
+    (message.content && message.content !== '[Mensagem sem texto]') ||
+    message.mediaType ||
+    (message.reactions && message.reactions.length > 0)
+  )
+  if (!hasRealContent) return null;
+
   return (
     <>
       {isFirstOfDay && (
@@ -511,7 +519,6 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   {renderMessageWithBreaks(message.content)}
                 </div>
               )}
-              {!message.content && !message.mediaType ? <span style={{color: 'red'}}>[Sem conteúdo]</span> : null}
             </div>
             {/* Status da mensagem */}
             <div className="flex justify-end mt-1">

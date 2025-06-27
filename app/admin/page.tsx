@@ -37,7 +37,8 @@ import {
   FileText,
   Plus,
   Trash2,
-  User
+  User,
+  Info
 } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { adminDB } from '@/lib/firebaseAdmin'
@@ -650,11 +651,11 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="training" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 rounded-lg">
               <BookOpen className="h-4 w-4" />
-              Treinamento
+              TREINAMENTO IA
             </TabsTrigger>
             <TabsTrigger value="integration" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 rounded-lg">
-              <Wifi className="h-4 w-4" />
-              Integração
+              <Wifi className="h-5 w-5 text-green-600" />
+              Z-API
             </TabsTrigger>
             <TabsTrigger value="testing" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 rounded-lg">
               <TestTube className="h-4 w-4" />
@@ -735,123 +736,67 @@ export default function AdminPage() {
                       </div>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="openaiMaxTokens">Máximo de Tokens</Label>
-                    <Input
-                      id="openaiMaxTokens"
-                      name="openaiMaxTokens"
-                      type="number"
-                      value={config.openaiMaxTokens}
-                      onChange={handleInputChange}
-                      min="100"
-                      max="4000"
-                    />
-                    <p className="text-xs text-gray-500">Controla o tamanho máximo das respostas</p>
-                  </div>
                 </CardContent>
               </Card>
 
-              {/* Delay Humanizado */}
+              {/* Informações Adicionais */}
               <Card className="shadow-sm border-gray-200 dark:border-gray-700">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Clock className="h-5 w-5 text-purple-600" />
-                    Delay Humanizado
+                    <Info className="h-5 w-5 text-green-600" />
+                    Informações
                   </CardTitle>
                   <CardDescription>
-                    Configure delays para tornar as respostas mais naturais
+                    Configurações adicionais disponíveis em outros menus
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="responseDelayMin">Delay Mínimo (segundos)</Label>
-                      <Input
-                        id="responseDelayMin"
-                        name="responseDelayMin"
-                        type="number"
-                        value={config.responseDelayMin}
-                        onChange={handleInputChange}
-                        min="1"
-                        max="10"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="responseDelayMax">Delay Máximo (segundos)</Label>
-                      <Input
-                        id="responseDelayMax"
-                        name="responseDelayMax"
-                        type="number"
-                        value={config.responseDelayMax}
-                        onChange={handleInputChange}
-                        min="2"
-                        max="15"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      <strong>Recomendação:</strong> Use 2-5 segundos para simular tempo de digitação humano
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                      📝 Prompt do Sistema
+                    </h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                      Configure mensagens de boas-vindas, erro e transferência no menu "TREINAMENTO IA"
                     </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const trainingTab = document.querySelector('[data-value="training"]') as HTMLElement
+                        if (trainingTab) trainingTab.click()
+                      }}
+                      className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                    >
+                      Ir para TREINAMENTO IA
+                    </Button>
+                  </div>
+
+                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-2">
+                      ⏱️ Delay Humanizado
+                    </h4>
+                    <p className="text-sm text-purple-700 dark:text-purple-300 mb-3">
+                      Configure delays para tornar as respostas mais naturais no menu "TREINAMENTO IA"
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const trainingTab = document.querySelector('[data-value="training"]') as HTMLElement
+                        if (trainingTab) trainingTab.click()
+                      }}
+                      className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                    >
+                      Ir para TREINAMENTO IA
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             </div>
-
-            {/* Prompt do Sistema */}
-            <Card className="mt-6 shadow-sm border-gray-200 dark:border-gray-700">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <MessageSquare className="h-5 w-5 text-green-600" />
-                  Prompt do Sistema
-                </CardTitle>
-                <CardDescription>
-                  Configure a personalidade e comportamento da IA
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="welcomeMessage">Mensagem de Boas-vindas</Label>
-                  <textarea
-                    id="welcomeMessage"
-                    name="welcomeMessage"
-                    value={config.welcomeMessage}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="fallbackMessage">Mensagem de Erro</Label>
-                  <textarea
-                    id="fallbackMessage"
-                    name="fallbackMessage"
-                    value={config.fallbackMessage}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="handoffMessage">Mensagem de Transferência</Label>
-                  <textarea
-                    id="handoffMessage"
-                    name="handoffMessage"
-                    value={config.handoffMessage}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-                  />
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="training">
-            <TrainingSection />
+            <TrainingSection config={config} handleInputChange={handleInputChange} />
           </TabsContent>
 
           <TabsContent value="integration">
@@ -861,7 +806,7 @@ export default function AdminPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Wifi className="h-5 w-5 text-green-600" />
-                    Configuração Z-API
+                    Z-API
                   </CardTitle>
                   <CardDescription>
                     Configure suas credenciais Z-API para integração WhatsApp
@@ -1383,7 +1328,7 @@ export default function AdminPage() {
 }
 
 // Componente de Treinamento da IA
-const TrainingSection = () => {
+const TrainingSection = ({ config, handleInputChange }: { config: AdminConfig, handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void }) => {
   const [activeTrainingTab, setActiveTrainingTab] = React.useState<'faq' | 'products' | 'policies' | 'personality'>('faq')
   const [faqItems, setFaqItems] = React.useState<Array<{id: string, question: string, answer: string}>>([])
   const [products, setProducts] = React.useState<Array<{id: string, name: string, description: string, price: string}>>([])
@@ -1519,7 +1464,7 @@ const TrainingSection = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Treinamento da IA
+            TREINAMENTO IA
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             Configure o conhecimento e personalidade da IA
@@ -1727,7 +1672,8 @@ const TrainingSection = () => {
             <div className="space-y-6">
               <h3 className="text-lg font-semibold">Configuração de Personalidade</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Configuração Básica */}
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Tom de Voz</Label>
@@ -1756,9 +1702,7 @@ const TrainingSection = () => {
                       <option value="empathetic">Empático</option>
                     </select>
                   </div>
-                </div>
 
-                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Mensagem de Saudação</Label>
                     <textarea
@@ -1778,7 +1722,86 @@ const TrainingSection = () => {
                     />
                   </div>
                 </div>
+
+                {/* Prompt do Sistema */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Mensagem de Boas-vindas</Label>
+                    <textarea
+                      value={config.welcomeMessage}
+                      onChange={handleInputChange}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 min-h-[80px] resize-vertical"
+                      placeholder="Mensagem inicial quando o cliente inicia uma conversa..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Mensagem de Erro/Fallback</Label>
+                    <textarea
+                      value={config.fallbackMessage}
+                      onChange={handleInputChange}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 min-h-[80px] resize-vertical"
+                      placeholder="Mensagem quando a IA não entende a pergunta..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Mensagem de Transferência</Label>
+                    <textarea
+                      value={config.handoffMessage}
+                      onChange={handleInputChange}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 min-h-[80px] resize-vertical"
+                      placeholder="Mensagem quando transfere para atendente humano..."
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* Delay Humanizado */}
+              <Card className="shadow-sm border-gray-200 dark:border-gray-700">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Clock className="h-5 w-5 text-purple-600" />
+                    Delay Humanizado
+                  </CardTitle>
+                  <CardDescription>
+                    Configure delays para tornar as respostas mais naturais
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="responseDelayMin">Delay Mínimo (segundos)</Label>
+                      <Input
+                        id="responseDelayMin"
+                        name="responseDelayMin"
+                        type="number"
+                        value={config.responseDelayMin}
+                        onChange={handleInputChange}
+                        min="1"
+                        max="10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="responseDelayMax">Delay Máximo (segundos)</Label>
+                      <Input
+                        id="responseDelayMax"
+                        name="responseDelayMax"
+                        type="number"
+                        value={config.responseDelayMax}
+                        onChange={handleInputChange}
+                        min="2"
+                        max="15"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>Recomendação:</strong> Use 2-5 segundos para simular tempo de digitação humano
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
 
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                 <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
@@ -1789,6 +1812,7 @@ const TrainingSection = () => {
                   <p><strong>Estilo:</strong> {personality.style}</p>
                   <p><strong>Saudação:</strong> "{personality.greeting}"</p>
                   <p><strong>Assinatura:</strong> "{personality.signature}"</p>
+                  <p><strong>Delay:</strong> {config.responseDelayMin}-{config.responseDelayMax} segundos</p>
                 </div>
               </div>
             </div>

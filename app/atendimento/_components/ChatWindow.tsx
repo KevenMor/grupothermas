@@ -707,67 +707,46 @@ const MessageInput = ({
       
       // Verificar se o FFmpeg é suportado
       if (!isFFmpegSupported()) {
-        console.warn('FFmpeg não suportado, usando conversão básica')
-        await sendLog('warn', 'audio', 'FFmpeg não suportado, usando conversão básica', {
-          userAgent: navigator.userAgent
-        })
-        
-        // Fallback para conversão básica
-        if (mimeType.includes('mp3')) {
-          mp3Blob = audioBlob
-        } else {
-          // Tentar conversão básica
-          const arrayBuffer = await audioBlob.arrayBuffer()
-          mp3Blob = new Blob([arrayBuffer], { type: 'audio/mp3' })
-        }
+        const errorMsg = 'Conversão de áudio indisponível: FFmpeg não suportado neste navegador. Envio de áudio abortado.';
+        console.error(errorMsg);
+        await sendLog('error', 'audio', errorMsg, { userAgent: navigator.userAgent });
+        alert(errorMsg);
+        return;
       } else {
         // Usar conversão real com FFmpeg
         console.log('🔄 Usando conversão real com FFmpeg...')
-        
         try {
           const convertedFormats = await convertAudioToMultipleFormats(audioBlob)
           mp3Blob = convertedFormats.mp3Blob
           oggBlob = convertedFormats.oggBlob
-          
           console.log('✅ Conversão FFmpeg concluída:', {
             mp3Success: !!mp3Blob,
             oggSuccess: !!oggBlob,
             mp3Size: mp3Blob?.size,
             oggSize: oggBlob?.size
           })
-          
           await sendLog('info', 'audio', 'Conversão FFmpeg concluída', {
             mp3Success: !!mp3Blob,
             oggSuccess: !!oggBlob,
             mp3Size: mp3Blob?.size,
             oggSize: oggBlob?.size
           })
-          
         } catch (ffmpegError) {
-          console.error('❌ Erro na conversão FFmpeg:', ffmpegError)
-          await sendLog('error', 'audio', 'Erro na conversão FFmpeg', {
-            error: ffmpegError instanceof Error ? ffmpegError.message : 'Unknown error'
-          })
-          
-          // Fallback para conversão básica
-          if (mimeType.includes('mp3')) {
-            mp3Blob = audioBlob
-          } else {
-            const arrayBuffer = await audioBlob.arrayBuffer()
-            mp3Blob = new Blob([arrayBuffer], { type: 'audio/mp3' })
-          }
+          const errorMsg = 'Erro na conversão de áudio com FFmpeg. Envio de áudio abortado.';
+          console.error('❌', errorMsg, ffmpegError);
+          await sendLog('error', 'audio', errorMsg, { error: ffmpegError instanceof Error ? ffmpegError.message : 'Unknown error' });
+          alert(errorMsg + '\n' + (ffmpegError instanceof Error ? ffmpegError.message : ''));
+          return;
         }
       }
-      
+
       // Validar blobs convertidos
-      if (mp3Blob && !validateAudioBlob(mp3Blob, 'audio/mpeg')) {
-        console.warn('MP3 convertido inválido, tentando novamente...')
-        mp3Blob = null
-      }
-      
-      if (oggBlob && !validateAudioBlob(oggBlob, 'audio/ogg')) {
-        console.warn('OGG convertido inválido, removendo...')
-        oggBlob = null
+      if (!mp3Blob && !oggBlob) {
+        const errorMsg = 'Nenhum formato de áudio foi convertido com sucesso. Envio abortado.';
+        console.error(errorMsg);
+        await sendLog('error', 'audio', errorMsg, {});
+        alert(errorMsg);
+        return;
       }
       
       // Upload dos formatos disponíveis

@@ -372,6 +372,20 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // --- NOVA LÓGICA: Só salvar mensagem se houver conteúdo real ---
+    const hasRealContent = (
+      (content && content !== '[Mensagem sem texto]') ||
+      (mediaInfo && mediaInfo.url) ||
+      (mediaInfo && mediaInfo.type === 'reaction') ||
+      (body.contact) ||
+      (body.location)
+    )
+
+    if (!hasRealContent) {
+      console.log('Ignorando mensagem sem conteúdo real. Não será salva no Firestore.')
+      return NextResponse.json({ ignored: true, reason: 'empty_message' })
+    }
+
     // Salvar mensagem no Firestore
     const msg: Partial<ChatMessage> = {
       content,
