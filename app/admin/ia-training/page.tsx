@@ -160,7 +160,7 @@ export default function IATrainingPage() {
       const response = await fetch('/api/admin/training-save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ training: trainingData })
+        body: JSON.stringify({ agent: trainingData })
       });
 
       if (response.ok) {
