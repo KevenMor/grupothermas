@@ -54,31 +54,55 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
     }
   }
 
+  // Badge de mensagens não lidas com animação
+  const renderUnreadBadge = () => {
+    if (chat.unreadCount > 0) {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold min-w-[20px] h-5 px-1.5 shadow-lg border-2 border-white dark:border-gray-800 animate-pulse">
+            {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+          </span>
+          {chat.unreadCount > 0 && (
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+          )}
+        </div>
+      )
+    }
+    return null
+  }
+
   return (
     <button
       onClick={() => onSelectChat(chat)}
       className={cn(
-        "w-full text-left flex items-start p-3 gap-3 transition-colors border-l-4",
+        "w-full text-left flex items-start p-3 gap-3 transition-all duration-200 border-l-4 relative",
         getStatusColor(),
-        isSelected ? "bg-white dark:bg-gray-800" : "hover:bg-gray-100 dark:hover:bg-gray-700/50"
+        isSelected ? "bg-white dark:bg-gray-800 shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-700/50",
+        chat.unreadCount > 0 && !isSelected ? "bg-red-50 dark:bg-red-900/10" : ""
       )}
     >
-      <Avatar className="w-12 h-12 border-2 border-transparent">
-        <AvatarImage src={chat.customerAvatar} />
-        <AvatarFallback className="text-lg bg-gray-200 dark:bg-gray-700">
-          {chat.customerName.charAt(0)}
-        </AvatarFallback>
-      </Avatar>
+      {/* Indicador de mensagens não lidas no avatar */}
+      <div className="relative">
+        <Avatar className="w-12 h-12 border-2 border-transparent">
+          <AvatarImage src={chat.customerAvatar} />
+          <AvatarFallback className="text-lg bg-gray-200 dark:bg-gray-700">
+            {chat.customerName.charAt(0)}
+          </AvatarFallback>
+        </Avatar>
+        {chat.unreadCount > 0 && (
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse"></div>
+        )}
+      </div>
+      
       <div className="flex-grow truncate border-b border-gray-200 dark:border-gray-700 pb-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate flex items-center">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <h3 className={cn(
+              "font-semibold text-sm truncate flex items-center gap-2",
+              chat.unreadCount > 0 ? "text-gray-900 dark:text-gray-100 font-bold" : "text-gray-800 dark:text-gray-100"
+            )}>
               {chat.customerName}
-              {chat.unreadCount > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-green-500 text-white text-xs font-bold w-6 h-6 shadow border-2 border-white dark:border-gray-800 animate-pulse">
-                  {chat.unreadCount}
-                </span>
-              )}
+              {renderUnreadBadge()}
             </h3>
             {getStatusIcon()}
             {chat.aiEnabled && !chat.aiPaused && (
@@ -88,26 +112,57 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
               <div title="IA Pausada"><BotOff className="w-3 h-3 text-gray-400" /></div>
             )}
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimestamp(chat.timestamp)}</span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimestamp(chat.timestamp)}</span>
+            {chat.unreadCount > 0 && (
+              <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+                {chat.unreadCount} nova{chat.unreadCount > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{chat.customerPhone}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{chat.lastMessage}</p>
+        <p className={cn(
+          "text-sm truncate",
+          chat.unreadCount > 0 ? "text-gray-900 dark:text-gray-100 font-medium" : "text-gray-500 dark:text-gray-400"
+        )}>
+          {chat.lastMessage}
+        </p>
       </div>
     </button>
   )
 }
 
 export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatListProps) {
+  const [searchTerm, setSearchTerm] = useState('')
   const [showAddContact, setShowAddContact] = useState(false)
   const [newContact, setNewContact] = useState({ name: '', phone: '' })
   const [isSaving, setIsSaving] = useState(false)
 
-  // Filtrar chats por status/aba
+  // Calcular total de mensagens não lidas
+  const totalUnread = chats.reduce((sum, chat) => sum + chat.unreadCount, 0)
+  const unreadChats = chats.filter(chat => chat.unreadCount > 0).length
+
+  // Filtrar chats por status
   const chatsByStatus = {
     waiting: chats.filter(chat => chat.conversationStatus === 'waiting'),
     ai_active: chats.filter(chat => chat.conversationStatus === 'ai_active'),
     agent_assigned: chats.filter(chat => chat.conversationStatus === 'agent_assigned'),
     resolved: chats.filter(chat => chat.conversationStatus === 'resolved')
+  }
+
+  // Filtrar por termo de busca
+  const filteredChats = chats.filter(chat =>
+    chat.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    chat.customerPhone.includes(searchTerm) ||
+    chat.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const filteredChatsByStatus = {
+    waiting: filteredChats.filter(chat => chat.conversationStatus === 'waiting'),
+    ai_active: filteredChats.filter(chat => chat.conversationStatus === 'ai_active'),
+    agent_assigned: filteredChats.filter(chat => chat.conversationStatus === 'agent_assigned'),
+    resolved: filteredChats.filter(chat => chat.conversationStatus === 'resolved')
   }
 
   const handleAddContact = async () => {
@@ -132,7 +187,18 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
     <div className="w-[380px] border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800/50">
       {/* Botão fixo para adicionar contato */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky top-0 z-10">
-        <span className="font-semibold text-gray-700 dark:text-gray-100 text-lg">Conversas</span>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-gray-700 dark:text-gray-100 text-lg">Conversas</span>
+          {/* Indicador de mensagens pendentes */}
+          {totalUnread > 0 && (
+            <div className="flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-900/30 rounded-full">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium text-red-700 dark:text-red-300">
+                {totalUnread} não lida{totalUnread > 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+        </div>
         <Button variant="outline" size="icon" className="border-green-600 text-green-600 hover:bg-green-50" onClick={() => setShowAddContact(true)}>
           <Plus className="w-6 h-6" />
         </Button>
@@ -140,14 +206,23 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
       
       <Tabs defaultValue="chats" className="flex-grow flex flex-col">
         <TabsList className="px-4 grid grid-cols-4">
-          <TabsTrigger value="chats" className="text-xs">
+          <TabsTrigger value="chats" className="text-xs relative">
             Chats ({chatsByStatus.waiting.length})
+            {chatsByStatus.waiting.some(chat => chat.unreadCount > 0) && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="ia" className="text-xs">
+          <TabsTrigger value="ia" className="text-xs relative">
             IA ({chatsByStatus.ai_active.length})
+            {chatsByStatus.ai_active.some(chat => chat.unreadCount > 0) && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="andamento" className="text-xs">
+          <TabsTrigger value="andamento" className="text-xs relative">
             Andamento ({chatsByStatus.agent_assigned.length})
+            {chatsByStatus.agent_assigned.some(chat => chat.unreadCount > 0) && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            )}
           </TabsTrigger>
           <TabsTrigger value="resolvidos" className="text-xs">
             Resolvidos ({chatsByStatus.resolved.length})
@@ -163,7 +238,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
               </div>
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {chatsByStatus.waiting.map((chat) => (
+                {filteredChatsByStatus.waiting.map((chat) => (
                   <ChatListItem
                     key={chat.id}
                     chat={chat}
@@ -171,7 +246,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
                     onSelectChat={onSelectChat}
                   />
                 ))}
-                {chatsByStatus.waiting.length === 0 && (
+                {filteredChatsByStatus.waiting.length === 0 && (
                   <div className="p-8 text-center text-gray-500">
                     <p>Nenhuma conversa aguardando</p>
                   </div>
@@ -183,7 +258,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
           {/* Aba IA - Conversas com IA ativa */}
           <TabsContent value="ia" className="m-0">
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {chatsByStatus.ai_active.map((chat) => (
+              {filteredChatsByStatus.ai_active.map((chat) => (
                 <ChatListItem
                   key={chat.id}
                   chat={chat}
@@ -191,7 +266,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
                   onSelectChat={onSelectChat}
                 />
               ))}
-              {chatsByStatus.ai_active.length === 0 && (
+              {filteredChatsByStatus.ai_active.length === 0 && (
                 <div className="p-8 text-center text-gray-500">
                   <p>Nenhuma conversa com IA ativa</p>
                 </div>
@@ -202,7 +277,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
           {/* Aba Andamento - Conversas com agentes */}
           <TabsContent value="andamento" className="m-0">
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {chatsByStatus.agent_assigned.map((chat) => (
+              {filteredChatsByStatus.agent_assigned.map((chat) => (
                 <ChatListItem
                   key={chat.id}
                   chat={chat}
@@ -210,7 +285,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
                   onSelectChat={onSelectChat}
                 />
               ))}
-              {chatsByStatus.agent_assigned.length === 0 && (
+              {filteredChatsByStatus.agent_assigned.length === 0 && (
                 <div className="p-8 text-center text-gray-500">
                   <p>Nenhuma conversa em andamento</p>
                 </div>
@@ -221,7 +296,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
           {/* Aba Resolvidos */}
           <TabsContent value="resolvidos" className="m-0">
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {chatsByStatus.resolved.map((chat) => (
+              {filteredChatsByStatus.resolved.map((chat) => (
                 <ChatListItem
                   key={chat.id}
                   chat={chat}
@@ -229,7 +304,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
                   onSelectChat={onSelectChat}
                 />
               ))}
-              {chatsByStatus.resolved.length === 0 && (
+              {filteredChatsByStatus.resolved.length === 0 && (
                 <div className="p-8 text-center text-gray-500">
                   <p>Nenhuma conversa resolvida</p>
                 </div>

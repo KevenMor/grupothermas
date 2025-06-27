@@ -91,8 +91,31 @@ export default function AtendimentoPage() {
   }, [])
 
   const handleSelectChat = async (chat: Chat) => {
-    if (selectedChat?.id === chat.id) return
     setSelectedChat(chat)
+    
+    // Marcar mensagens como lidas se houver mensagens não lidas
+    if (chat.unreadCount > 0) {
+      try {
+        await fetch(`/api/atendimento/chats/${chat.customerPhone}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ markAsRead: true })
+        })
+        
+        // Atualizar o estado local para refletir a mudança imediatamente
+        setChats(prevChats => 
+          prevChats.map(c => 
+            c.id === chat.id 
+              ? { ...c, unreadCount: 0 }
+              : c
+          )
+        )
+      } catch (error) {
+        console.error('Erro ao marcar mensagens como lidas:', error)
+      }
+    }
+    
+    // Buscar mensagens do chat selecionado
     fetchMessages(chat.id)
   }
 

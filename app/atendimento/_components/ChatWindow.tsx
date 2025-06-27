@@ -317,11 +317,16 @@ const ChatHeader = ({
         {/* Controles dinâmicos baseados no status */}
         {renderControls()}
         
-        {/* Controles originais */}
-        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><Phone className="w-5 h-5" /></Button>
-        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><Video className="w-5 h-5" /></Button>
-        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><Search className="w-5 h-5" /></Button>
-        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><MoreVertical className="w-5 h-5" /></Button>
+        {/* Menu de opções (desabilitado por enquanto) */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          disabled
+          title="Opções em breve"
+        >
+          <MoreVertical className="w-5 h-5" />
+        </Button>
       </div>
     </div>
   )
