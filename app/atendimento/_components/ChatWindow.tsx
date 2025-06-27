@@ -48,6 +48,7 @@ interface ChatWindowProps {
   onEditMessage?: (message: ChatMessage) => void
   onDeleteMessage?: (messageId: string) => void
   onMessageInfo?: (message: ChatMessage) => void
+  onCustomerUpdate?: (data: Partial<Chat>) => void
 }
 
 const WelcomeScreen = () => (
@@ -69,13 +70,15 @@ const ChatHeader = ({
   onToggleAI, 
   onAssignAgent, 
   onMarkResolved,
-  onAssumeChat 
+  onAssumeChat,
+  onCustomerUpdate
 }: { 
   chat: Chat
   onToggleAI?: (chatId: string, enabled: boolean) => void
   onAssignAgent?: (chatId: string) => void
   onMarkResolved?: (chatId: string) => void
   onAssumeChat?: (chatId: string) => void
+  onCustomerUpdate?: (data: Partial<Chat>) => void
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -166,20 +169,122 @@ const ChatHeader = ({
     }
   }
 
+  const [editingName, setEditingName] = useState(false)
+  const [name, setName] = useState(chat.customerName)
+  const [savingName, setSavingName] = useState(false)
+  const [editingAvatar, setEditingAvatar] = useState(false)
+  const [avatar, setAvatar] = useState(chat.customerAvatar)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setName(chat.customerName)
+    setAvatar(chat.customerAvatar)
+  }, [chat.customerName, chat.customerAvatar])
+
+  const handleNameSave = async () => {
+    if (!name.trim() || name === chat.customerName) {
+      setEditingName(false)
+      return
+    }
+    setSavingName(true)
+    try {
+      const res = await fetch(`/api/atendimento/chats/${chat.customerPhone}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerName: name })
+      })
+      if (res.ok) {
+        setEditingName(false)
+        onCustomerUpdate?.({ customerName: name })
+      }
+    } finally {
+      setSavingName(false)
+    }
+  }
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Upload para storage (pode ser Firebase Storage ou base64 temporário)
+    const formData = new FormData()
+    formData.append('file', file)
+    // Supondo endpoint /api/atendimento/upload retorna { url }
+    const res = await fetch('/api/atendimento/upload', {
+      method: 'POST',
+      body: formData
+    })
+    const data = await res.json()
+    if (data.url) {
+      setAvatar(data.url)
+      await fetch(`/api/atendimento/chats/${chat.customerPhone}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerAvatar: data.url })
+      })
+      onCustomerUpdate?.({ customerAvatar: data.url })
+    }
+  }
+
   return (
     <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <div className="flex items-center gap-3">
-        <Avatar className="w-10 h-10">
-          <AvatarImage src={chat.customerAvatar} />
-          <AvatarFallback>{chat.customerName.charAt(0)}</AvatarFallback>
-        </Avatar>
+        <div className="relative group">
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={avatar} />
+            <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <button
+            className="absolute bottom-0 right-0 bg-white dark:bg-gray-700 rounded-full p-1 shadow group-hover:opacity-100 opacity-60 transition-opacity border border-gray-300 dark:border-gray-600"
+            onClick={handleAvatarClick}
+            title="Editar foto"
+            type="button"
+          >
+            <Camera className="w-4 h-4 text-gray-600 dark:text-gray-200" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+        </div>
         <div>
-          <h3 className="font-semibold text-gray-800 dark:text-gray-100">{chat.customerName}</h3>
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onBlur={handleNameSave}
+                onKeyDown={e => { if (e.key === 'Enter') handleNameSave() }}
+                className="h-7 text-sm px-2 py-1"
+                autoFocus
+                disabled={savingName}
+              />
+              <Button size="icon" variant="ghost" onClick={handleNameSave} disabled={savingName}>
+                <CheckCircle className="w-4 h-4 text-green-600" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-100">{name}</h3>
+              <button
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                onClick={() => setEditingName(true)}
+                title="Editar nome"
+                type="button"
+              >
+                <Edit className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+          )}
           <p className="text-xs text-gray-500 dark:text-gray-400">{chat.customerPhone}</p>
           <div className="flex items-center gap-2">
-            <p className={`text-sm ${getStatusColor(chat.conversationStatus || 'waiting')}`}>
-              {getStatusText(chat.conversationStatus || 'waiting')}
-            </p>
+            <p className={`text-sm ${getStatusColor(chat.conversationStatus || 'waiting')}`}>{getStatusText(chat.conversationStatus || 'waiting')}</p>
             {chat.conversationStatus === 'ai_active' && (
               <div title="IA Ativa"><Bot className="w-4 h-4 text-blue-500" /></div>
             )}
@@ -872,7 +977,8 @@ export function ChatWindow({
   onReplyMessage,
   onEditMessage,
   onDeleteMessage,
-  onMessageInfo
+  onMessageInfo,
+  onCustomerUpdate
 }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -1037,6 +1143,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         onAssignAgent={onAssignAgent} 
         onMarkResolved={onMarkResolved}
         onAssumeChat={handleAssumeChat}
+        onCustomerUpdate={onCustomerUpdate}
       />
       <div ref={messagesContainerRef} className="flex-1 min-h-0 p-4 overflow-y-auto bg-[url('/chat-bg.png')] dark:bg-[url('/chat-bg-dark.png')] relative">
         {/* Botão para ir para o fim */}

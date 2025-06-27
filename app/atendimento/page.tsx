@@ -325,6 +325,15 @@ export default function AtendimentoPage() {
     }
   }
 
+  // Atualização de nome/foto do cliente em tempo real
+  const handleCustomerUpdate = (data: Partial<Chat>) => {
+    if (!selectedChat) return
+    setChats(prev => prev.map(chat =>
+      chat.id === selectedChat.id ? { ...chat, ...data } : chat
+    ))
+    setSelectedChat(prev => prev ? { ...prev, ...data } : null)
+  }
+
   return (
     <AppLayout>
       <Toaster richColors position="top-right" />
@@ -346,6 +355,7 @@ export default function AtendimentoPage() {
               onAssumeChat={handleAssumeChat}
               onAssignAgent={handleAssignAgent}
               onMarkResolved={handleMarkResolved}
+              onCustomerUpdate={handleCustomerUpdate}
             />
           </div>
         </div>

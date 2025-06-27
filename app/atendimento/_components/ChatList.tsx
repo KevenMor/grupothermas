@@ -72,7 +72,14 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
       <div className="flex-grow truncate border-b border-gray-200 dark:border-gray-700 pb-3">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate">{chat.customerName}</h3>
+            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate flex items-center">
+              {chat.customerName}
+              {chat.unreadCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-green-500 text-white text-xs font-bold w-6 h-6 shadow border-2 border-white dark:border-gray-800 animate-pulse">
+                  {chat.unreadCount}
+                </span>
+              )}
+            </h3>
             {getStatusIcon()}
             {chat.aiEnabled && !chat.aiPaused && (
               <div title="IA Ativa"><Bot className="w-3 h-3 text-blue-400" /></div>
@@ -85,13 +92,6 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{chat.customerPhone}</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{chat.lastMessage}</p>
-        {chat.unreadCount > 0 && (
-          <div className="flex justify-end">
-            <Badge className="bg-green-500 text-white rounded-full h-5 w-5 flex items-center justify-center p-0 mt-1">
-              {chat.unreadCount}
-            </Badge>
-          </div>
-        )}
       </div>
     </button>
   )
