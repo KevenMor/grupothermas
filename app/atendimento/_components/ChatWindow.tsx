@@ -26,7 +26,8 @@ import {
   Edit,
   Trash2,
   Info,
-  X
+  X,
+  Square
 } from 'lucide-react'
 import { ChatMessageItem } from './ChatMessageItem'
 import { EmojiPicker } from './EmojiPicker'
@@ -216,8 +217,7 @@ const MessageInput = ({
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null)
-  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null)
-  const [showSendConfirmation, setShowSendConfirmation] = useState(false)
+
   const [showLongMessageConfirmation, setShowLongMessageConfirmation] = useState(false)
   const [pendingMessage, setPendingMessage] = useState('')
   
@@ -438,8 +438,6 @@ const MessageInput = ({
 
         recorder.onstop = async () => {
           const audioBlob = new Blob(chunks, { type: 'audio/wav' })
-          setRecordedAudio(audioBlob)
-          setShowSendConfirmation(true)
           
           // Parar timer
           if (recordingInterval) {
@@ -450,6 +448,9 @@ const MessageInput = ({
           
           // Limpar stream
           stream.getTracks().forEach(track => track.stop())
+          
+          // Enviar automaticamente sem confirmação
+          await sendAudioDirectly(audioBlob)
         }
 
         setMediaRecorder(recorder)
@@ -548,18 +549,18 @@ const MessageInput = ({
     }
   }
 
-  // Função para confirmar envio do áudio
-  const confirmSendAudio = async () => {
-    if (!recordedAudio || !chat) return
+  // Função para enviar áudio diretamente (sem confirmação)
+  const sendAudioDirectly = async (audioBlob: Blob) => {
+    if (!audioBlob || !chat) return
     
     console.log('=== INICIANDO ENVIO DE ÁUDIO ===')
     console.log('Chat:', chat.customerPhone)
-    console.log('Recorded Audio Size:', recordedAudio.size)
+    console.log('Audio Blob Size:', audioBlob.size)
     
     try {
       // Converter WAV para MP3 antes do upload
       console.log('1. Convertendo WAV para MP3...')
-      const mp3Blob = await wavToMp3(recordedAudio)
+      const mp3Blob = await wavToMp3(audioBlob)
       console.log('MP3 convertido. Tamanho:', mp3Blob.size)
       
       // Upload do áudio
@@ -625,8 +626,6 @@ const MessageInput = ({
         }
         
         window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
-        setShowSendConfirmation(false)
-        setRecordedAudio(null)
         console.log('6. Áudio adicionado à conversa com sucesso!')
         
       } else {
@@ -642,11 +641,7 @@ const MessageInput = ({
     }
   }
 
-  // Função para cancelar envio do áudio
-  const cancelSendAudio = () => {
-    setShowSendConfirmation(false)
-    setRecordedAudio(null)
-  }
+
 
   // Função para formatar tempo de gravação
   const formatRecordingTime = (seconds: number) => {
@@ -662,24 +657,39 @@ const MessageInput = ({
   return (
     <>
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        {/* Indicador de gravação */}
+        {/* Interface de gravação estilo WhatsApp */}
         {isRecording && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <div className="flex items-center justify-between">
+          <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-red-700 dark:text-red-300 font-medium">Gravando áudio</span>
-                <span className="text-red-600 dark:text-red-400 font-mono">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-red-600 dark:text-red-400 text-sm font-medium">
                   {formatRecordingTime(recordingTime)}
                 </span>
               </div>
+              
+              {/* Visualizador de onda sonora simulado */}
+              <div className="flex-1 flex items-center gap-1 px-4">
+                {[...Array(20)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-1 bg-blue-500 rounded-full animate-pulse"
+                    style={{
+                      height: `${Math.random() * 20 + 8}px`,
+                      animationDelay: `${i * 0.1}s`,
+                      animationDuration: '1s'
+                    }}
+                  />
+                ))}
+              </div>
+              
               <Button 
                 onClick={toggleRecording}
-                variant="outline"
                 size="sm"
-                className="border-red-300 text-red-700 hover:bg-red-100 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
+                className="bg-red-500 hover:bg-red-600 text-white rounded-full px-4"
               >
-                Parar
+                <Square className="w-4 h-4 mr-1" />
+                Enviar
               </Button>
             </div>
           </div>
@@ -845,25 +855,7 @@ const MessageInput = ({
         </div>
       )}
 
-      {/* Modal de Confirmação de Áudio */}
-      {showSendConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Áudio gravado</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Deseja enviar este áudio?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={cancelSendAudio}>
-                Cancelar
-              </Button>
-              <Button onClick={confirmSendAudio} className="bg-blue-600 hover:bg-blue-700 text-white">
-                Enviar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Modal de Confirmação de Mensagem Longa */}
       {showLongMessageConfirmation && (

@@ -1,6 +1,6 @@
 import { ChatMessage, ChatStatus } from '@/lib/models'
 import { cn } from '@/lib/utils'
-import { Check, CheckCheck, Clock, AlertCircle, Reply, Edit, Trash2, Info, MoreVertical, FileText, ExternalLink, User, MapPin, X } from 'lucide-react'
+import { Check, CheckCheck, Clock, AlertCircle, Reply, Edit, Trash2, Info, MoreVertical, FileText, ExternalLink, User, MapPin, X, Play, Pause } from 'lucide-react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -51,6 +51,9 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   const [showInfo, setShowInfo] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
   const [audioLoaded, setAudioLoaded] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [audioDuration, setAudioDuration] = useState(0)
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0)
 
   const isUser = message.role === 'user'
   const isAgent = message.role === 'agent'
@@ -80,15 +83,24 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
     return url.startsWith('http') ? url : `${window.location.origin}${url}`
   }
 
-  // Auto-play do áudio quando for enviado pelo atendente
-  useEffect(() => {
-    if (message.mediaType === 'audio' && message.role === 'agent' && audioRef.current && audioLoaded) {
-      // Tentar reproduzir automaticamente se o áudio foi enviado pelo atendente
-      audioRef.current.play().catch(err => {
-        console.log('Autoplay não permitido:', err)
-      })
+  // Não fazer autoplay - usuário controla reprodução manualmente
+  
+  // Controles de áudio
+  const toggleAudioPlayback = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause()
+      } else {
+        audioRef.current.play()
+      }
     }
-  }, [message.mediaType, message.role, audioLoaded])
+  }
+
+  const formatAudioTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   const handleImageClick = () => {
     if (message.mediaType === 'image' && message.mediaUrl) {
@@ -320,22 +332,75 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   </div>
                 </div>
               )}
-              {/* Áudio */}
+              {/* Áudio - Layout customizado estilo WhatsApp */}
               {message.mediaType === 'audio' && message.mediaUrl && (
-                <div className="flex flex-col items-start gap-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                <div className={`flex items-center gap-3 p-3 rounded-2xl min-w-[200px] ${
+                  isFromAgent 
+                    ? 'bg-blue-600/20' 
+                    : 'bg-gray-200 dark:bg-gray-600'
+                }`}>
+                  {/* Botão Play/Pause */}
+                  <Button
+                    onClick={toggleAudioPlayback}
+                    size="icon"
+                    className={`w-10 h-10 rounded-full ${
+                      isFromAgent 
+                        ? 'bg-white/20 hover:bg-white/30 text-white' 
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
+                  >
+                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  </Button>
+                  
+                  {/* Visualizador de onda sonora */}
+                  <div className="flex-1 flex items-center gap-1">
+                    {[...Array(12)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-1 rounded-full ${
+                          isFromAgent ? 'bg-white/40' : 'bg-gray-400'
+                        } ${isPlaying ? 'animate-pulse' : ''}`}
+                        style={{
+                          height: `${Math.random() * 16 + 8}px`,
+                          animationDelay: `${i * 0.1}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Duração */}
+                  <span className={`text-xs font-mono ${
+                    isFromAgent ? 'text-white/80' : 'text-gray-600 dark:text-gray-300'
+                  }`}>
+                    {formatAudioTime(audioCurrentTime)} / {formatAudioTime(audioDuration)}
+                  </span>
+                  
+                  {/* Elemento audio oculto */}
                   <audio 
                     ref={audioRef}
-                    controls 
                     src={getFullUrl(message.mediaUrl)}
-                    className="max-w-full"
-                    onLoadedData={() => setAudioLoaded(true)}
+                    onLoadedData={() => {
+                      setAudioLoaded(true)
+                      if (audioRef.current) {
+                        setAudioDuration(audioRef.current.duration || 0)
+                      }
+                    }}
+                    onTimeUpdate={() => {
+                      if (audioRef.current) {
+                        setAudioCurrentTime(audioRef.current.currentTime)
+                      }
+                    }}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={() => {
+                      setIsPlaying(false)
+                      setAudioCurrentTime(0)
+                    }}
                     onError={(e) => {
                       console.error('Erro ao carregar áudio:', message.mediaUrl, e);
                     }}
-                  >
-                    Seu navegador não suporta o elemento de áudio.
-                  </audio>
-                  <span className="text-xs text-gray-400 ml-1">Áudio enviado</span>
+                    style={{ display: 'none' }}
+                  />
                 </div>
               )}
               {/* Conteúdo textual */}
