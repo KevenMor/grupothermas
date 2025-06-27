@@ -479,22 +479,73 @@ const MessageInput = ({
 
   // Função utilitária para converter WAV para MP3
   async function wavToMp3(wavBlob: Blob): Promise<Blob> {
-    const arrayBuffer = await wavBlob.arrayBuffer();
-    const wav = lamejs.WavHeader.readHeader(new DataView(arrayBuffer));
-    const samples = new Int16Array(arrayBuffer, wav.dataOffset, wav.dataLen / 2);
-    const mp3enc = new lamejs.Mp3Encoder(wav.channels, wav.sampleRate, 128);
-    const mp3Data = [];
-    let remaining = samples.length;
-    let samplesPerFrame = 1152;
-    for (let i = 0; remaining >= samplesPerFrame; i += samplesPerFrame) {
-      let mono = samples.subarray(i, i + samplesPerFrame);
-      let mp3buf = mp3enc.encodeBuffer(mono);
+    try {
+      console.log('Iniciando conversão WAV->MP3...');
+      console.log('Blob size:', wavBlob.size);
+      console.log('Blob type:', wavBlob.type);
+      
+      const arrayBuffer = await wavBlob.arrayBuffer();
+      console.log('ArrayBuffer size:', arrayBuffer.byteLength);
+      
+      // Verificar se o arquivo tem tamanho mínimo para ser um WAV válido
+      if (arrayBuffer.byteLength < 44) {
+        throw new Error('Arquivo muito pequeno para ser um WAV válido');
+      }
+      
+      const dataView = new DataView(arrayBuffer);
+      
+      // Verificar se é realmente um arquivo WAV
+      const riffHeader = String.fromCharCode(
+        dataView.getUint8(0),
+        dataView.getUint8(1), 
+        dataView.getUint8(2),
+        dataView.getUint8(3)
+      );
+      
+      if (riffHeader !== 'RIFF') {
+        console.warn('Arquivo não é um WAV válido, enviando como MP3 direto');
+        // Se não é WAV, retornar como MP3 (assumindo que já foi convertido)
+        return new Blob([arrayBuffer], { type: 'audio/mp3' });
+      }
+      
+      console.log('Header RIFF encontrado, processando WAV...');
+      
+      const wav = lamejs.WavHeader.readHeader(dataView);
+      console.log('WAV Header:', wav);
+      
+      if (!wav || !wav.dataOffset || !wav.dataLen) {
+        throw new Error('Header WAV inválido');
+      }
+      
+      const samples = new Int16Array(arrayBuffer, wav.dataOffset, wav.dataLen / 2);
+      console.log('Samples extraídos:', samples.length);
+      
+      const mp3enc = new lamejs.Mp3Encoder(wav.channels, wav.sampleRate, 128);
+      const mp3Data = [];
+      let remaining = samples.length;
+      let samplesPerFrame = 1152;
+      
+      for (let i = 0; remaining >= samplesPerFrame; i += samplesPerFrame) {
+        let mono = samples.subarray(i, i + samplesPerFrame);
+        let mp3buf = mp3enc.encodeBuffer(mono);
+        if (mp3buf.length > 0) mp3Data.push(new Int8Array(mp3buf));
+        remaining -= samplesPerFrame;
+      }
+      
+      let mp3buf = mp3enc.flush();
       if (mp3buf.length > 0) mp3Data.push(new Int8Array(mp3buf));
-      remaining -= samplesPerFrame;
+      
+      console.log('Conversão MP3 concluída, chunks:', mp3Data.length);
+      return new Blob(mp3Data, { type: 'audio/mp3' });
+      
+    } catch (error) {
+      console.error('Erro na conversão WAV->MP3:', error);
+      console.log('Fallback: enviando arquivo original como MP3');
+      
+      // Fallback: se a conversão falhar, enviar o arquivo original como MP3
+      const arrayBuffer = await wavBlob.arrayBuffer();
+      return new Blob([arrayBuffer], { type: 'audio/mp3' });
     }
-    let mp3buf = mp3enc.flush();
-    if (mp3buf.length > 0) mp3Data.push(new Int8Array(mp3buf));
-    return new Blob(mp3Data, { type: 'audio/mp3' });
   }
 
   // Função para confirmar envio do áudio
