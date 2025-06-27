@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import AtendimentoForm from './AtendimentoForm';
 import AcoesForm from './AcoesForm';
+import DelayControlForm from './DelayControlForm';
 
 const TABS = [
   { key: 'atendimento', label: 'Atendimento' },
@@ -9,6 +10,7 @@ const TABS = [
   { key: 'boaspraticas', label: 'Boas Práticas' },
   { key: 'valores', label: 'Valores' },
   { key: 'memoria', label: 'Memória/Histórico' },
+  { key: 'delay', label: 'Delay Controlado' },
 ];
 
 export default function IATrainingPage() {
@@ -72,6 +74,15 @@ export default function IATrainingPage() {
               <h2 className="text-xl font-semibold mb-4">Memória Ativa e Histórico</h2>
               <p className="text-gray-500 mb-6">A IA terá acesso ao histórico completo de cada cliente, considerando todas as interações anteriores para personalizar o atendimento.</p>
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 min-h-[200px] flex items-center justify-center text-gray-400">[Visualização e busca de histórico/memória]</div>
+            </div>
+          )}
+          {tab === 'delay' && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Delay Controlado</h2>
+              <p className="text-gray-500 mb-6">Configure o tempo de delay (em segundos) aplicado em todas as respostas automáticas da IA para garantir naturalidade e evitar bloqueios de API.</p>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 min-h-[120px]">
+                <DelayControlForm />
+              </div>
             </div>
           )}
         </section>
