@@ -93,6 +93,33 @@ export default function AtendimentoPage() {
   const handleSelectChat = async (chat: Chat) => {
     setSelectedChat(chat)
     
+    // Buscar foto de perfil do WhatsApp automaticamente
+    try {
+      const avatarResponse = await fetch(`/api/zapi/avatar?phone=${chat.customerPhone}`)
+      if (avatarResponse.ok) {
+        const avatarData = await avatarResponse.json()
+        if (avatarData.avatarUrl) {
+          // Atualizar o avatar no estado local
+          setChats(prevChats => 
+            prevChats.map(c => 
+              c.id === chat.id 
+                ? { ...c, customerAvatar: avatarData.avatarUrl }
+                : c
+            )
+          )
+          
+          // Atualizar no backend também
+          await fetch(`/api/atendimento/chats/${chat.customerPhone}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customerAvatar: avatarData.avatarUrl })
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar avatar:', error)
+    }
+    
     // Marcar mensagens como lidas se houver mensagens não lidas
     if (chat.unreadCount > 0) {
       try {

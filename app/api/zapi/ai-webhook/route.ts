@@ -84,6 +84,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
+    console.log('=== WEBHOOK Z-API RECEBIDO ===')
+    console.log('Body completo:', JSON.stringify(body, null, 2))
+
     // Trava de segurança #1: Ignorar eventos gerados pelo próprio bot.
     if (body.fromMe === true) {
       console.log('Loop Prevention: Ignorando evento originado pelo bot (fromMe: true)')
@@ -116,6 +119,18 @@ export async function POST(request: NextRequest) {
         hasLocation: !!body.location
       })
       return handleMessage(body)
+    }
+
+    // Processar status de entrega de mensagens
+    if (type === 'DeliveryCallback') {
+      console.log('Status de entrega recebido:', body)
+      return handleDeliveryStatus(body)
+    }
+
+    // Processar status de leitura de mensagens
+    if (type === 'ReadCallback') {
+      console.log('Status de leitura recebido:', body)
+      return handleReadStatus(body)
     }
 
     // Ignorar todos os outros tipos de callbacks e eventos não tratados
@@ -726,6 +741,72 @@ function extractInterest(message: string): string {
   }
   
   return 'Interesse Geral'
+}
+
+async function handleDeliveryStatus(body: any) {
+  try {
+    console.log('=== PROCESSANDO STATUS DE ENTREGA ===')
+    console.log('Message ID:', body.messageId)
+    console.log('Status:', body.status)
+    console.log('Phone:', body.phone)
+    
+    if (!body.messageId || !body.phone) {
+      console.error('Dados insuficientes para processar status de entrega')
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+    
+    // Atualizar status da mensagem no Firestore
+    const conversationRef = adminDB.collection('conversations').doc(body.phone)
+    const messagesRef = conversationRef.collection('messages')
+    
+    try {
+      await messagesRef.doc(body.messageId).update({
+        status: body.status || 'delivered',
+        statusTimestamp: new Date().toISOString()
+      })
+      console.log('Status de entrega atualizado com sucesso')
+    } catch (error) {
+      console.error('Erro ao atualizar status de entrega:', error)
+    }
+    
+    return NextResponse.json({ status: 'delivery_status_updated' })
+  } catch (error) {
+    console.error('Erro ao processar status de entrega:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+async function handleReadStatus(body: any) {
+  try {
+    console.log('=== PROCESSANDO STATUS DE LEITURA ===')
+    console.log('Message ID:', body.messageId)
+    console.log('Status:', body.status)
+    console.log('Phone:', body.phone)
+    
+    if (!body.messageId || !body.phone) {
+      console.error('Dados insuficientes para processar status de leitura')
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+    
+    // Atualizar status da mensagem no Firestore
+    const conversationRef = adminDB.collection('conversations').doc(body.phone)
+    const messagesRef = conversationRef.collection('messages')
+    
+    try {
+      await messagesRef.doc(body.messageId).update({
+        status: 'read',
+        statusTimestamp: new Date().toISOString()
+      })
+      console.log('Status de leitura atualizado com sucesso')
+    } catch (error) {
+      console.error('Erro ao atualizar status de leitura:', error)
+    }
+    
+    return NextResponse.json({ status: 'read_status_updated' })
+  } catch (error) {
+    console.error('Erro ao processar status de leitura:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function GET() {
