@@ -290,6 +290,14 @@ export async function sendAudio(
 
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-audio`;
     
+    // Validar formato do áudio
+    const urlExtension = base64OrUrl.split('.').pop()?.toLowerCase()
+    const supportedFormats = ['mp3', 'ogg', 'opus']
+    
+    if (!urlExtension || !supportedFormats.includes(urlExtension)) {
+      throw new Error(`Formato de áudio não suportado: ${urlExtension}. Use apenas MP3, OGG ou Opus.`)
+    }
+    
     // Payload conforme documentação Z-API
     const payload: any = { 
       phone: phone,
@@ -307,6 +315,7 @@ export async function sendAudio(
     console.log('URL:', zapiUrl);
     console.log('Phone:', phone);
     console.log('Audio URL:', base64OrUrl);
+    console.log('Audio Format:', urlExtension);
     console.log('Headers:', headers);
     console.log('Payload completo:', JSON.stringify(payload, null, 2));
 
@@ -332,13 +341,24 @@ export async function sendAudio(
     console.log('Response:', zapiResult);
 
     if (!zapiResponse.ok) {
+      // Log detalhado do erro
+      console.error('Erro Z-API detalhado:', {
+        status: zapiResponse.status,
+        statusText: zapiResponse.statusText,
+        response: zapiResult,
+        url: zapiUrl,
+        payload: payload,
+        audioFormat: urlExtension,
+        timestamp: new Date().toISOString()
+      });
+      
       throw new Error(`Erro Z-API (${zapiResponse.status}): ${zapiResultText}`);
     }
     
     // Criar objeto de mensagem local para atualização imediata da UI
     const localMessageObj = {
       id: `local_${Date.now()}`,
-              content: '🎵 Áudio',
+      content: '🎵 Áudio',
       timestamp: new Date().toISOString(),
       role: 'agent',
       status: 'sent',
@@ -346,7 +366,8 @@ export async function sendAudio(
       mediaUrl: base64OrUrl,
       mediaInfo: {
         type: 'audio',
-        url: base64OrUrl
+        url: base64OrUrl,
+        format: urlExtension
       },
       replyTo
     };

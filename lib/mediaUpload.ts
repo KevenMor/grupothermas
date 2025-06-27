@@ -34,8 +34,10 @@ async function convertAudioToMp3(inputBuffer: Buffer, inputFormat: string): Prom
         .toFormat('mp3')
         .audioCodec('libmp3lame')
         .audioBitrate(128)
+        .audioChannels(1) // Mono para melhor compatibilidade
+        .audioFrequency(22050) // Frequência padrão para WhatsApp
         .on('error', async (err) => {
-          console.error('Erro na conversão de áudio:', err)
+          console.error('Erro na conversão de áudio para MP3:', err)
           // Limpar arquivos temporários
           try {
             await unlink(tempInputPath)
@@ -48,15 +50,80 @@ async function convertAudioToMp3(inputBuffer: Buffer, inputFormat: string): Prom
         .on('end', async () => {
           try {
             // Ler arquivo convertido
-            const convertedBuffer = await writeFile(tempOutputPath, '')
             const fs = require('fs')
-            const convertedBuffer2 = fs.readFileSync(tempOutputPath)
+            const convertedBuffer = fs.readFileSync(tempOutputPath)
             
             // Limpar arquivos temporários
             await unlink(tempInputPath)
             await unlink(tempOutputPath)
             
-            resolve(Buffer.from(convertedBuffer2))
+            console.log('Conversão para MP3 concluída:', {
+              inputSize: inputBuffer.length,
+              outputSize: convertedBuffer.length,
+              inputFormat,
+              outputFormat: 'mp3'
+            })
+            
+            resolve(Buffer.from(convertedBuffer))
+          } catch (error) {
+            reject(error)
+          }
+        })
+        .save(tempOutputPath)
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
+/**
+ * Converte arquivo de áudio para OGG/Opus usando FFmpeg
+ */
+async function convertAudioToOgg(inputBuffer: Buffer, inputFormat: string): Promise<Buffer> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Criar arquivos temporários
+      const tempInputPath = join(tmpdir(), `temp_input_${Date.now()}.${inputFormat}`)
+      const tempOutputPath = join(tmpdir(), `temp_output_${Date.now()}.ogg`)
+      
+      // Salvar buffer de entrada em arquivo temporário
+      await writeFile(tempInputPath, inputBuffer)
+      
+      ffmpeg(tempInputPath)
+        .toFormat('ogg')
+        .audioCodec('libopus')
+        .audioBitrate(64) // Bitrate menor para OGG/Opus
+        .audioChannels(1) // Mono
+        .audioFrequency(24000) // Frequência otimizada para Opus
+        .on('error', async (err) => {
+          console.error('Erro na conversão de áudio para OGG:', err)
+          // Limpar arquivos temporários
+          try {
+            await unlink(tempInputPath)
+            await unlink(tempOutputPath)
+          } catch (cleanupError) {
+            console.warn('Erro ao limpar arquivos temporários:', cleanupError)
+          }
+          reject(err)
+        })
+        .on('end', async () => {
+          try {
+            // Ler arquivo convertido
+            const fs = require('fs')
+            const convertedBuffer = fs.readFileSync(tempOutputPath)
+            
+            // Limpar arquivos temporários
+            await unlink(tempInputPath)
+            await unlink(tempOutputPath)
+            
+            console.log('Conversão para OGG concluída:', {
+              inputSize: inputBuffer.length,
+              outputSize: convertedBuffer.length,
+              inputFormat,
+              outputFormat: 'ogg'
+            })
+            
+            resolve(Buffer.from(convertedBuffer))
           } catch (error) {
             reject(error)
           }
@@ -102,7 +169,7 @@ export async function uploadToFirebaseStorage(
     console.log('MediaType:', mediaType)
     console.log('BufferSize:', fileBuffer.length)
 
-    // Para áudio, converter para MP3 se necessário
+    // Para áudio, converter para MP3 e OGG se necessário
     let finalBuffer = fileBuffer
     let finalFileName = fileName
     let finalMimeType = mimeType
@@ -111,33 +178,51 @@ export async function uploadToFirebaseStorage(
     if (mediaType === 'audio') {
       const fileExtension = fileName.split('.').pop()?.toLowerCase()
       
-      // Se não for MP3, converter
-      if (fileExtension !== 'mp3' && mimeType !== 'audio/mpeg') {
+      // Se não for MP3 ou OGG, converter
+      if (fileExtension !== 'mp3' && fileExtension !== 'ogg' && mimeType !== 'audio/mpeg' && mimeType !== 'audio/ogg') {
         console.log('Convertendo áudio para MP3...')
         
         let inputFormat = 'webm'
-        if (fileExtension === 'ogg' || mimeType.includes('ogg')) {
-          inputFormat = 'ogg'
-        } else if (fileExtension === 'wav' || mimeType.includes('wav')) {
+        if (fileExtension === 'wav' || mimeType.includes('wav')) {
           inputFormat = 'wav'
+        } else if (fileExtension === 'ogg' || mimeType.includes('ogg')) {
+          inputFormat = 'ogg'
         }
         
         try {
+          // Tentar converter para MP3 primeiro (mais compatível)
           finalBuffer = await convertAudioToMp3(fileBuffer, inputFormat)
           finalFileName = fileName.replace(/\.[^/.]+$/, '.mp3')
           finalMimeType = 'audio/mpeg'
           convertedFrom = `${inputFormat} -> mp3`
           
-          console.log('Conversão concluída:', {
+          console.log('Conversão para MP3 concluída:', {
             originalSize: fileBuffer.length,
             convertedSize: finalBuffer.length,
             originalFormat: inputFormat,
             finalFormat: 'mp3'
           })
         } catch (conversionError) {
-          console.error('Erro na conversão de áudio:', conversionError)
-          // Continuar com o arquivo original se a conversão falhar
-          console.warn('Continuando com arquivo original devido a erro na conversão')
+          console.error('Erro na conversão para MP3, tentando OGG:', conversionError)
+          
+          try {
+            // Fallback para OGG/Opus
+            finalBuffer = await convertAudioToOgg(fileBuffer, inputFormat)
+            finalFileName = fileName.replace(/\.[^/.]+$/, '.ogg')
+            finalMimeType = 'audio/ogg'
+            convertedFrom = `${inputFormat} -> ogg`
+            
+            console.log('Conversão para OGG concluída:', {
+              originalSize: fileBuffer.length,
+              convertedSize: finalBuffer.length,
+              originalFormat: inputFormat,
+              finalFormat: 'ogg'
+            })
+          } catch (oggError) {
+            console.error('Erro na conversão para OGG:', oggError)
+            // Continuar com o arquivo original se ambas as conversões falharem
+            console.warn('Continuando com arquivo original devido a erro na conversão')
+          }
         }
       }
     }

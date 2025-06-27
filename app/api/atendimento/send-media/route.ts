@@ -107,34 +107,73 @@ export async function POST(request: NextRequest) {
           console.log('LocalPath (Firebase URL):', localPath)
           console.log('ReplyTo:', replyTo)
           
-          // Validar formato de áudio
+          // Validar formato de áudio de forma mais robusta
           const urlExtension = localPath.split('.').pop()?.toLowerCase()
-          if (!urlExtension || !['mp3', 'ogg', 'opus'].includes(urlExtension)) {
+          const supportedFormats = ['mp3', 'ogg', 'opus']
+          
+          if (!urlExtension || !supportedFormats.includes(urlExtension)) {
             return NextResponse.json({ 
-              error: 'Formato de áudio não suportado. Use apenas MP3, OGG ou Opus do Firebase Storage.' 
+              error: `Formato de áudio não suportado: ${urlExtension}. Use apenas MP3, OGG ou Opus do Firebase Storage.` 
             }, { status: 400 })
           }
           
           // Priorizar OGG/Opus se disponível, senão MP3
           let audioUrl = localPath
+          let audioFormat = urlExtension
           
           if (oggUrl && isFirebaseStorageUrl(oggUrl) && (oggUrl.endsWith('.ogg') || oggUrl.endsWith('.opus'))) {
             audioUrl = oggUrl
+            audioFormat = oggUrl.endsWith('.opus') ? 'opus' : 'ogg'
             console.log('Usando URL OGG/Opus do Storage:', audioUrl)
           } else if (mp3Url && isFirebaseStorageUrl(mp3Url) && mp3Url.endsWith('.mp3')) {
             audioUrl = mp3Url
+            audioFormat = 'mp3'
             console.log('Usando URL MP3 do Storage:', audioUrl)
           } else if (localPath.endsWith('.ogg') || localPath.endsWith('.opus')) {
             audioUrl = localPath
+            audioFormat = localPath.endsWith('.opus') ? 'opus' : 'ogg'
             console.log('Usando URL OGG/Opus (localPath):', audioUrl)
           } else if (localPath.endsWith('.mp3')) {
             audioUrl = localPath
+            audioFormat = 'mp3'
             console.log('Usando URL MP3 (localPath):', audioUrl)
           } else {
             return NextResponse.json({ 
               error: 'Formato de áudio não suportado. Use MP3 ou OGG/Opus do Firebase Storage.' 
             }, { status: 400 })
           }
+          
+          // Verificar se a URL está realmente acessível e tem o content-type correto
+          try {
+            const testResponse = await fetch(audioUrl, { method: 'HEAD' });
+            if (!testResponse.ok) {
+              return NextResponse.json({ 
+                error: `A URL do áudio não está acessível publicamente. Status: ${testResponse.status}` 
+              }, { status: 400 })
+            }
+            
+            const contentType = testResponse.headers.get('content-type')
+            console.log('Content-Type do áudio:', contentType)
+            
+            // Validar content-type
+            const validContentTypes = [
+              'audio/mpeg', 'audio/mp3', 'audio/mpeg3', 'audio/x-mpeg-3',
+              'audio/ogg', 'audio/opus', 'audio/ogg; codecs=opus'
+            ]
+            
+            if (!contentType || !validContentTypes.some(valid => contentType.includes(valid))) {
+              console.warn('Content-Type inválido:', contentType)
+              // Não falhar aqui, apenas logar o warning
+            }
+          } catch (e) {
+            console.warn('Erro ao testar URL do áudio:', e)
+            // Não falhar aqui, apenas logar o warning
+          }
+          
+          console.log('=== ENVIANDO ÁUDIO VIA Z-API ===')
+          console.log('URL final:', audioUrl)
+          console.log('Formato:', audioFormat)
+          console.log('Phone:', phone)
           
           const audioResult = await sendAudio(phone, audioUrl, replyTo)
           
@@ -143,7 +182,19 @@ export async function POST(request: NextRequest) {
           console.log('MessageId:', audioResult.messageId)
           console.log('Error:', audioResult.error)
           
-          if (!audioResult.success) throw new Error(audioResult.error || 'Erro ao enviar áudio')
+          if (!audioResult.success) {
+            // Log detalhado do erro para debugging
+            console.error('Erro detalhado do envio de áudio:', {
+              phone,
+              audioUrl,
+              audioFormat,
+              error: audioResult.error,
+              timestamp: new Date().toISOString()
+            })
+            
+            throw new Error(audioResult.error || 'Erro ao enviar áudio')
+          }
+          
           zapiResult = audioResult
           break
         }
