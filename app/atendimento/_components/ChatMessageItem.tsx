@@ -6,6 +6,8 @@ import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { MessageReactions } from '@/components/MessageReactions'
+import { ReactionPicker } from '@/components/ReactionPicker'
 
 interface ChatMessageItemProps {
   message: ChatMessage
@@ -18,6 +20,7 @@ interface ChatMessageItemProps {
   onEdit?: (message: ChatMessage) => void
   onDelete?: (messageId: string) => void
   onInfo?: (message: ChatMessage) => void
+  onReaction?: (messageId: string, emoji: string) => void
   messages?: ChatMessage[]
 }
 
@@ -44,7 +47,7 @@ const formatDate = (date: Date) => {
   return format(date, 'dd/MM/yyyy', { locale: ptBR })
 }
 
-export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo, messages }: ChatMessageItemProps) {
+export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo, onReaction, messages }: ChatMessageItemProps) {
   const [showImagePopup, setShowImagePopup] = useState(false)
   const [showDocumentPopup, setShowDocumentPopup] = useState(false)
   const [showActions, setShowActions] = useState(false)
@@ -519,6 +522,25 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   : formatTime(message.timestamp)}
               </span>
             </div>
+            
+            {/* Reações da mensagem */}
+            {message.reactions && message.reactions.length > 0 && (
+              <MessageReactions
+                reactions={message.reactions}
+                isFromAgent={isFromAgent}
+                className="mt-1"
+              />
+            )}
+            
+            {/* Botão de reação (apenas para mensagens do cliente) */}
+            {isFromCustomer && onReaction && (
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ReactionPicker
+                  onReactionSelect={(emoji) => onReaction(message.id, emoji)}
+                  className="bg-white/90 dark:bg-gray-800/90 shadow-lg"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

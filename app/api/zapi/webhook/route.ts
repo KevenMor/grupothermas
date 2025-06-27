@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
-import { ChatMessage } from '@/lib/models'
+import { ChatMessage, Reaction } from '@/lib/models'
 import { downloadAndSaveMedia, isFirebaseStorageUrl } from '@/lib/mediaUpload'
 
 // Recebe eventos enviados pela Z-API (https://developer.z-api.io/en/webhooks)
@@ -53,12 +53,107 @@ export async function POST(request: NextRequest) {
       hasVideo: !!body.video,
       hasDocument: !!body.document,
       hasContact: !!body.contact,
-      hasLocation: !!body.location
+      hasLocation: !!body.location,
+      hasReaction: !!body.reaction
     })
 
     if (text?.message) {
       content = text.message
       console.log('Processando texto:', content)
+    } else if (body.reaction) {
+      console.log('Processando reação:', body.reaction)
+      
+      // Processar reação de mensagem
+      const reactionData = body.reaction
+      const targetMessageId = reactionData.messageId
+      const reactionEmoji = reactionData.reaction
+      const isReactionRemoved = reactionData.reaction === ''
+      
+      console.log('Dados da reação:', {
+        targetMessageId,
+        reactionEmoji,
+        isReactionRemoved,
+        fromMe: fromMe
+      })
+      
+      // Buscar a mensagem alvo da reação
+      if (targetMessageId) {
+        try {
+          const targetMessageQuery = await conversationRef.collection('messages')
+            .where('zapiMessageId', '==', targetMessageId)
+            .limit(1)
+            .get()
+          
+          if (!targetMessageQuery.empty) {
+            const targetMessageDoc = targetMessageQuery.docs[0]
+            const targetMessageData = targetMessageDoc.data()
+            
+            console.log('Mensagem alvo encontrada:', targetMessageDoc.id)
+            
+            if (isReactionRemoved) {
+              // Remover reação
+              const currentReactions = targetMessageData.reactions || []
+              const updatedReactions = currentReactions.filter((r: any) => 
+                !(r.fromMe === fromMe && r.byPhone === phone)
+              )
+              
+              await targetMessageDoc.ref.update({
+                reactions: updatedReactions
+              })
+              
+              console.log('Reação removida com sucesso')
+              content = `Reação removida de uma mensagem`
+            } else {
+              // Adicionar reação
+              const newReaction: Reaction = {
+                emoji: reactionEmoji,
+                by: senderName || 'Cliente',
+                byPhone: phone,
+                fromMe: !!fromMe,
+                timestamp: new Date().toISOString()
+              }
+              
+              // Verificar se já existe uma reação do mesmo usuário
+              const currentReactions = targetMessageData.reactions || []
+              const existingReactionIndex = currentReactions.findIndex((r: any) => 
+                r.fromMe === fromMe && r.byPhone === phone
+              )
+              
+              let updatedReactions
+              if (existingReactionIndex >= 0) {
+                // Atualizar reação existente
+                updatedReactions = [...currentReactions]
+                updatedReactions[existingReactionIndex] = newReaction
+              } else {
+                // Adicionar nova reação
+                updatedReactions = [...currentReactions, newReaction]
+              }
+              
+              await targetMessageDoc.ref.update({
+                reactions: updatedReactions
+              })
+              
+              console.log('Reação adicionada/atualizada com sucesso')
+              content = `Reagiu com ${reactionEmoji} a uma mensagem`
+            }
+          } else {
+            console.warn('Mensagem alvo da reação não encontrada:', targetMessageId)
+            content = `Reagiu com ${reactionEmoji} a uma mensagem apagada`
+          }
+        } catch (error) {
+          console.error('Erro ao processar reação:', error)
+          content = `Erro ao processar reação`
+        }
+      } else {
+        content = 'Reação sem mensagem alvo'
+      }
+      
+      mediaInfo = {
+        type: 'reaction',
+        targetMessageId: reactionData.messageId,
+        reaction: reactionEmoji,
+        isRemoved: isReactionRemoved
+      }
     } else if (body.image) {
       console.log('Processando imagem:', body.image)
       content = `📷 Imagem enviada${body.image.caption ? `: ${body.image.caption}` : ''}`

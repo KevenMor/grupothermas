@@ -67,6 +67,16 @@ export interface DashboardMetrics {
 export type ChatStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
 export type ConversationStatus = 'waiting' | 'ai_active' | 'agent_assigned' | 'resolved'
 
+// Sistema de reações de mensagens (igual WhatsApp)
+export interface Reaction {
+  emoji: string
+  by: string // Nome de quem reagiu
+  byPhone?: string // Telefone de quem reagiu
+  fromMe: boolean // Se foi reagido pelo próprio usuário
+  timestamp: string
+  agentId?: string // ID do agente se foi reagido por um agente
+}
+
 // Novo enum para departamentos
 export interface Department {
   id: string
@@ -159,6 +169,8 @@ export interface ChatMessage {
     text: string
     author: 'agent' | 'customer'
   }
+  // Sistema de reações (igual WhatsApp)
+  reactions?: Reaction[]
   // Novo campo para timestamp de status (entregue/lido)
   statusTimestamp?: string
   // Auditoria

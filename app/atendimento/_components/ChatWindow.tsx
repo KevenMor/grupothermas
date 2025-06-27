@@ -48,6 +48,7 @@ interface ChatWindowProps {
   onEditMessage?: (message: ChatMessage) => void
   onDeleteMessage?: (messageId: string) => void
   onMessageInfo?: (message: ChatMessage) => void
+  onReaction?: (messageId: string, emoji: string) => void
   onCustomerUpdate?: (data: Partial<Chat>) => void
 }
 
@@ -1180,6 +1181,7 @@ export function ChatWindow({
   onEditMessage,
   onDeleteMessage,
   onMessageInfo,
+  onReaction,
   onCustomerUpdate
 }: ChatWindowProps) {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
@@ -1319,6 +1321,36 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
     }
   }
 
+  // Função para enviar reação
+  const handleReaction = async (messageId: string, emoji: string) => {
+    if (!chat) return
+
+    try {
+      const response = await fetch('/api/atendimento/send-reaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: chat.id,
+          messageId: messageId,
+          emoji: emoji,
+          agentName: 'Atendente', // Pode ser dinâmico baseado no usuário logado
+          agentId: 'current-user-id' // Pode ser dinâmico baseado no usuário logado
+        })
+      })
+
+      if (response.ok) {
+        console.log('Reação enviada com sucesso')
+      } else {
+        const error = await response.json()
+        console.error('Erro ao enviar reação:', error)
+        alert(`Erro ao enviar reação: ${error.error || 'Erro desconhecido'}`)
+      }
+    } catch (error) {
+      console.error('Erro ao enviar reação:', error)
+      alert('Erro ao enviar reação. Tente novamente.')
+    }
+  }
+
   // Agrupar mensagens por data
   let lastDate: Date | null = null
 
@@ -1357,6 +1389,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
                   onEdit={handleEditMessage}
                   onDelete={handleDeleteMessage}
                   onInfo={handleMessageInfo}
+                  onReaction={handleReaction}
                   messages={messages}
                 />
               )
