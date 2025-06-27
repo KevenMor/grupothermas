@@ -51,7 +51,6 @@ interface AdminConfig {
   openaiModel: string
   openaiTemperature: number
   openaiMaxTokens: number
-  systemPrompt: string
   welcomeMessage: string
   fallbackMessage: string
   handoffMessage: string
@@ -82,31 +81,6 @@ const defaultConfig: AdminConfig = {
   openaiModel: 'gpt-4',
   openaiTemperature: 0.7,
   openaiMaxTokens: 1000,
-  systemPrompt: `Você é um assistente virtual especializado do Grupo Thermas, uma empresa de turismo e hospedagem de luxo.
-
-CONTEXTO:
-- Somos especialistas em pacotes para águas termais, spas e resorts
-- Oferecemos experiências premium de relaxamento e bem-estar
-- Nosso foco é atendimento personalizado e experiências únicas
-
-PERSONALIDADE:
-- Seja caloroso, acolhedor e profissional
-- Use linguagem elegante mas acessível
-- Demonstre conhecimento sobre turismo termal
-- Seja proativo em oferecer soluções
-
-OBJETIVOS:
-1. Qualificar leads interessados em pacotes
-2. Agendar consultorias personalizadas
-3. Fornecer informações sobre destinos e preços
-4. Direcionar para atendimento humano quando necessário
-
-INSTRUÇÕES:
-- Sempre pergunte o nome do cliente
-- Identifique o interesse específico (destino, data, número de pessoas)
-- Ofereça opções adequadas ao perfil
-- Colete dados de contato para follow-up
-- Use contexto das conversas anteriores`,
   welcomeMessage: 'Olá! Sou o assistente virtual do Grupo Thermas. Como posso ajudá-lo a encontrar a experiência termal perfeita para você?',
   fallbackMessage: 'Desculpe, não entendi completamente. Poderia reformular sua pergunta? Estou aqui para ajudar com informações sobre nossos pacotes termais e resorts.',
   handoffMessage: 'Vou conectar você com um de nossos especialistas para um atendimento mais personalizado. Um momento, por favor...',
@@ -838,54 +812,39 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="systemPrompt">Instruções para a IA</Label>
+                  <Label htmlFor="welcomeMessage">Mensagem de Boas-vindas</Label>
                   <textarea
-                    id="systemPrompt"
-                    name="systemPrompt"
-                    value={config.systemPrompt}
+                    id="welcomeMessage"
+                    name="welcomeMessage"
+                    value={config.welcomeMessage}
                     onChange={handleInputChange}
-                    rows={12}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 font-mono text-sm"
-                    placeholder="Digite as instruções para configurar o comportamento da IA..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
                   />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="welcomeMessage">Mensagem de Boas-vindas</Label>
-                    <textarea
-                      id="welcomeMessage"
-                      name="welcomeMessage"
-                      value={config.welcomeMessage}
-                      onChange={handleInputChange}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="fallbackMessage">Mensagem de Erro</Label>
-                    <textarea
-                      id="fallbackMessage"
-                      name="fallbackMessage"
-                      value={config.fallbackMessage}
-                      onChange={handleInputChange}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="handoffMessage">Mensagem de Transferência</Label>
-                    <textarea
-                      id="handoffMessage"
-                      name="handoffMessage"
-                      value={config.handoffMessage}
-                      onChange={handleInputChange}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fallbackMessage">Mensagem de Erro</Label>
+                  <textarea
+                    id="fallbackMessage"
+                    name="fallbackMessage"
+                    value={config.fallbackMessage}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="handoffMessage">Mensagem de Transferência</Label>
+                  <textarea
+                    id="handoffMessage"
+                    name="handoffMessage"
+                    value={config.handoffMessage}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1354,7 +1313,7 @@ export default function AdminPage() {
                           <div>
                             <label className="text-sm font-medium text-gray-700">Prompt Sistema Atual:</label>
                             <div className="mt-1 p-2 bg-white border rounded text-sm max-h-24 overflow-y-auto">
-                              {config.systemPrompt || 'Nenhum prompt configurado'}
+                              {config.welcomeMessage || 'Nenhum prompt configurado'}
                             </div>
                           </div>
                           
@@ -1416,32 +1375,6 @@ export default function AdminPage() {
               <Save className="w-5 h-5 mr-2" />
             )}
             {saving ? 'Salvando...' : 'Salvar Configurações'}
-          </Button>
-        </div>
-
-
-
-
-
-        {/* Botão de Salvar Fixo */}
-        <div className="fixed bottom-6 right-6">
-          <Button
-            onClick={saveConfig}
-            disabled={saving}
-            size="lg"
-            className="shadow-lg"
-          >
-            {saving ? (
-              <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Salvar Configurações
-              </>
-            )}
           </Button>
         </div>
       </div>
