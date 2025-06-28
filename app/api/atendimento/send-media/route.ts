@@ -233,12 +233,15 @@ export async function POST(request: NextRequest) {
     // Só grava no Firestore se não houve erro
     try {
       const conversationRef = adminDB.collection('conversations').doc(phone)
+      // Garantir que não salva undefined
+      const safeMessageId = typeof zapiResult.messageId === 'string' && zapiResult.messageId ? zapiResult.messageId : null
+      console.log('DEBUG zapiResult:', JSON.stringify(zapiResult, null, 2))
       const messageData: MessageData = {
         content: `[${type.toUpperCase()}]`,
         role: 'agent',
         timestamp: new Date().toISOString(),
         status: 'sent',
-        zapiMessageId: zapiResult.messageId || null,
+        ...(safeMessageId !== null ? { zapiMessageId: safeMessageId } : {}),
         agentName: 'Sistema',
         mediaType: type,
         mediaUrl: mediaUrl,
