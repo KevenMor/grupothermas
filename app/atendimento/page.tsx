@@ -300,7 +300,10 @@ export default function AtendimentoPage() {
 
       const sentMessage: ChatMessage = responseJson
       setMessages(prev =>
-        prev.map(msg => msg.id === tempId ? { ...sentMessage, status: 'sent' } : msg)
+        [
+          ...prev.filter(msg => msg.id !== tempId),
+          { ...(sentMessage as ChatMessage), status: (sentMessage.status as ChatStatus) || 'sent' }
+        ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       )
       setChats(prev => prev.map(chat =>
         chat.id === selectedChat.id
