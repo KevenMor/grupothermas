@@ -16,6 +16,30 @@ if (typeof window === 'undefined' && process.env.NODE_ENV !== 'production' && pr
   console.log('--- Fim do Bloco de Debug ---')
 }
 
+// Debug e validação explícita da variável de ambiente
+if (typeof window === 'undefined') {
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    console.error('FIREBASE_SERVICE_ACCOUNT_JSON NÃO DEFINIDA!')
+  } else {
+    try {
+      const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
+      if (!parsed.private_key || !parsed.client_email) {
+        throw new Error('private_key ou client_email ausente no JSON')
+      }
+      if (!parsed.private_key.includes('-----BEGIN PRIVATE KEY-----')) {
+        throw new Error('private_key mal formatada (falta BEGIN PRIVATE KEY)')
+      }
+      if (!parsed.private_key.includes('\n')) {
+        throw new Error('private_key deve conter quebras de linha (\\n)')
+      }
+      console.log('FIREBASE_SERVICE_ACCOUNT_JSON OK: project_id =', parsed.project_id)
+    } catch (e) {
+      console.error('FIREBASE_SERVICE_ACCOUNT_JSON MAL FORMADA:', e)
+      throw e
+    }
+  }
+}
+
 let admin: App;
 
 if (getApps().length > 0) {
