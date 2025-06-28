@@ -32,7 +32,7 @@ const withPWA = require('next-pwa')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ['firebase-admin'],
+  serverExternalPackages: ['firebase-admin', '@ffmpeg/ffmpeg', '@ffmpeg/util'],
   // Desabilitar coleta de dados estáticos durante build para evitar erros com Firebase
   trailingSlash: false,
   generateBuildId: async () => {
@@ -44,8 +44,7 @@ const nextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: ['localhost:3000']
-    },
-    serverComponentsExternalPackages: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
+    }
   },
   images: {
     domains: ['firebasestorage.googleapis.com'],
