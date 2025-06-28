@@ -347,13 +347,7 @@ const MessageInput = ({
   }
 
   const canInteract = () => {
-    const can = chat?.conversationStatus === 'agent_assigned'
-    console.log('🔍 canInteract debug:', {
-      conversationStatus: chat?.conversationStatus,
-      canInteract: can,
-      chatId: chat?.id
-    })
-    return can
+    return chat?.conversationStatus === 'agent_assigned' || chat?.conversationStatus === 'ai_active'
   }
 
   const handleAttachment = (type: string) => {
