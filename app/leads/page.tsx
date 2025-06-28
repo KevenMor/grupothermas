@@ -94,6 +94,8 @@ import { Toaster, toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { authFetch } from '@/lib/api'
 
 interface Lead {
   id: string
@@ -153,6 +155,7 @@ const interests = [
 ]
 
 export default function LeadsPage() {
+  const { user } = useAuth()
   const [leads, setLeads] = useState<Lead[]>([])
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -218,11 +221,11 @@ export default function LeadsPage() {
   const fetchLeads = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/admin/leads')
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch('/api/admin/leads', {}, user)
       if (!response.ok) throw new Error('Erro ao carregar leads')
-      
       const data = await response.json()
-      setLeads(data)
+      setLeads(data.data?.data || data.data || [])
     } catch (error) {
       console.error('Erro ao carregar leads:', error)
       toast.error('Erro ao carregar leads')
@@ -234,17 +237,16 @@ export default function LeadsPage() {
   const handleCreateLead = async () => {
     try {
       setIsSubmitting(true)
-      const response = await fetch('/api/admin/leads', {
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch('/api/admin/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
-      })
-
+      }, user)
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Erro ao criar lead')
       }
-
       toast.success('Lead criado com sucesso!')
       setShowCreateModal(false)
       resetForm()
@@ -259,20 +261,18 @@ export default function LeadsPage() {
 
   const handleUpdateLead = async () => {
     if (!selectedLead) return
-
     try {
       setIsSubmitting(true)
-      const response = await fetch(`/api/admin/leads/${selectedLead.id}`, {
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch(`/api/admin/leads/${selectedLead.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
-      })
-
+      }, user)
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Erro ao atualizar lead')
       }
-
       toast.success('Lead atualizado com sucesso!')
       setShowEditDrawer(false)
       setSelectedLead(null)
@@ -288,17 +288,15 @@ export default function LeadsPage() {
 
   const handleDeleteLead = async (leadId: string) => {
     if (!confirm('Tem certeza que deseja excluir este lead?')) return
-
     try {
-      const response = await fetch(`/api/admin/leads/${leadId}`, {
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch(`/api/admin/leads/${leadId}`, {
         method: 'DELETE'
-      })
-
+      }, user)
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Erro ao excluir lead')
       }
-
       toast.success('Lead excluído com sucesso!')
       fetchLeads()
     } catch (error) {

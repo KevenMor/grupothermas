@@ -120,4 +120,14 @@ export function validateCPF(cpf: string): boolean {
   if (remainder !== parseInt(cleaned.charAt(10))) return false
   
   return true
+}
+
+import { auth } from './firebase'
+
+export async function authFetch(input: RequestInfo, init: RequestInit = {}, user?: any) {
+  if (!user) throw new Error('Usuário não autenticado')
+  const token = await user.getIdToken()
+  const headers = new Headers(init.headers || {})
+  headers.set('Authorization', `Bearer ${token}`)
+  return fetch(input, { ...init, headers })
 } 

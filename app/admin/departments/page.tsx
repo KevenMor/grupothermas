@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Plus, Edit, Trash2, Building2, Users, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { authFetch } from '@/lib/api'
 
 interface Department {
   id: string
@@ -21,6 +23,7 @@ interface Department {
 }
 
 export default function DepartmentsPage() {
+  const { user } = useAuth()
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -34,7 +37,8 @@ export default function DepartmentsPage() {
   // Carregar departamentos
   const loadDepartments = async () => {
     try {
-      const response = await fetch('/api/admin/departments')
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch('/api/admin/departments', {}, user)
       if (response.ok) {
         const data = await response.json()
         setDepartments(data.departments || [])
@@ -66,11 +70,12 @@ export default function DepartmentsPage() {
       
       const method = editingDepartment ? 'PUT' : 'POST'
       
-      const response = await fetch(url, {
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
-      })
+      }, user)
 
       if (response.ok) {
         toast.success(editingDepartment ? 'Departamento atualizado!' : 'Departamento criado!')
@@ -90,11 +95,12 @@ export default function DepartmentsPage() {
   // Toggle status do departamento
   const toggleDepartmentStatus = async (department: Department) => {
     try {
-      const response = await fetch(`/api/admin/departments/${department.id}`, {
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch(`/api/admin/departments/${department.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...department, isActive: !department.isActive })
-      })
+      }, user)
 
       if (response.ok) {
         toast.success(`Departamento ${department.isActive ? 'desativado' : 'ativado'}!`)
@@ -114,9 +120,10 @@ export default function DepartmentsPage() {
     }
 
     try {
-      const response = await fetch(`/api/admin/departments/${department.id}`, {
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch(`/api/admin/departments/${department.id}`, {
         method: 'DELETE'
-      })
+      }, user)
 
       if (response.ok) {
         toast.success('Departamento excluído!')

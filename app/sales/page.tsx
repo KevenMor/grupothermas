@@ -95,6 +95,8 @@ import { Toaster, toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { authFetch } from '@/lib/api'
 
 interface Sale {
   id: string
@@ -150,6 +152,7 @@ const statusOptions = [
 ]
 
 export default function SalesPage() {
+  const { user } = useAuth()
   const [sales, setSales] = useState<Sale[]>([])
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -242,11 +245,11 @@ export default function SalesPage() {
   const fetchSales = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/admin/sales')
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch('/api/admin/sales', {}, user)
       if (!response.ok) throw new Error('Erro ao carregar vendas')
-      
       const data = await response.json()
-      setSales(data)
+      setSales(data.data?.data || data.data || [])
     } catch (error) {
       console.error('Erro ao carregar vendas:', error)
       toast.error('Erro ao carregar vendas')

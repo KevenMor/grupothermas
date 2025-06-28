@@ -42,6 +42,8 @@ import {
 } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { adminDB } from '@/lib/firebaseAdmin'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { authFetch } from '@/lib/api'
 
 interface AdminConfig {
   zapiApiKey: string
@@ -106,6 +108,7 @@ const defaultConfig: AdminConfig = {
 }
 
 export default function AdminPage() {
+  const { user } = useAuth()
   const [config, setConfig] = useState<AdminConfig>(defaultConfig)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -152,7 +155,8 @@ export default function AdminPage() {
   const fetchConfig = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/admin/config')
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch('/api/admin/config', {}, user)
       if (response.ok) {
         const data = await response.json()
         setConfig({ ...defaultConfig, ...data })
@@ -174,7 +178,7 @@ export default function AdminPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     fetchConfig()

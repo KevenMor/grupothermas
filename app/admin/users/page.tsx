@@ -71,6 +71,8 @@ import {
 import { Toaster, toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { authFetch } from '@/lib/api'
 
 interface User {
   id: string
@@ -124,6 +126,7 @@ const permissions = [
 ]
 
 export default function UsersPage() {
+  const { user } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -176,11 +179,11 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/admin/users')
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch('/api/admin/users', {}, user)
       if (!response.ok) throw new Error('Erro ao carregar usuários')
-      
       const data = await response.json()
-      setUsers(data)
+      setUsers(data.data?.data || data.data || [])
     } catch (error) {
       console.error('Erro ao carregar usuários:', error)
       toast.error('Erro ao carregar usuários')
@@ -192,17 +195,16 @@ export default function UsersPage() {
   const handleCreateUser = async () => {
     try {
       setIsSubmitting(true)
-      const response = await fetch('/api/admin/users', {
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
-      })
-
+      }, user)
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Erro ao criar usuário')
       }
-
       toast.success('Usuário criado com sucesso!')
       setShowCreateModal(false)
       resetForm()
@@ -217,20 +219,18 @@ export default function UsersPage() {
 
   const handleUpdateUser = async () => {
     if (!selectedUser) return
-
     try {
       setIsSubmitting(true)
-      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch(`/api/admin/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
-      })
-
+      }, user)
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Erro ao atualizar usuário')
       }
-
       toast.success('Usuário atualizado com sucesso!')
       setShowEditDrawer(false)
       setSelectedUser(null)
@@ -246,17 +246,15 @@ export default function UsersPage() {
 
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return
-
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      if (!user) throw new Error('Usuário não autenticado')
+      const response = await authFetch(`/api/admin/users/${userId}`, {
         method: 'DELETE'
-      })
-
+      }, user)
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Erro ao excluir usuário')
       }
-
       toast.success('Usuário excluído com sucesso!')
       fetchUsers()
     } catch (error) {
