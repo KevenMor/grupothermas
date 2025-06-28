@@ -1,77 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { cn } from '@/lib/utils'
+"use client"
 
-interface PopoverProps {
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  children: React.ReactNode
-}
+import * as React from "react"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
 
-interface PopoverContentProps {
-  children: React.ReactNode
-  className?: string
-  align?: 'center' | 'start' | 'end'
-  side?: 'top' | 'bottom' | 'left' | 'right'
-}
+import { cn } from "@/lib/utils"
 
-interface PopoverTriggerProps {
-  children: React.ReactNode
-  asChild?: boolean
-  onClick?: () => void
-}
+const Popover = PopoverPrimitive.Root
 
-export function Popover({ open, onOpenChange, children }: PopoverProps) {
-  const [isOpen, setIsOpen] = useState(open || false)
+const PopoverTrigger = PopoverPrimitive.Trigger
 
-  useEffect(() => {
-    setIsOpen(!!open)
-  }, [open])
-
-  const handleOpenChange = (value: boolean) => {
-    setIsOpen(value)
-    if (onOpenChange) onOpenChange(value)
-  }
-
-  // Separar Trigger e Content
-  let trigger: React.ReactNode = null
-  let content: React.ReactNode = null
-  React.Children.forEach(children, (child: any) => {
-    if (child?.type === PopoverTrigger) {
-      trigger = React.cloneElement(child, {
-        onClick: () => handleOpenChange(!isOpen)
-      })
-    } else if (child?.type === PopoverContent) {
-      if (isOpen) content = child
-    }
-  })
-
-  return (
-    <div className="relative inline-block">
-      {trigger}
-      {content}
-    </div>
-  )
-}
-
-export function PopoverTrigger({ children, asChild, onClick }: PopoverTriggerProps) {
-  return (
-    <span onClick={onClick} className="cursor-pointer">
-      {children}
-    </span>
-  )
-}
-
-export function PopoverContent({ children, className, align = 'center', side = 'top' }: PopoverContentProps) {
-  // Simplesmente renderiza abaixo do trigger
-  return (
-    <div
+const PopoverContent = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
+>(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+  <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Content
+      ref={ref}
+      align={align}
+      sideOffset={sideOffset}
       className={cn(
-        "absolute z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 mt-2",
+        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className
       )}
-      style={{ minWidth: 120 }}
-    >
-      {children}
-    </div>
-  )
-} 
+      {...props}
+    />
+  </PopoverPrimitive.Portal>
+))
+PopoverContent.displayName = PopoverPrimitive.Content.displayName
+
+export { Popover, PopoverTrigger, PopoverContent } 

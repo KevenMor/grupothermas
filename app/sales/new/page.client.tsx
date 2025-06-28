@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select } from '@/components/ui/select'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Plus, Trash2, Save, DollarSign, User, Package } from 'lucide-react'
@@ -237,27 +237,35 @@ export default function NewSalePage() {
                   <div>
                     <Label htmlFor="status">Status</Label>
                     <Select
-                      id="status"
                       value={formData.status}
-                      onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'pending' | 'completed' | 'cancelled' }))}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as 'pending' | 'completed' | 'cancelled' }))}
                     >
-                      <option value="pending">Pendente</option>
-                      <option value="completed">Concluída</option>
-                      <option value="cancelled">Cancelada</option>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="completed">Concluída</SelectItem>
+                        <SelectItem value="cancelled">Cancelada</SelectItem>
+                      </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
                     <Select
-                      id="paymentMethod"
                       value={formData.paymentMethod}
-                      onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value as any }))}
                     >
-                      {PAYMENT_METHODS.map(method => (
-                        <option key={method.value} value={method.value}>
-                          {method.label}
-                        </option>
-                      ))}
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a forma de pagamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map(method => (
+                          <SelectItem key={method.value} value={method.value}>
+                            {method.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
                   <div>
@@ -290,14 +298,18 @@ export default function NewSalePage() {
                           <Label>Produto</Label>
                           <Select
                             value={product.id}
-                            onChange={(e) => updateProduct(index, 'id', e.target.value)}
+                            onValueChange={(value) => updateProduct(index, 'id', value)}
                           >
-                            <option value="">Selecione um produto</option>
-                            {PRODUCTS.map(p => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} - R$ {p.price.toFixed(2)}
-                              </option>
-                            ))}
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um produto" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PRODUCTS.map(p => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.name} - R$ {p.price.toFixed(2)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
                           </Select>
                         </div>
                         <div className="w-24">

@@ -52,7 +52,26 @@ import {
   Package,
   Database,
   Clock,
-  ArrowRight
+  ArrowRight,
+  UserPlus,
+  DollarSign,
+  Target,
+  Building,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  CreditCard,
+  QrCode,
+  Receipt,
+  FileCheck,
+  FileX,
+  FileClock,
+  BarChart3,
+  Users2,
+  UserCog,
+  ShieldCheck,
+  Activity
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -234,32 +253,25 @@ function AppSidebar() {
               </SidebarNavSubItem>
             </SidebarNavSubmenu>
 
-            {/* Vendas com submenus */}
+            {/* CRM e Vendas com submenus */}
             <SidebarNavSubmenu
-              title="Vendas"
+              title="CRM & Vendas"
               icon={<TrendingUp className="h-4 w-4" />}
               defaultOpen={pathname.startsWith('/sales') || pathname === '/contracts' || pathname === '/leads'}
             >
               <SidebarNavSubItem
-                icon={<ShoppingCart className="h-4 w-4" />}
+                icon={<DollarSign className="h-4 w-4" />}
                 active={pathname === '/sales'}
                 onClick={() => router.push('/sales' as any)}
               >
-                Listar Vendas
-              </SidebarNavSubItem>
-              <SidebarNavSubItem
-                icon={<Plus className="h-4 w-4" />}
-                active={pathname === '/sales/new'}
-                onClick={() => router.push('/sales/new' as any)}
-              >
-                Nova Venda
+                Gestão de Vendas
               </SidebarNavSubItem>
               <SidebarNavSubItem
                 icon={<UserCheck className="h-4 w-4" />}
                 active={pathname === '/leads'}
                 onClick={() => router.push('/leads' as any)}
               >
-                Leads
+                Gestão de Leads
               </SidebarNavSubItem>
               <SidebarNavSubItem
                 icon={<FileText className="h-4 w-4" />}
@@ -268,35 +280,98 @@ function AppSidebar() {
               >
                 Contratos
               </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<BarChart3 className="h-4 w-4" />}
+                active={pathname === '/dashboard'}
+                onClick={() => router.push('/dashboard' as any)}
+              >
+                Relatórios
+              </SidebarNavSubItem>
             </SidebarNavSubmenu>
           </SidebarNav>
         </SidebarGroup>
 
-        <SidebarGroup title="Gestão">
+        <SidebarGroup title="Administração">
           <SidebarNav>
-            <SidebarNavItem
-              icon={<Users className="h-4 w-4" />}
-              active={pathname === '/admin/users'}
-              onClick={() => router.push('/admin/users' as any)}
+            {/* Gestão de Usuários */}
+            <SidebarNavSubmenu
+              title="Gestão de Usuários"
+              icon={<Users2 className="h-4 w-4" />}
+              defaultOpen={pathname === '/admin/users'}
             >
-              Gestão de Usuários
-            </SidebarNavItem>
-            <SidebarNavItem
+              <SidebarNavSubItem
+                icon={<Users className="h-4 w-4" />}
+                active={pathname === '/admin/users'}
+                onClick={() => router.push('/admin/users' as any)}
+              >
+                Usuários
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<UserCog className="h-4 w-4" />}
+                active={pathname === '/admin/users'}
+                onClick={() => router.push('/admin/users' as any)}
+              >
+                Permissões
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<Building className="h-4 w-4" />}
+                active={pathname === '/admin/users'}
+                onClick={() => router.push('/admin/users' as any)}
+              >
+                Departamentos
+              </SidebarNavSubItem>
+            </SidebarNavSubmenu>
+
+            {/* Configurações do Sistema */}
+            <SidebarNavSubmenu
+              title="Configurações"
               icon={<Settings className="h-4 w-4" />}
-              onClick={() => router.push('/settings' as any)}
+              defaultOpen={pathname === '/admin'}
             >
-              Configurações
-            </SidebarNavItem>
+              <SidebarNavSubItem
+                icon={<ShieldCheck className="h-4 w-4" />}
+                active={pathname === '/admin'}
+                onClick={() => router.push('/admin' as any)}
+              >
+                Segurança
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<Activity className="h-4 w-4" />}
+                active={pathname === '/admin'}
+                onClick={() => router.push('/admin' as any)}
+              >
+                Auditoria
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<Database className="h-4 w-4" />}
+                active={pathname === '/admin'}
+                onClick={() => router.push('/admin' as any)}
+              >
+                Backup
+              </SidebarNavSubItem>
+            </SidebarNavSubmenu>
           </SidebarNav>
         </SidebarGroup>
 
         <SidebarGroup title="Ações Rápidas">
           <SidebarNav>
             <SidebarNavItem
-              icon={<Plus className="h-4 w-4" />}
-              onClick={() => router.push('/sales/new' as any)}
+              icon={<UserPlus className="h-4 w-4" />}
+              onClick={() => router.push('/leads' as any)}
+            >
+              Novo Lead
+            </SidebarNavItem>
+            <SidebarNavItem
+              icon={<DollarSign className="h-4 w-4" />}
+              onClick={() => router.push('/sales' as any)}
             >
               Nova Venda
+            </SidebarNavItem>
+            <SidebarNavItem
+              icon={<Users className="h-4 w-4" />}
+              onClick={() => router.push('/admin/users' as any)}
+            >
+              Novo Usuário
             </SidebarNavItem>
           </SidebarNav>
         </SidebarGroup>
