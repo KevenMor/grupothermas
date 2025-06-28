@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
   try {
     const { level, category, message, details, phone, messageId }: Omit<LogEntry, 'id' | 'timestamp'> = await request.json()
     
-    const logEntry: LogEntry = {
+    // Filtrar campos undefined para evitar erro no Firestore
+    const logData: any = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       level: level || 'info',
@@ -25,16 +26,18 @@ export async function POST(request: NextRequest) {
       message,
       details,
       userAgent: request.headers.get('user-agent') || undefined,
-      phone,
-      messageId
     }
     
+    // Adicionar campos opcionais apenas se não forem undefined
+    if (phone !== undefined) logData.phone = phone
+    if (messageId !== undefined) logData.messageId = messageId
+    
     // Salvar log no Firestore
-    await adminDB.collection('system_logs').doc(logEntry.id).set(logEntry)
+    await adminDB.collection('system_logs').doc(logData.id).set(logData)
     
-    console.log(`[${logEntry.level.toUpperCase()}] [${logEntry.category}] ${logEntry.message}`)
+    console.log(`[${logData.level.toUpperCase()}] [${logData.category}] ${logData.message}`)
     
-    return NextResponse.json({ success: true, logId: logEntry.id })
+    return NextResponse.json({ success: true, logId: logData.id })
   } catch (error) {
     console.error('Erro ao salvar log:', error)
     return NextResponse.json({ error: 'Failed to save log' }, { status: 500 })

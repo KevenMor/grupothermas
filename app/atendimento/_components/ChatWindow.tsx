@@ -546,20 +546,27 @@ const MessageInput = ({
   // Função para enviar logs para o sistema
   const sendLog = async (level: 'info' | 'warn' | 'error' | 'debug', category: 'audio' | 'media' | 'webhook' | 'zapi' | 'openai' | 'system', message: string, details?: any) => {
     try {
+      // Filtrar campos undefined antes de enviar
+      const logData: any = {
+        level,
+        category,
+        message,
+        details
+      }
+      
+      // Adicionar phone apenas se não for undefined
+      if (chat?.customerPhone) {
+        logData.phone = chat.customerPhone
+      }
+      
       await fetch('/api/logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          level,
-          category,
-          message,
-          details,
-          phone: chat?.customerPhone,
-          messageId: details?.messageId
-        })
+        body: JSON.stringify(logData)
       })
     } catch (error) {
-      console.error('Erro ao enviar log:', error)
+      console.warn('Erro ao enviar log (não crítico):', error)
+      // Não falhar o fluxo principal por erro de log
     }
   }
 
@@ -669,52 +676,107 @@ const MessageInput = ({
 
   // 3. Ajustar sendAudioDirectly para lidar com diferentes formatos
   const sendAudioDirectly = async (audioBlob: Blob, mimeType: string) => {
-    if (!isFFmpegSupported()) {
-      // Fallback: upload do webm/opus para microserviço externo
-      console.warn('FFmpeg não suportado, usando microserviço externo para conversão backend.')
-      const formData = new FormData()
-      formData.append('file', audioBlob, `audio_${Date.now()}.webm`)
-      let backendMp3Url = ''
-      try {
-        const panelConfigResponse = await fetch('/api/admin/config')
-        const panelConfig = await panelConfigResponse.json()
-        const audioConverterUrl = panelConfig?.audioConverterUrl || 'http://localhost:4000/convert-audio'
-        const uploadResponse = await fetch(audioConverterUrl, { method: 'POST', body: formData })
-        if (uploadResponse.ok) {
-          const uploadResult = await uploadResponse.json()
-          backendMp3Url = uploadResult.url
-          console.log('✅ Upload e conversão via microserviço concluídos:', backendMp3Url)
-          await sendLog('info', 'media', 'Upload/conversão via microserviço concluídos', { url: backendMp3Url })
-        } else {
-          const errorText = await uploadResponse.text()
-          console.error('❌ Falha no upload/conversão via microserviço:', errorText)
-          await sendLog('error', 'media', 'Falha no upload/conversão via microserviço', { error: errorText })
-          alert('Erro ao converter áudio no microserviço: ' + errorText)
+    if (!chat) return
+    
+    try {
+      console.log('🎵 Iniciando envio de áudio:', {
+        blobSize: audioBlob.size,
+        mimeType,
+        phone: chat.customerPhone
+      })
+      
+      if (!isFFmpegSupported()) {
+        // Fallback: upload do webm/opus para microserviço externo
+        console.warn('FFmpeg não suportado, usando microserviço externo para conversão backend.')
+        const formData = new FormData()
+        formData.append('file', audioBlob, `audio_${Date.now()}.webm`)
+        let backendMp3Url = ''
+        
+        try {
+          const panelConfigResponse = await fetch('/api/admin/config')
+          const panelConfig = await panelConfigResponse.json()
+          const audioConverterUrl = panelConfig?.audioConverterUrl || 'http://localhost:4000/convert-audio'
+          
+          console.log('🔄 Enviando para conversão:', audioConverterUrl)
+          
+          const uploadResponse = await fetch(audioConverterUrl, { method: 'POST', body: formData })
+          if (uploadResponse.ok) {
+            const uploadResult = await uploadResponse.json()
+            backendMp3Url = uploadResult.url
+            console.log('✅ Upload e conversão via microserviço concluídos:', backendMp3Url)
+            await sendLog('info', 'media', 'Upload/conversão via microserviço concluídos', { url: backendMp3Url })
+          } else {
+            const errorText = await uploadResponse.text()
+            console.error('❌ Falha no upload/conversão via microserviço:', errorText)
+            await sendLog('error', 'media', 'Falha no upload/conversão via microserviço', { error: errorText })
+            alert('Erro ao converter áudio no microserviço: ' + errorText)
+            return
+          }
+        } catch (error) {
+          console.error('❌ Erro no upload/conversão via microserviço:', error)
+          await sendLog('error', 'media', 'Erro no upload/conversão via microserviço', { error: error instanceof Error ? error.message : error })
+          alert('Erro ao converter áudio no microserviço. Tente novamente.')
           return
         }
-      } catch (error) {
-        console.error('❌ Erro no upload/conversão via microserviço:', error)
-        await sendLog('error', 'media', 'Erro no upload/conversão via microserviço', { error: error instanceof Error ? error.message : error })
-        alert('Erro ao converter áudio no microserviço. Tente novamente.')
+        
+        // Enviar áudio via API de mídia
+        if (backendMp3Url && chat) {
+          console.log('📤 Enviando áudio convertido via API:', backendMp3Url)
+          
+          const mediaResponse = await fetch('/api/atendimento/send-media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone: chat.customerPhone,
+              type: 'audio',
+              localPath: backendMp3Url,
+              mp3Url: backendMp3Url,
+              filename: `audio_${Date.now()}.mp3`
+            })
+          })
+          
+          if (mediaResponse.ok) {
+            const mediaResult = await mediaResponse.json()
+            console.log('✅ Áudio enviado com sucesso:', mediaResult)
+            
+            // Criar mensagem otimista
+            const optimisticMessage: ChatMessage = {
+              id: `temp-audio-${Date.now()}`,
+              content: '🎵 Áudio',
+              role: 'agent',
+              timestamp: new Date().toISOString(),
+              status: 'sent',
+              userName: 'Você',
+              agentId: 'current-agent',
+              agentName: 'Você',
+              mediaType: 'audio',
+              mediaUrl: backendMp3Url,
+              mediaInfo: {
+                type: 'audio',
+                url: backendMp3Url,
+                filename: `audio_${Date.now()}.mp3`
+              }
+            }
+            
+            // Adicionar mensagem à lista imediatamente
+            window.dispatchEvent(new CustomEvent('newMessage', { detail: optimisticMessage }))
+            
+          } else {
+            const errorResult = await mediaResponse.json()
+            console.error('❌ Erro ao enviar áudio:', errorResult)
+            alert(`Erro ao enviar áudio: ${errorResult.error || 'Erro desconhecido'}`)
+          }
+        }
         return
       }
-      // Enviar áudio via API de mídia, igual ao fluxo de imagem/documento
-      if (backendMp3Url && chat) {
-        await fetch('/api/atendimento/send-media', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone: chat.customerPhone,
-            type: 'audio',
-            localPath: backendMp3Url,
-            mp3Url: backendMp3Url, // Adicionar URL MP3 explicitamente
-            filename: `audio_${Date.now()}.mp3`
-          })
-        })
-      }
-      return
+      
+      // ...restante do fluxo de envio de áudio usando ffmpeg.wasm...
+      console.log('⚠️ FFmpeg não suportado, usando microserviço externo')
+      
+    } catch (error) {
+      console.error('❌ Erro geral no envio de áudio:', error)
+      alert('Erro ao enviar áudio. Tente novamente.')
     }
-    // ...restante do fluxo de envio de áudio usando ffmpeg.wasm...
   }
 
   // Função para formatar tempo de gravação
