@@ -53,4 +53,7 @@ Thumbs.db
 # Local Env Files
 .env.development.local
 .env.test.local
-.env.production.local 
+.env.production.local
+
+# PWA generated files
+public/sw.js 
