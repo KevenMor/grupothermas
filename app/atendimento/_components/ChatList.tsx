@@ -118,6 +118,10 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
 }
 
 export function ChatList(props: ChatListProps) {
+  if (!props.chats) console.error('[ChatList] chats está undefined!', props)
+  if (!props.selectedChat) console.warn('[ChatList] selectedChat está undefined!', props)
+  if (!props.onSelectChat) console.error('[ChatList] onSelectChat está undefined!', props)
+  if (typeof props.isLoading === 'undefined') console.warn('[ChatList] isLoading está undefined!', props)
   console.debug('[ChatList] props:', props)
   const [searchTerm, setSearchTerm] = useState('')
   const [showAddContact, setShowAddContact] = useState(false)

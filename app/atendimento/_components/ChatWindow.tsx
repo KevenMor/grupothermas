@@ -1092,6 +1092,10 @@ const formatDate = (date: Date) => {
 }
 
 export function ChatWindow(props: ChatWindowProps) {
+  if (!props.chat) console.warn('[ChatWindow] chat está undefined!', props)
+  if (!props.messages) console.error('[ChatWindow] messages está undefined!', props)
+  if (!props.onSendMessage) console.error('[ChatWindow] onSendMessage está undefined!', props)
+  if (typeof props.isLoading === 'undefined') console.warn('[ChatWindow] isLoading está undefined!', props)
   console.debug('[ChatWindow] props:', props)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -1316,7 +1320,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         onToggleAI={props.onToggleAI} 
         onAssignAgent={props.onAssignAgent} 
         onMarkResolved={props.onMarkResolved}
-        onAssumeChat={handleAssumeChat}
+        onAssumeChat={props.onAssumeChat}
         onCustomerUpdate={props.onCustomerUpdate}
       />
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-2 pb-4" style={{ scrollBehavior: 'smooth' }}>
