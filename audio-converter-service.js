@@ -11,16 +11,12 @@ const cors = require('cors');
 const app = express();
 const upload = multer({ dest: os.tmpdir() });
 
-// Configuração Firebase Storage (use variáveis de ambiente para segurança)
+// Configuração Firebase Storage usando arquivo de credenciais
 const storage = new Storage({
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  credentials: {
-    client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-  },
+  keyFilename: path.join(__dirname, 'config', 'firebase-service-account.json'),
+  projectId: 'grupo-thermas-a99fc',
 });
-// ATENÇÃO: O valor de process.env.FIREBASE_STORAGE_BUCKET deve ser apenas o nome do bucket, ex: 'grupo-thermas-a99fc'
-const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
+const bucket = storage.bucket('grupo-thermas-a99fc.appspot.com');
 
 app.use(cors({ origin: '*' }));
 
