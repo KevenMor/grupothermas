@@ -675,61 +675,36 @@ export async function sendReaction(
 ): Promise<MessageResponse> {
   try {
     const config = await getZAPIConfig();
-    
     // Headers da requisição
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (config.zapiClientToken && config.zapiClientToken.trim()) {
       headers['Client-Token'] = config.zapiClientToken.trim();
     }
-
-    // Mapear emojis para códigos da Z-API
-    const emojiMap: Record<string, string> = {
-      '👍': 'like',
-      '❤️': 'love', 
-      '😂': 'laugh',
-      '😮': 'wow',
-      '😢': 'sad',
-      '🙏': 'pray'
-    };
-
-    const reactionCode = emojiMap[emoji];
-    if (!reactionCode) {
-      throw new Error(`Emoji não suportado: ${emoji}`);
-    }
-
-    // Endpoint da Z-API para reações
-    const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/reactions`;
-    
+    // Endpoint correto da Z-API para reações
+    const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-reaction`;
     console.log('Enviando reação para Z-API:', {
       url: zapiUrl,
       phone,
       messageId,
-      emoji,
-      reactionCode
+      emoji
     });
-
     const payload = {
       phone,
-      messageId,
-      reaction: reactionCode
+      reaction: emoji,
+      messageId
     };
-
     const zapiResponse = await fetch(zapiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
-
     const zapiResultText = await zapiResponse.text();
     let zapiResult: any = {};
     try { zapiResult = JSON.parse(zapiResultText); } catch { zapiResult = zapiResultText; }
-    
     console.log('Resposta da Z-API (reação):', zapiResult);
-
     if (!zapiResponse.ok) {
       throw new Error(`Erro Z-API: ${zapiResultText}`);
     }
-    
     return { 
       success: true, 
       messageId: zapiResult.messageId || messageId

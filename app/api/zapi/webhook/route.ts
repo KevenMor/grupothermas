@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     } else if (body.reaction) {
       // Controle de logs repetidos
       const reactionData = body.reaction
-      const targetMessageId = reactionData.messageId
+      let targetMessageId = body.reaction?.referencedMessage?.messageId || body.reaction?.messageId
       const reactionEmoji = reactionData.reaction
       const reactionLogKey = `${targetMessageId || ''}_${reactionEmoji || ''}`
       const now = Date.now()
@@ -121,69 +121,69 @@ export async function POST(request: NextRequest) {
               targetMessageDoc = byIdDoc
             }
           }
-
-          if (targetMessageDoc) {
-            const targetMessageData = targetMessageDoc.data()
-            
-            console.log('Mensagem alvo encontrada:', targetMessageDoc.id)
-            
-            if (isReactionRemoved) {
-              // Remover reação
-              const currentReactions = targetMessageData.reactions || []
-              const updatedReactions = currentReactions.filter((r: any) => 
-                !(r.fromMe === fromMe && r.byPhone === phone)
-              )
-              
-              await targetMessageDoc.ref.update({
-                reactions: updatedReactions
-              })
-              
-              console.log('Reação removida com sucesso')
-              content = `Reação removida de uma mensagem`
-            } else {
-              // Adicionar reação
-              const newReaction: Reaction = {
-                emoji: reactionEmoji,
-                by: senderName || 'Cliente',
-                byPhone: phone,
-                fromMe: !!fromMe,
-                timestamp: new Date().toISOString()
-              }
-              
-              // Verificar se já existe uma reação do mesmo usuário
-              const currentReactions = targetMessageData.reactions || []
-              const existingReactionIndex = currentReactions.findIndex((r: any) => 
-                r.fromMe === fromMe && r.byPhone === phone
-              )
-              
-              let updatedReactions
-              if (existingReactionIndex >= 0) {
-                // Atualizar reação existente
-                updatedReactions = [...currentReactions]
-                updatedReactions[existingReactionIndex] = newReaction
-              } else {
-                // Adicionar nova reação
-                updatedReactions = [...currentReactions, newReaction]
-              }
-              
-              await targetMessageDoc.ref.update({
-                reactions: updatedReactions
-              })
-              
-              console.log('Reação adicionada/atualizada com sucesso')
-              content = `Reagiu com ${reactionEmoji} a uma mensagem`
-            }
-          } else {
-            console.warn('Mensagem alvo da reação não encontrada:', targetMessageId)
-            console.warn('Payload completo da reação não encontrada:', JSON.stringify(body, null, 2))
-            content = `Reagiu com ${reactionEmoji} a uma mensagem apagada`
+        } catch (e) {
+          console.error('Erro ao buscar mensagem alvo da reação:', e)
+        }
+      }
+      if (!targetMessageDoc) {
+        console.error('Mensagem alvo da reação não encontrada. Payload:', JSON.stringify(body, null, 2))
+      }
+      
+      if (targetMessageDoc) {
+        const targetMessageData = targetMessageDoc.data()
+        
+        console.log('Mensagem alvo encontrada:', targetMessageDoc.id)
+        
+        if (isReactionRemoved) {
+          // Remover reação
+          const currentReactions = targetMessageData.reactions || []
+          const updatedReactions = currentReactions.filter((r: any) => 
+            !(r.fromMe === fromMe && r.byPhone === phone)
+          )
+          
+          await targetMessageDoc.ref.update({
+            reactions: updatedReactions
+          })
+          
+          console.log('Reação removida com sucesso')
+          content = `Reação removida de uma mensagem`
+        } else {
+          // Adicionar reação
+          const newReaction: Reaction = {
+            emoji: reactionEmoji,
+            by: senderName || 'Cliente',
+            byPhone: phone,
+            fromMe: !!fromMe,
+            timestamp: new Date().toISOString()
           }
-        } catch (error) {
-          console.error('Erro ao processar reação:', error)
-          content = `Erro ao processar reação`
+          
+          // Verificar se já existe uma reação do mesmo usuário
+          const currentReactions = targetMessageData.reactions || []
+          const existingReactionIndex = currentReactions.findIndex((r: any) => 
+            r.fromMe === fromMe && r.byPhone === phone
+          )
+          
+          let updatedReactions
+          if (existingReactionIndex >= 0) {
+            // Atualizar reação existente
+            updatedReactions = [...currentReactions]
+            updatedReactions[existingReactionIndex] = newReaction
+          } else {
+            // Adicionar nova reação
+            updatedReactions = [...currentReactions, newReaction]
+          }
+          
+          await targetMessageDoc.ref.update({
+            reactions: updatedReactions
+          })
+          
+          console.log('Reação adicionada/atualizada com sucesso')
+          content = `Reagiu com ${reactionEmoji} a uma mensagem`
         }
       } else {
-        content = 'Reação sem mensagem alvo'
+        console.warn('Mensagem alvo da reação não encontrada:', targetMessageId)
+        console.warn('Payload completo da reação não encontrada:', JSON.stringify(body, null, 2))
+        content = `Reagiu com ${reactionEmoji} a uma mensagem apagada`
       }
       
       mediaInfo = {
