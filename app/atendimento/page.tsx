@@ -7,8 +7,22 @@ import { Chat, ChatMessage, ChatStatus, Reaction } from '@/lib/models'
 import { Toaster, toast } from 'sonner'
 import { ChatList } from './_components/ChatList'
 import { ChatWindow } from './_components/ChatWindow'
+import { useAuth } from '@/components/auth/AuthProvider'
 
 export default function AtendimentoPage() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center bg-background text-lg">Carregando...</div>;
+  }
+
+  if (!user) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    return null;
+  }
+
   const [chats, setChats] = useState<Chat[]>([])
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
