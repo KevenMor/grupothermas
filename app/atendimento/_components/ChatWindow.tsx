@@ -335,7 +335,13 @@ const MessageInput = ({
   }
 
   const canInteract = () => {
-    return chat?.conversationStatus === 'agent_assigned'
+    const can = chat?.conversationStatus === 'agent_assigned'
+    console.log('🔍 canInteract debug:', {
+      conversationStatus: chat?.conversationStatus,
+      canInteract: can,
+      chatId: chat?.id
+    })
+    return can
   }
 
   const handleAttachment = (type: string) => {
@@ -544,6 +550,12 @@ const MessageInput = ({
 
   // 2. Ajustar toggleRecording para usar formato detectado
   const toggleRecording = async () => {
+    console.log('🎤 toggleRecording chamada:', {
+      canInteract: canInteract(),
+      isRecording,
+      chatId: chat?.id
+    })
+    
     if (!canInteract()) return
 
     if (!isRecording) {
