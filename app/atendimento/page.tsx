@@ -196,7 +196,7 @@ export default function AtendimentoPage() {
     setIsPolling(true)
     pollingIntervalRef.current = setInterval(() => {
       fetchChats(false)
-      if (selectedChat) {
+      if (selectedChat && !hasSelectedChatManually) {
         fetchNewMessages(selectedChat.id)
       }
     }, 5000) // Polling a cada 5s (ajustável)

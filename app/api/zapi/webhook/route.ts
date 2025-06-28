@@ -319,6 +319,12 @@ export async function POST(request: NextRequest) {
       content = '[Mensagem sem texto]'
     }
 
+    // Após definir 'content', sanitizar prefixo do atendente:
+    if (content && typeof content === 'string') {
+      // Remove prefixo do tipo *Nome:*\n do início do texto
+      content = content.replace(/^\*[\w\s]+:\*\s*\n?/, '').trim()
+    }
+
     const timestamp = momment ? new Date(momment).toISOString() : new Date().toISOString()
     
     console.log('Dados extraídos:', { phone, content, messageId, senderName })
