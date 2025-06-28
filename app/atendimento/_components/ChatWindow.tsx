@@ -32,7 +32,8 @@ import {
 } from 'lucide-react'
 import { ChatMessageItem } from './ChatMessageItem'
 import { EmojiPicker } from './EmojiPicker'
-import { isSameDay } from 'date-fns'
+import { isSameDay, isToday, isYesterday, format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import lamejs from 'lamejs'
 import { 
   convertAudioToMultipleFormats, 
@@ -1036,6 +1037,13 @@ const formatTimeAgo = (timestamp: string) => {
   if (diffInMinutes < 60) return `${diffInMinutes}m`
   if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`
   return `${Math.floor(diffInMinutes / 1440)}d`
+}
+
+// Função utilitária para formatar datas como em ChatMessageItem
+const formatDate = (date: Date) => {
+  if (isToday(date)) return 'Hoje'
+  if (isYesterday(date)) return 'Ontem'
+  return format(date, 'dd/MM/yyyy', { locale: ptBR })
 }
 
 export function ChatWindow({ 

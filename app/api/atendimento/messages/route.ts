@@ -9,9 +9,10 @@ export const runtime = 'nodejs'
 // GET /api/atendimento/messages?chatId=[id]
 // Returns all messages for a given chat
 export async function GET(request: NextRequest) {
+  let chatId: string | null = null;
   try {
     const { searchParams } = new URL(request.url)
-    const chatId = searchParams.get('chatId')
+    chatId = searchParams.get('chatId')
     const since = searchParams.get('since') // Novo parâmetro para otimização
 
     if (!chatId) {
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(messages)
     
   } catch (error) {
-    console.error(`Erro ao buscar mensagens para o chat ${chatId}:`, error)
+    console.error(`Erro ao buscar mensagens para o chat ${chatId || 'desconhecido'}:`, error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

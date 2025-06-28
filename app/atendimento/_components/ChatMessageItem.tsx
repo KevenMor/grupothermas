@@ -47,7 +47,7 @@ const formatDate = (date: Date) => {
   return format(date, 'dd/MM/yyyy', { locale: ptBR })
 }
 
-export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo, onReaction, messages }: ChatMessageItemProps) {
+export function ChatMessageItemComponent({ message, avatarUrl, contactName, showAvatar = true, showName = true, isFirstOfDay = false, onReply, onEdit, onDelete, onInfo, onReaction, messages }: ChatMessageItemProps) {
   const [showImagePopup, setShowImagePopup] = useState(false)
   const [showDocumentPopup, setShowDocumentPopup] = useState(false)
   const [showActions, setShowActions] = useState(false)
@@ -552,7 +552,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
 }
 
 // Otimizar com React.memo para evitar re-renderizações desnecessárias
-export const ChatMessageItem = memo(ChatMessageItem, (prevProps, nextProps) => {
+export const ChatMessageItem = memo(ChatMessageItemComponent, (prevProps, nextProps) => {
   // Comparação customizada para determinar se deve re-renderizar
   return (
     prevProps.message.id === nextProps.message.id &&
