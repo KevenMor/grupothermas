@@ -471,6 +471,7 @@ function AppHeader() {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  console.debug('[AppLayout] MONTADO')
   const router = useRouter()
   const { user, loading } = useAuth()
 
