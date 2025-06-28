@@ -88,6 +88,38 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
       </span>
     ))
 
+  // Função para extrair e renderizar nome do remetente
+  const renderMessageContent = (content: string) => {
+    // Padrão para detectar nome no formato "*Nome:*" no início da mensagem
+    const namePattern = /^\*([^*]+):\*\s*\n?/
+    const match = content.match(namePattern)
+    
+    if (match) {
+      const name = match[1]
+      const messageText = content.replace(namePattern, '').trim()
+      
+      return (
+        <div className="space-y-1">
+          <div className="font-bold text-sm">
+            {name}
+          </div>
+          {messageText && (
+            <div className="break-words leading-relaxed">
+              {renderMessageWithBreaks(messageText)}
+            </div>
+          )}
+        </div>
+      )
+    }
+    
+    // Se não há padrão de nome, renderizar normalmente
+    return (
+      <div className="break-words leading-relaxed">
+        {renderMessageWithBreaks(content)}
+      </div>
+    )
+  }
+
   // Obter URL completa para mídia
   const getFullUrl = (url?: string) => {
     if (!url) return ''
@@ -516,7 +548,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                   className="break-words leading-relaxed"
                   style={{ wordBreak: 'break-word' }}
                 >
-                  {renderMessageWithBreaks(message.content)}
+                  {renderMessageContent(message.content)}
                 </div>
               )}
             </div>
