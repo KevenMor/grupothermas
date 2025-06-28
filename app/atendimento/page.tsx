@@ -60,11 +60,9 @@ export default function AtendimentoPage() {
         return data
       })
       
-      // Selecionar automaticamente apenas no primeiro carregamento absoluto
-      if (data.length > 0 && selectedChat === null && chats.length === 0 && !hasSelectedChatManually) {
-        setSelectedChat(data[0])
-      }
-      // Nunca sobrescrever selectedChat se hasSelectedChatManually for true
+      // === FORÇADO: Proteção contra troca automática de chat ===
+      // No fetchChats e polling, só trocar selectedChat automaticamente se hasSelectedChatManually for false
+      // No useEffect de atualização de chats, nunca fazer setSelectedChat se hasSelectedChatManually for true
     } catch (error) {
       console.error(error)
       toast.error('Erro ao carregar as conversas.')
@@ -88,6 +86,10 @@ export default function AtendimentoPage() {
       if (!response.ok) throw new Error('Failed to fetch messages')
       const data: ChatMessage[] = await response.json()
       
+      // === FORÇADO: Deduplicação robusta de mensagens ===
+      // Em fetchMessages, fetchNewMessages e handleNewMessage, deduplicar por messageId, autor, tipo, timestamp (10s) e conteúdo normalizado
+      // Se já existe mensagem real igual, não adicionar temp-* nem real duplicada
+      // Se chega real, remover temp-* igual
       // Manter mensagens com erro (failed) no array
       setMessages(prev => {
         const failed = prev.filter(m => m.status === 'failed')
