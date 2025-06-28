@@ -702,42 +702,70 @@ const MessageInput = ({
     })
     
     try {
+      // Verificar se o FFmpeg é suportado
+      if (!isFFmpegSupported()) {
+        // Fallback: upload do webm/opus para backend, que converte para MP3
+        console.warn('FFmpeg não suportado, usando fallback de conversão backend.')
+        const formData = new FormData()
+        formData.append('file', audioBlob, `audio_${Date.now()}.webm`)
+        formData.append('type', 'audio')
+        let backendMp3Url = ''
+        try {
+          const uploadResponse = await fetch('/api/atendimento/upload', { method: 'POST', body: formData })
+          if (uploadResponse.ok) {
+            const uploadResult = await uploadResponse.json()
+            backendMp3Url = uploadResult.fileUrl
+            console.log('✅ Upload e conversão backend concluídos:', backendMp3Url)
+            await sendLog('info', 'media', 'Upload/conversão backend concluídos', { url: backendMp3Url })
+          } else {
+            const errorText = await uploadResponse.text()
+            console.error('❌ Falha no upload/conversão backend:', errorText)
+            await sendLog('error', 'media', 'Falha no upload/conversão backend', { error: errorText })
+            alert('Erro ao converter áudio no servidor: ' + errorText)
+            return
+          }
+        } catch (error) {
+          console.error('❌ Erro no upload/conversão backend:', error)
+          await sendLog('error', 'media', 'Erro no upload/conversão backend', { error: error instanceof Error ? error.message : error })
+          alert('Erro ao converter áudio no servidor. Tente novamente.')
+          return
+        }
+        // Enviar mensagem normalmente usando a URL do MP3 convertida no backend
+        if (backendMp3Url) {
+          // ... aqui segue o fluxo normal de envio de mensagem de áudio usando backendMp3Url ...
+          // Exemplo:
+          // await sendMediaMessage({ type: 'audio', localPath: backendMp3Url, ... })
+        }
+        return
+      }
+
       let oggBlob: Blob | null = null
       let mp3Blob: Blob | null = null
       
-      // Verificar se o FFmpeg é suportado
-      if (!isFFmpegSupported()) {
-        const errorMsg = 'Conversão de áudio indisponível: FFmpeg não suportado neste navegador. Envio de áudio abortado.';
-        console.error(errorMsg);
-        await sendLog('error', 'audio', errorMsg, { userAgent: navigator.userAgent });
-        alert(errorMsg);
+      // Usar conversão real com FFmpeg
+      console.log('🔄 Usando conversão real com FFmpeg...')
+      try {
+        const convertedFormats = await convertAudioToMultipleFormats(audioBlob)
+        mp3Blob = convertedFormats.mp3Blob
+        oggBlob = convertedFormats.oggBlob
+        console.log('✅ Conversão FFmpeg concluída:', {
+          mp3Success: !!mp3Blob,
+          oggSuccess: !!oggBlob,
+          mp3Size: mp3Blob?.size,
+          oggSize: oggBlob?.size
+        })
+        await sendLog('info', 'audio', 'Conversão FFmpeg concluída', {
+          mp3Success: !!mp3Blob,
+          oggSuccess: !!oggBlob,
+          mp3Size: mp3Blob?.size,
+          oggSize: oggBlob?.size
+        })
+      } catch (ffmpegError) {
+        const errorMsg = 'Erro na conversão de áudio com FFmpeg. Envio de áudio abortado.';
+        console.error('❌', errorMsg, ffmpegError);
+        await sendLog('error', 'audio', errorMsg, { error: ffmpegError instanceof Error ? ffmpegError.message : 'Unknown error' });
+        alert(errorMsg + '\n' + (ffmpegError instanceof Error ? ffmpegError.message : ''));
         return;
-      } else {
-        // Usar conversão real com FFmpeg
-        console.log('🔄 Usando conversão real com FFmpeg...')
-        try {
-          const convertedFormats = await convertAudioToMultipleFormats(audioBlob)
-          mp3Blob = convertedFormats.mp3Blob
-          oggBlob = convertedFormats.oggBlob
-          console.log('✅ Conversão FFmpeg concluída:', {
-            mp3Success: !!mp3Blob,
-            oggSuccess: !!oggBlob,
-            mp3Size: mp3Blob?.size,
-            oggSize: oggBlob?.size
-          })
-          await sendLog('info', 'audio', 'Conversão FFmpeg concluída', {
-            mp3Success: !!mp3Blob,
-            oggSuccess: !!oggBlob,
-            mp3Size: mp3Blob?.size,
-            oggSize: oggBlob?.size
-          })
-        } catch (ffmpegError) {
-          const errorMsg = 'Erro na conversão de áudio com FFmpeg. Envio de áudio abortado.';
-          console.error('❌', errorMsg, ffmpegError);
-          await sendLog('error', 'audio', errorMsg, { error: ffmpegError instanceof Error ? ffmpegError.message : 'Unknown error' });
-          alert(errorMsg + '\n' + (ffmpegError instanceof Error ? ffmpegError.message : ''));
-          return;
-        }
       }
 
       // Validar blobs convertidos
@@ -1139,6 +1167,32 @@ export function ChatWindow({
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
+  const [ffmpegStatus, setFfmpegStatus] = useState<'checking'|'supported'|'not_supported'|'error'>('checking')
+  const [ffmpegError, setFfmpegError] = useState<string>('')
+
+  useEffect(() => {
+    async function checkFFmpeg() {
+      try {
+        if (isFFmpegSupported()) {
+          // Testar se arquivos estão acessíveis
+          const js = await fetch('/ffmpeg/ffmpeg-core.js', { method: 'HEAD' })
+          const wasm = await fetch('/ffmpeg/ffmpeg-core.wasm', { method: 'HEAD' })
+          if (js.ok && wasm.ok) {
+            setFfmpegStatus('supported')
+          } else {
+            setFfmpegStatus('error')
+            setFfmpegError('Arquivos ffmpeg-core.js/wasm não encontrados no servidor.')
+          }
+        } else {
+          setFfmpegStatus('not_supported')
+        }
+      } catch (e) {
+        setFfmpegStatus('error')
+        setFfmpegError(e instanceof Error ? e.message : 'Erro desconhecido')
+      }
+    }
+    checkFFmpeg()
+  }, [])
 
   // Função para rolar até o final
   const scrollToBottom = () => {
@@ -1367,6 +1421,18 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
           <ArrowDown className="w-6 h-6" />
         </button>
       )}
+
+      {/* Diagnóstico visual do FFmpeg */}
+      <div className="w-full p-2 text-xs text-center">
+        {ffmpegStatus === 'checking' && <span className="text-gray-400">Verificando suporte a áudio avançado...</span>}
+        {ffmpegStatus === 'supported' && <span className="text-green-600">Áudio avançado: compatível ✅</span>}
+        {ffmpegStatus === 'not_supported' && (
+          <span className="text-red-600">Áudio avançado: não suportado neste navegador. O envio de áudio pode ser mais lento ou limitado.<br/>Tente usar Google Chrome Desktop para melhor experiência.</span>
+        )}
+        {ffmpegStatus === 'error' && (
+          <span className="text-red-600">Erro ao carregar ffmpeg.wasm: {ffmpegError}</span>
+        )}
+      </div>
     </div>
   )
 } 

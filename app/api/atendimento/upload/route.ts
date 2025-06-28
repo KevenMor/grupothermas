@@ -1,5 +1,10 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { uploadToFirebaseStorage } from '@/lib/mediaUpload'
+import ffmpeg from 'fluent-ffmpeg'
+import ffmpegPath from 'ffmpeg-static'
+import os from 'os'
+import path from 'path'
+import fs from 'fs/promises'
 
 export const runtime = 'nodejs'
 
@@ -45,15 +50,56 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Converter arquivo para buffer
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    
+    // --- NOVO: Fallback para conversão backend se áudio for webm/opus ---
+    let uploadBuffer: Buffer = Buffer.from(await file.arrayBuffer())
+    let uploadName: string = file.name
+    let uploadMime: string = file.type
+    let convertedFrom: string | undefined = undefined
+
+    if (type === 'audio') {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase()
+      const mimeType = file.type.toLowerCase()
+      const isWebmOrOpus = (fileExtension === 'webm' || fileExtension === 'opus' || mimeType.includes('webm') || mimeType.includes('opus'))
+      if (isWebmOrOpus) {
+        // Salvar arquivo temporário
+        const tmpDir = os.tmpdir()
+        const inputPath = path.join(tmpDir, `input_${Date.now()}.webm`)
+        const outputPath = path.join(tmpDir, `output_${Date.now()}.mp3`)
+        await fs.writeFile(inputPath, uploadBuffer)
+        try {
+          await new Promise((resolve, reject) => {
+            ffmpeg()
+              .setFfmpegPath(ffmpegPath as string)
+              .input(inputPath)
+              .audioCodec('libmp3lame')
+              .audioBitrate('128k')
+              .audioChannels(1)
+              .audioFrequency(22050)
+              .outputOptions('-y')
+              .on('end', resolve)
+              .on('error', reject)
+              .save(outputPath)
+          })
+          const mp3Buffer = await fs.readFile(outputPath)
+          uploadBuffer = mp3Buffer
+          uploadName = file.name.replace(/\.(webm|opus)$/i, '.mp3')
+          uploadMime = 'audio/mpeg'
+          convertedFrom = file.name
+        } catch (err) {
+          await fs.unlink(inputPath).catch(() => {})
+          await fs.unlink(outputPath).catch(() => {})
+          return NextResponse.json({ error: 'Falha ao converter áudio para MP3 no backend', details: err instanceof Error ? err.message : err }, { status: 500 })
+        }
+        await fs.unlink(inputPath).catch(() => {})
+        await fs.unlink(outputPath).catch(() => {})
+      }
+    }
+
     // Fazer upload usando a nova utility
     const uploadResult = await uploadToFirebaseStorage(
-      buffer,
-      file.name,
-      file.type,
+      uploadBuffer,
+      uploadName,
+      uploadMime,
       type as 'image' | 'audio' | 'video' | 'document'
     )
 
@@ -68,8 +114,8 @@ export async function POST(request: NextRequest) {
     console.log('FileUrl:', uploadResult.fileUrl)
     console.log('FileSize:', uploadResult.fileSize)
     console.log('StoragePath:', uploadResult.storagePath)
-    if (uploadResult.convertedFrom) {
-      console.log('ConvertedFrom:', uploadResult.convertedFrom)
+    if (convertedFrom) {
+      console.log('ConvertedFrom:', convertedFrom)
     }
 
     return NextResponse.json({
@@ -79,7 +125,7 @@ export async function POST(request: NextRequest) {
       fileSize: uploadResult.fileSize,
       fileType: uploadResult.fileType,
       storagePath: uploadResult.storagePath,
-      convertedFrom: uploadResult.convertedFrom,
+      convertedFrom,
       message: 'Arquivo salvo no Firebase Storage com sucesso!'
     })
 
