@@ -104,15 +104,25 @@ export async function POST(request: NextRequest) {
       })
       
       // Buscar a mensagem alvo da reação
+      let targetMessageDoc = null;
       if (targetMessageId) {
         try {
+          // Primeiro tenta por zapiMessageId
           const targetMessageQuery = await conversationRef.collection('messages')
             .where('zapiMessageId', '==', targetMessageId)
             .limit(1)
             .get()
-          
           if (!targetMessageQuery.empty) {
-            const targetMessageDoc = targetMessageQuery.docs[0]
+            targetMessageDoc = targetMessageQuery.docs[0]
+          } else {
+            // Tenta por id do Firestore
+            const byIdDoc = await conversationRef.collection('messages').doc(targetMessageId).get()
+            if (byIdDoc.exists) {
+              targetMessageDoc = byIdDoc
+            }
+          }
+
+          if (targetMessageDoc) {
             const targetMessageData = targetMessageDoc.data()
             
             console.log('Mensagem alvo encontrada:', targetMessageDoc.id)
@@ -165,6 +175,7 @@ export async function POST(request: NextRequest) {
             }
           } else {
             console.warn('Mensagem alvo da reação não encontrada:', targetMessageId)
+            console.warn('Payload completo da reação não encontrada:', JSON.stringify(body, null, 2))
             content = `Reagiu com ${reactionEmoji} a uma mensagem apagada`
           }
         } catch (error) {

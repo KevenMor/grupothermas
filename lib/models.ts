@@ -230,6 +230,8 @@ export interface ChatMessage {
   origin?: 'panel' | 'device' | 'system' | 'unknown'
   fromMe?: boolean
   customerPhone?: string
+  // Adicionado para integração Z-API
+  zapiMessageId?: string
 }
 
 export interface ChatCustomer {

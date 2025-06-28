@@ -1281,6 +1281,10 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
   const handleReaction = useCallback(async (messageId: string, emoji: string) => {
     if (!props.chat) return
 
+    // Buscar a mensagem pelo id
+    const message = props.messages?.find(m => m.id === messageId)
+    const zapiMessageId = message?.zapiMessageId || messageId
+
     try {
       const response = await fetch('/api/atendimento/reactions', {
         method: 'POST',
@@ -1288,7 +1292,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         body: JSON.stringify({
           action: 'add',
           phone: props.chat.id,
-          messageId: messageId,
+          messageId: zapiMessageId,
           emoji: emoji,
           agentName: 'Atendente',
           agentId: 'current-user-id'
@@ -1311,7 +1315,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
       console.error('Erro ao enviar reação:', error)
       alert('Erro ao enviar reação. Tente novamente.')
     }
-  }, [props.chat, props.onReaction])
+  }, [props.chat, props.onReaction, props.messages])
 
   return (
     <div className="relative h-full flex flex-col">
