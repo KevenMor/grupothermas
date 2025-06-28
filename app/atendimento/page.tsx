@@ -52,8 +52,8 @@ export default function AtendimentoPage() {
         return data
       })
       
-      if (data.length > 0 && !selectedChat) {
-        // Só selecionar automaticamente se selectedChat for null (primeiro acesso)
+      // Selecionar automaticamente apenas no primeiro carregamento (selectedChat === null E chats ainda não carregados)
+      if (data.length > 0 && selectedChat === null && chats.length === 0) {
         setSelectedChat(data[0])
       }
     } catch (error) {
@@ -177,17 +177,13 @@ export default function AtendimentoPage() {
   // Iniciar polling automático
   const startPolling = () => {
     if (isPolling) return
-    
     setIsPolling(true)
     pollingIntervalRef.current = setInterval(() => {
-      // Atualizar chats a cada 5 segundos
       fetchChats(false)
-      
-      // Atualizar mensagens do chat selecionado a cada 2 segundos
       if (selectedChat) {
         fetchNewMessages(selectedChat.id)
       }
-    }, 2000) // Polling mais frequente para mensagens
+    }, 5000) // Polling a cada 5s (ajustável)
   }
 
   // Parar polling
@@ -210,9 +206,11 @@ export default function AtendimentoPage() {
   // Buscar mensagens ao selecionar chat
   useEffect(() => {
     if (selectedChat) {
-      fetchMessages(selectedChat.id, true) // Forçar refresh ao trocar de chat
-      setLastMessageTimestamp('') // Resetar timestamp
+      fetchMessages(selectedChat.id, true)
+      setLastMessageTimestamp('')
     }
+    // Não depende de chats, só do selectedChat
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat])
 
   // Escutar eventos de novas mensagens de mídia
