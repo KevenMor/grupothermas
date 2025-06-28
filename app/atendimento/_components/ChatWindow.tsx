@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Chat, ChatMessage } from '@/lib/models'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -1121,27 +1121,51 @@ export function ChatWindow({
     return <WelcomeScreen />
   }
 
-  const handleAssumeChat = () => {
+  // Agrupar mensagens por data usando useMemo para otimização
+  const groupedMessages = useMemo(() => {
+    const groups: Array<{ date: Date; messages: ChatMessage[] }> = []
+    let currentGroup: { date: Date; messages: ChatMessage[] } | null = null
+
+    messages.forEach((msg) => {
+      const dateObj = new Date(msg.timestamp)
+      const isFirstOfDay = !currentGroup || !isSameDay(currentGroup.date, dateObj)
+      
+      if (isFirstOfDay) {
+        if (currentGroup) {
+          groups.push(currentGroup)
+        }
+        currentGroup = { date: dateObj, messages: [msg] }
+      } else {
+        currentGroup!.messages.push(msg)
+      }
+    })
+
+    if (currentGroup) {
+      groups.push(currentGroup)
+    }
+
+    return groups
+  }, [messages])
+
+  // Memoizar funções de callback para evitar re-renderizações
+  const handleAssumeChat = useCallback(() => {
     if (chat && onAssumeChat) {
       onAssumeChat(chat.id)
     }
-  }
+  }, [chat, onAssumeChat])
 
-  // Função para iniciar reply
-  const handleReplyMessage = (message: ChatMessage) => {
+  const handleReplyMessage = useCallback((message: ChatMessage) => {
     if (onReplyMessage) {
       onReplyMessage(message)
     }
-  }
+  }, [onReplyMessage])
 
-  // Função para enviar mensagem (adaptar para incluir reply)
-  const handleSend = (data: { content: string }) => {
+  const handleSend = useCallback((data: { content: string }) => {
     if (!chat) return
     onSendMessage(data)
-  }
+  }, [chat, onSendMessage])
 
-  // Implementar funções das mensagens
-  const handleEditMessage = async (message: ChatMessage) => {
+  const handleEditMessage = useCallback(async (message: ChatMessage) => {
     if (!chat) return
     
     const newContent = prompt('Editar mensagem:', message.content)
@@ -1165,9 +1189,9 @@ export function ChatWindow({
     } catch (error) {
       console.error('Erro ao editar mensagem:', error)
     }
-  }
+  }, [chat, onEditMessage])
 
-  const handleDeleteMessage = async (messageId: string) => {
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
     if (!chat) return
     
     if (!confirm('Tem certeza que deseja excluir esta mensagem?')) return
@@ -1189,9 +1213,9 @@ export function ChatWindow({
     } catch (error) {
       console.error('Erro ao excluir mensagem:', error)
     }
-  }
+  }, [chat, onDeleteMessage])
 
-  const handleMessageInfo = async (message: ChatMessage) => {
+  const handleMessageInfo = useCallback(async (message: ChatMessage) => {
     if (!chat) return
 
     try {
@@ -1219,10 +1243,9 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
     } catch (error) {
       console.error('Erro ao buscar informações da mensagem:', error)
     }
-  }
+  }, [chat])
 
-  // Função para enviar reação
-  const handleReaction = async (messageId: string, emoji: string) => {
+  const handleReaction = useCallback(async (messageId: string, emoji: string) => {
     if (!chat) return
 
     try {
@@ -1233,8 +1256,8 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
           phone: chat.id,
           messageId: messageId,
           emoji: emoji,
-          agentName: 'Atendente', // Pode ser dinâmico baseado no usuário logado
-          agentId: 'current-user-id' // Pode ser dinâmico baseado no usuário logado
+          agentName: 'Atendente',
+          agentId: 'current-user-id'
         })
       })
 
@@ -1249,10 +1272,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
       console.error('Erro ao enviar reação:', error)
       alert('Erro ao enviar reação. Tente novamente.')
     }
-  }
-
-  // Agrupar mensagens por data
-  let lastDate: Date | null = null
+  }, [chat])
 
   return (
     <div className="relative h-full flex flex-col">
@@ -1271,29 +1291,38 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
           </div>
         ) : (
           <div className="space-y-2">
-            {messages.map((msg, idx) => {
-              const dateObj = new Date(msg.timestamp)
-              const isFirstOfDay = !lastDate || !isSameDay(lastDate, dateObj)
-              lastDate = dateObj
-              const isAgent = msg.role === 'agent'
-              return (
-                <ChatMessageItem
-                  key={msg.id}
-                  message={msg}
-                  avatarUrl={!isAgent ? chat.customerAvatar : undefined}
-                  contactName={!isAgent ? chat.customerName : undefined}
-                  showAvatar={true}
-                  showName={true}
-                  isFirstOfDay={isFirstOfDay}
-                  onReply={handleReplyMessage}
-                  onEdit={handleEditMessage}
-                  onDelete={handleDeleteMessage}
-                  onInfo={handleMessageInfo}
-                  onReaction={handleReaction}
-                  messages={messages}
-                />
-              )
-            })}
+            {groupedMessages.map((group, groupIndex) => (
+              <div key={groupIndex}>
+                {/* Separador de data */}
+                <div className="flex justify-center my-6">
+                  <div className="bg-blue-50 dark:bg-gray-800 text-blue-700 dark:text-gray-200 text-xs px-4 py-1 rounded-full shadow-sm font-semibold">
+                    {formatDate(group.date)}
+                  </div>
+                </div>
+                
+                {/* Mensagens do grupo */}
+                {group.messages.map((msg) => {
+                  const isAgent = msg.role === 'agent'
+                  return (
+                    <ChatMessageItem
+                      key={msg.id}
+                      message={msg}
+                      avatarUrl={!isAgent ? chat?.customerAvatar : undefined}
+                      contactName={!isAgent ? chat?.customerName : undefined}
+                      showAvatar={true}
+                      showName={true}
+                      isFirstOfDay={false} // Já agrupamos por data
+                      onReply={handleReplyMessage}
+                      onEdit={handleEditMessage}
+                      onDelete={handleDeleteMessage}
+                      onInfo={handleMessageInfo}
+                      onReaction={handleReaction}
+                      messages={messages}
+                    />
+                  )
+                })}
+              </div>
+            ))}
           </div>
         )}
         <div ref={messagesEndRef} />

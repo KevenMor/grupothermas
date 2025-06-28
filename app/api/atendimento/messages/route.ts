@@ -9,47 +9,39 @@ export const runtime = 'nodejs'
 // GET /api/atendimento/messages?chatId=[id]
 // Returns all messages for a given chat
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const chatId = searchParams.get('chatId')
-
-  if (!chatId) {
-    return NextResponse.json({ error: 'Chat ID is required' }, { status: 400 })
-  }
-
   try {
-    console.log('=== CARREGANDO MENSAGENS ===')
-    console.log('ChatId:', chatId)
-    
-    // Verificar se a conversa existe
-    const conversationDoc = await adminDB.collection('conversations').doc(chatId).get()
-    
-    if (!conversationDoc.exists) {
-      console.log('Conversa não encontrada:', chatId)
-      return NextResponse.json([])
-    }
-    
-    const conversationData = conversationDoc.data()
-    console.log('Dados da conversa:', {
-      customerPhone: conversationData?.customerPhone,
-      customerName: conversationData?.customerName,
-      lastMessage: conversationData?.lastMessage
-    })
+    const { searchParams } = new URL(request.url)
+    const chatId = searchParams.get('chatId')
+    const since = searchParams.get('since') // Novo parâmetro para otimização
 
-    // Buscar mensagens APENAS desta conversa específica
-    const messagesSnapshot = await adminDB
-      .collection('conversations')
-      .doc(chatId)
-      .collection('messages')
-      .orderBy('timestamp', 'asc')
-      .get()
-
-    console.log(`Encontradas ${messagesSnapshot.size} mensagens para o chat ${chatId}`)
-
-    if (messagesSnapshot.empty) {
-      return NextResponse.json([])
+    if (!chatId) {
+      return NextResponse.json({ error: 'chatId is required' }, { status: 400 })
     }
 
-    const messages: ChatMessage[] = []
+    console.log(`Buscando mensagens para chat ${chatId}${since ? ` desde ${since}` : ''}`)
+
+    const messagesRef = adminDB.collection('conversations').doc(chatId).collection('messages')
+    
+    let query = messagesRef.orderBy('timestamp', 'asc')
+    
+    // Se há timestamp 'since', filtrar apenas mensagens mais recentes
+    if (since) {
+      try {
+        const sinceDate = new Date(since)
+        if (!isNaN(sinceDate.getTime())) {
+          query = query.where('timestamp', '>', sinceDate.toISOString())
+          console.log(`Filtrando mensagens após: ${sinceDate.toISOString()}`)
+        }
+      } catch (error) {
+        console.warn('Timestamp "since" inválido, ignorando filtro:', since)
+      }
+    }
+
+    const messagesSnapshot = await query.get()
+    const messages: any[] = []
+
+    console.log(`Encontradas ${messagesSnapshot.docs.length} mensagens${since ? ' novas' : ''}`)
+
     for (const doc of messagesSnapshot.docs) {
       try {
         const data = doc.data()

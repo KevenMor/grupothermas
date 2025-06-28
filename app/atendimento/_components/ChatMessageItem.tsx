@@ -5,7 +5,7 @@ import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, memo } from 'react'
 import { MessageReactions } from '@/components/MessageReactions'
 import { ReactionPicker } from '@/components/ReactionPicker'
 
@@ -549,4 +549,19 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
       </div>
     </>
   )
-} 
+}
+
+// Otimizar com React.memo para evitar re-renderizações desnecessárias
+export const ChatMessageItem = memo(ChatMessageItem, (prevProps, nextProps) => {
+  // Comparação customizada para determinar se deve re-renderizar
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.content === nextProps.message.content &&
+    prevProps.message.status === nextProps.message.status &&
+    prevProps.message.timestamp === nextProps.message.timestamp &&
+    prevProps.avatarUrl === nextProps.avatarUrl &&
+    prevProps.contactName === nextProps.contactName &&
+    prevProps.isFirstOfDay === nextProps.isFirstOfDay &&
+    JSON.stringify(prevProps.message.reactions) === JSON.stringify(nextProps.message.reactions)
+  )
+}) 

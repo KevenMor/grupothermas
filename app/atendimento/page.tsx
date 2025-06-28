@@ -14,18 +14,30 @@ export default function AtendimentoPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoadingChats, setIsLoadingChats] = useState(true)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+  
+  // Estados para otimização
+  const [lastMessageTimestamp, setLastMessageTimestamp] = useState<string>('')
+  const [isPolling, setIsPolling] = useState(false)
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const messagesCache = useRef<Map<string, ChatMessage[]>>(new Map())
 
-  // Função para buscar chats
-  const fetchChats = async () => {
-    // Exibe loader somente se ainda não há chats carregados
-    const showLoader = chats.length === 0
+  // Função para buscar chats com cache
+  const fetchChats = async (showLoader = true) => {
     if (showLoader) setIsLoadingChats(true)
 
     try {
       const response = await fetch('/api/atendimento/chats')
       if (!response.ok) throw new Error('Failed to fetch chats')
       const data: Chat[] = await response.json()
-      setChats(data)
+      
+      // Atualizar apenas se houver mudanças
+      setChats(prevChats => {
+        if (JSON.stringify(prevChats) === JSON.stringify(data)) {
+          return prevChats // Não atualizar se não houve mudanças
+        }
+        return data
+      })
+      
       if (data.length > 0 && !selectedChat) {
         handleSelectChat(data[0])
       }
@@ -37,13 +49,21 @@ export default function AtendimentoPage() {
     }
   }
 
-  // Função para buscar mensagens do chat selecionado
-  const fetchMessages = async (chatId: string) => {
+  // Função otimizada para buscar mensagens
+  const fetchMessages = async (chatId: string, forceRefresh = false) => {
+    // Usar cache se disponível e não for refresh forçado
+    if (!forceRefresh && messagesCache.current.has(chatId)) {
+      const cachedMessages = messagesCache.current.get(chatId)!
+      setMessages(cachedMessages)
+      return
+    }
+
     setIsLoadingMessages(messages.length === 0)
     try {
       const response = await fetch(`/api/atendimento/messages?chatId=${chatId}`)
       if (!response.ok) throw new Error('Failed to fetch messages')
       const data: ChatMessage[] = await response.json()
+      
       // Manter mensagens com erro (failed) no array
       setMessages(prev => {
         const failed = prev.filter(m => m.status === 'failed')
@@ -57,8 +77,19 @@ export default function AtendimentoPage() {
           return true
         })
         // Ordenar por timestamp ascendente
-        return unique.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        const sorted = unique.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        
+        // Atualizar cache
+        messagesCache.current.set(chatId, sorted)
+        
+        return sorted
       })
+      
+      // Atualizar timestamp da última mensagem
+      if (data.length > 0) {
+        const lastMsg = data[data.length - 1]
+        setLastMessageTimestamp(lastMsg.timestamp)
+      }
     } catch (error) {
       console.error(error)
       toast.error('Erro ao carregar mensagens.')
@@ -67,15 +98,79 @@ export default function AtendimentoPage() {
     }
   }
 
-  // Buscar chats ao montar
+  // Função para buscar apenas mensagens novas (otimizada)
+  const fetchNewMessages = async (chatId: string) => {
+    if (!lastMessageTimestamp) return
+    
+    try {
+      const response = await fetch(`/api/atendimento/messages?chatId=${chatId}&since=${lastMessageTimestamp}`)
+      if (!response.ok) return
+      
+      const newMessages: ChatMessage[] = await response.json()
+      if (newMessages.length > 0) {
+        setMessages(prev => {
+          const combined = [...prev, ...newMessages]
+          const uniqueMap = new Map<string, boolean>()
+          const unique = combined.filter(m => {
+            if (uniqueMap.has(m.id)) return false
+            uniqueMap.set(m.id, true)
+            return true
+          })
+          const sorted = unique.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+          
+          // Atualizar cache
+          messagesCache.current.set(chatId, sorted)
+          
+          return sorted
+        })
+        
+        // Atualizar timestamp
+        const lastMsg = newMessages[newMessages.length - 1]
+        setLastMessageTimestamp(lastMsg.timestamp)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar mensagens novas:', error)
+    }
+  }
+
+  // Iniciar polling automático
+  const startPolling = () => {
+    if (isPolling) return
+    
+    setIsPolling(true)
+    pollingIntervalRef.current = setInterval(() => {
+      // Atualizar chats a cada 5 segundos
+      fetchChats(false)
+      
+      // Atualizar mensagens do chat selecionado a cada 2 segundos
+      if (selectedChat) {
+        fetchNewMessages(selectedChat.id)
+      }
+    }, 2000) // Polling mais frequente para mensagens
+  }
+
+  // Parar polling
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+    setIsPolling(false)
+  }
+
+  // Buscar chats ao montar e iniciar polling
   useEffect(() => {
     fetchChats()
+    startPolling()
+    
+    return () => stopPolling()
   }, [])
 
   // Buscar mensagens ao selecionar chat
   useEffect(() => {
     if (selectedChat) {
-      fetchMessages(selectedChat.id)
+      fetchMessages(selectedChat.id, true) // Forçar refresh ao trocar de chat
+      setLastMessageTimestamp('') // Resetar timestamp
     }
   }, [selectedChat])
 
@@ -84,9 +179,11 @@ export default function AtendimentoPage() {
     const handleNewMessage = (event: CustomEvent) => {
       const newMessage = event.detail
       setMessages(prev => [...prev, newMessage])
-      // Buscar mensagens atualizadas do chat selecionado
+      
+      // Atualizar cache
       if (selectedChat) {
-        fetchMessages(selectedChat.id)
+        const currentCache = messagesCache.current.get(selectedChat.id) || []
+        messagesCache.current.set(selectedChat.id, [...currentCache, newMessage])
       }
     }
 
