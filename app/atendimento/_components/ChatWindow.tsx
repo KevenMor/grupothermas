@@ -718,11 +718,17 @@ const MessageInput = ({
         alert('Erro ao converter áudio no microserviço. Tente novamente.')
         return
       }
-      // Enviar mensagem normalmente usando a URL do MP3 convertida no backend
-      if (backendMp3Url) {
-        // ... aqui segue o fluxo normal de envio de mensagem de áudio usando backendMp3Url ...
-        // Exemplo:
-        // await sendMediaMessage({ type: 'audio', localPath: backendMp3Url, ... })
+      // Enviar áudio via API de mídia, igual ao fluxo de imagem/documento
+      if (backendMp3Url && chat) {
+        await fetch('/api/atendimento/send-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: chat.customerPhone,
+            type: 'audio',
+            localPath: backendMp3Url
+          })
+        })
       }
       return
     }
