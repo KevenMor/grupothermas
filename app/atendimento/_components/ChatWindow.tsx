@@ -1226,24 +1226,11 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         <div ref={messagesEndRef} />
       </div>
       
-      <div className="sticky bottom-0 left-0 w-full bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-20 px-4 py-3 flex items-center gap-3 shadow-lg">
-        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-blue-600">
-          <Paperclip className="w-5 h-5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-blue-600">
-          <Smile className="w-5 h-5" />
-        </Button>
-        <Input
-          className="flex-1 rounded-2xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm"
-          placeholder="Digite uma mensagem..."
-        />
-        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-blue-600">
-          <Mic className="w-5 h-5" />
-        </Button>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 ml-1 shadow" size="icon">
-          <Send className="w-5 h-5" />
-        </Button>
-      </div>
+      <MessageInput 
+        chat={chat}
+        onSendMessage={handleSend}
+        onAssumeChat={() => onAssumeChat?.(chat?.id || '')}
+      />
 
       {/* Botão flutuante de seta para baixo */}
       {showScrollToBottom && (
@@ -1255,18 +1242,6 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
           <ArrowDown className="w-6 h-6" />
         </button>
       )}
-
-      {/* Diagnóstico visual do FFmpeg */}
-      <div className="w-full p-2 text-xs text-center">
-        {ffmpegStatus === 'checking' && <span className="text-gray-400">Verificando suporte a áudio avançado...</span>}
-        {ffmpegStatus === 'supported' && <span className="text-green-600">Áudio avançado: compatível ✅</span>}
-        {ffmpegStatus === 'not_supported' && (
-          <span className="text-red-600">Áudio avançado: não suportado neste navegador. O envio de áudio pode ser mais lento ou limitado.<br/>Tente usar Google Chrome Desktop para melhor experiência.</span>
-        )}
-        {ffmpegStatus === 'error' && (
-          <span className="text-red-600">Erro ao carregar ffmpeg.wasm: {ffmpegError}</span>
-        )}
-      </div>
     </div>
   )
 } 
