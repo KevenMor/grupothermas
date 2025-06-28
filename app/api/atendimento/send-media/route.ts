@@ -108,7 +108,8 @@ export async function POST(request: NextRequest) {
           console.log('ReplyTo:', replyTo)
           
           // Validar formato de áudio de forma mais robusta
-          const urlExtension = localPath.split('.').pop()?.split('?')[0].toLowerCase()
+          const match = localPath.match(/\.([a-zA-Z0-9]+)(?=\?|$)/)
+          const urlExtension = match ? match[1].toLowerCase() : ''
           const supportedFormats = ['mp3', 'ogg', 'opus']
           
           if (!urlExtension || !supportedFormats.includes(urlExtension)) {
