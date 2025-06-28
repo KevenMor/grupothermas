@@ -290,7 +290,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
           <div 
             className={`relative group px-4 py-3 max-w-full rounded-2xl shadow-sm
               ${isFromAgent ? 'bg-blue-600 text-white rounded-br-md' :
-                isFromCustomer ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-md' :
+                isFromCustomer ? 'bg-white text-[#2563eb] border border-[#dbeafe] rounded-bl-md' :
                 'bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-xl text-center'}
               ${isSystem ? 'mx-auto' : ''}
             `}
