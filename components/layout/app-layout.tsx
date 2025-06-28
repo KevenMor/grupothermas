@@ -74,6 +74,8 @@ import {
   Activity
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -93,6 +95,20 @@ function AppSidebar() {
       toast.error('Erro ao fazer logout')
     }
   }
+
+  // Função utilitária para buscar total de não lidas
+  const fetchUnreadCount = async () => {
+    const res = await fetch('/api/atendimento/chats')
+    if (!res.ok) return 0
+    const data = await res.json()
+    if (Array.isArray(data)) {
+      return data.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0)
+    }
+    return 0
+  }
+
+  // Notificações de não lidas para menu Atendimento
+  const { data: unreadCount } = useSWR('unread-chats', fetchUnreadCount, { refreshInterval: 2000 })
 
   return (
     <Sidebar>
