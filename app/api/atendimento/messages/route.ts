@@ -6,6 +6,12 @@ import { replyMessage, sendTextMessage } from '@/lib/zapi'
 // Garantir que a rota use o runtime Node.js (acesso a process.env)
 export const runtime = 'nodejs'
 
+// Sanitizar o conteúdo para remover prefixo *Nome:*
+function sanitizeContent(content: string) {
+  if (!content) return '';
+  return content.replace(/^\*[^*]+:\*\s*\n?/, '').trim();
+}
+
 // GET /api/atendimento/messages?chatId=[id]
 // Returns all messages for a given chat
 export async function GET(request: NextRequest) {
@@ -113,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     // Preparar objeto de mensagem com status inicial "sending"
     const baseMessage: Partial<ChatMessage> = {
-      content,
+      content: sanitizeContent(content),
       timestamp: new Date().toISOString(),
       role: 'agent',
       status: 'sending',
@@ -175,7 +181,7 @@ export async function POST(request: NextRequest) {
 
     // Atualizar documento pai com último conteúdo mesmo em caso de falha
     await adminDB.collection('conversations').doc(chatId).set({
-      lastMessage: content,
+      lastMessage: sanitizeContent(content),
       timestamp: baseMessage.timestamp,
       customerPhone: phone,
       unreadCount: 0 // Reset unread count when agent sends message
