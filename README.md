@@ -72,6 +72,36 @@ pnpm dev
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
 - `MAKE_WEBHOOK_URL`
 
+## 🐳 Deploy Railway (Docker)
+
+O projeto inclui um `Dockerfile` otimizado para deploy no Railway:
+
+### Build Multi-stage
+- **Etapa 1 (Builder)**: Instala dependências e executa `npm run build`
+- **Etapa 2 (Runner)**: Copia apenas arquivos necessários para produção
+
+### Comandos do Dockerfile:
+```dockerfile
+# Build automático garantido
+RUN npm run build
+
+# Start da aplicação
+CMD ["npm", "start"]
+```
+
+### Deploy no Railway:
+1. Conecte o repositório no Railway
+2. O Railway detectará automaticamente o Dockerfile
+3. Configure as variáveis de ambiente no painel Railway
+4. Deploy automático a cada push
+
+### Alternativa: Build pelo Painel Railway
+Se preferir usar o build automático do Railway (sem Dockerfile):
+1. Remova o `Dockerfile` do repositório
+2. Configure no painel Railway:
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start`
+
 ## 📁 Estrutura do Projeto
 
 ```

@@ -1,1 +1,14 @@
-.env 
+node_modules
+npm-debug.log
+.next
+.git
+.gitignore
+README.md
+.env
+.env.local
+.env.production
+Dockerfile*
+.dockerignore
+.railway
+.vscode
+*.log 
