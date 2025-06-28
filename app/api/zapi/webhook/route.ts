@@ -404,6 +404,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ignored: true, reason: 'empty_message' })
     }
 
+    // Nova validação: nunca salvar se faltar messageId ou phone
+    if (!messageId || !phone) {
+      console.error('Tentativa de salvar mensagem sem messageId ou phone:', { messageId, phone })
+      return NextResponse.json({ ignored: true, reason: 'missing_messageId_or_phone' })
+    }
+
     // Salvar mensagem no Firestore
     const msg: Partial<ChatMessage> = {
       content,
