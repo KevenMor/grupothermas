@@ -106,7 +106,7 @@ export default function Kanban({ leads, onUpdateLead, onAddLead }: KanbanProps) 
                   )}
 
                   <div className="text-xs text-gray-400 mt-3">
-                    {lead.createdAt?.toLocaleDateString('pt-BR')}
+                    {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString('pt-BR') : ''}
                   </div>
                 </CardContent>
               </Card>

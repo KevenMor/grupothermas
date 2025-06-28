@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
-import { Department, ApiResponse, PaginatedResponse } from '@/lib/models'
+import { AuditLog, ApiResponse, PaginatedResponse } from '@/lib/models'
 
 // Função para verificar permissões do usuário
 async function checkUserPermission(userId: string, requiredPermission: string): Promise<boolean> {
@@ -25,37 +25,18 @@ async function checkUserPermission(userId: string, requiredPermission: string): 
   }
 }
 
-// Função para registrar auditoria
-async function logAudit(userId: string, action: string, module: string, recordId?: string, oldValues?: any, newValues?: any) {
-  try {
-    const userDoc = await adminDB.collection('users').doc(userId).get()
-    const userName = userDoc.exists ? userDoc.data()?.name : 'Sistema'
-    
-    await adminDB.collection('audit_logs').add({
-      userId,
-      userName,
-      action,
-      module,
-      recordId,
-      oldValues,
-      newValues,
-      timestamp: new Date().toISOString(),
-      ipAddress: 'API',
-      userAgent: 'Server'
-    })
-  } catch (error) {
-    console.error('Erro ao registrar auditoria:', error)
-  }
-}
-
-// GET - Listar departamentos
+// GET - Listar logs de auditoria
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
-    const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || ''
+    const module = searchParams.get('module') || ''
+    const action = searchParams.get('action') || ''
+    const userId = searchParams.get('userId') || ''
+    const startDate = searchParams.get('startDate') || ''
+    const endDate = searchParams.get('endDate') || ''
+    const recordId = searchParams.get('recordId') || ''
     
     // Verificar permissão
     const authHeader = request.headers.get('authorization')
@@ -65,36 +46,53 @@ export async function GET(request: NextRequest) {
     
     const token = authHeader.replace('Bearer ', '')
     const decodedToken = await adminDB.auth().verifyIdToken(token)
-    const hasPermission = await checkUserPermission(decodedToken.uid, 'admin_departments_view')
+    const hasPermission = await checkUserPermission(decodedToken.uid, 'admin_audit_view')
     
     if (!hasPermission) {
       return NextResponse.json({ success: false, error: 'Permissão negada' }, { status: 403 })
     }
     
     // Construir query
-    let query = adminDB.collection('departments').orderBy('name', 'asc')
+    let query = adminDB.collection('audit_logs').orderBy('timestamp', 'desc')
     
-    if (search) {
-      query = query.where('name', '>=', search).where('name', '<=', search + '\uf8ff')
+    if (module) {
+      query = query.where('module', '==', module)
     }
     
-    if (status) {
-      query = query.where('isActive', '==', status === 'active')
+    if (action) {
+      query = query.where('action', '==', action)
+    }
+    
+    if (userId) {
+      query = query.where('userId', '==', userId)
+    }
+    
+    if (recordId) {
+      query = query.where('recordId', '==', recordId)
+    }
+    
+    // Filtros de data
+    if (startDate) {
+      query = query.where('timestamp', '>=', startDate)
+    }
+    
+    if (endDate) {
+      query = query.where('timestamp', '<=', endDate + 'T23:59:59.999Z')
     }
     
     // Executar query com paginação
     const snapshot = await query.limit(limit).offset((page - 1) * limit).get()
     const totalSnapshot = await query.count().get()
     
-    const departments = snapshot.docs.map((doc: any) => ({
+    const logs = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data()
     }))
     
     const total = totalSnapshot.data().count
     
-    const response: PaginatedResponse<Department> = {
-      data: departments as Department[],
+    const response: PaginatedResponse<AuditLog> = {
+      data: logs as AuditLog[],
       total,
       page,
       limit,
@@ -103,12 +101,12 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({ success: true, data: response })
   } catch (error) {
-    console.error('Erro ao listar departamentos:', error)
+    console.error('Erro ao listar logs de auditoria:', error)
     return NextResponse.json({ success: false, error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
 
-// POST - Criar novo departamento
+// POST - Registrar log de auditoria (para uso interno)
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -118,49 +116,44 @@ export async function POST(request: NextRequest) {
     
     const token = authHeader.replace('Bearer ', '')
     const decodedToken = await adminDB.auth().verifyIdToken(token)
-    const hasPermission = await checkUserPermission(decodedToken.uid, 'admin_departments_create')
-    
-    if (!hasPermission) {
-      return NextResponse.json({ success: false, error: 'Permissão negada' }, { status: 403 })
-    }
     
     const body = await request.json()
-    const { name, description } = body
+    const { action, module, recordId, recordType, oldValues, newValues, details } = body
     
     // Validações
-    if (!name) {
-      return NextResponse.json({ success: false, error: 'Nome do departamento é obrigatório' }, { status: 400 })
+    if (!action || !module) {
+      return NextResponse.json({ success: false, error: 'Ação e módulo são obrigatórios' }, { status: 400 })
     }
     
-    // Verificar se nome já existe
-    const nameCheck = await adminDB.collection('departments').where('name', '==', name).get()
-    if (!nameCheck.empty) {
-      return NextResponse.json({ success: false, error: 'Departamento com este nome já existe' }, { status: 400 })
+    // Buscar dados do usuário
+    const userDoc = await adminDB.collection('users').doc(decodedToken.uid).get()
+    const userName = userDoc.exists ? userDoc.data()?.name : 'Sistema'
+    
+    // Criar log de auditoria
+    const auditData: Omit<AuditLog, 'id'> = {
+      userId: decodedToken.uid,
+      userName,
+      action,
+      module,
+      recordId,
+      recordType,
+      oldValues,
+      newValues,
+      timestamp: new Date().toISOString(),
+      ipAddress: 'API',
+      userAgent: 'Server',
+      details
     }
     
-    // Criar departamento
-    const now = new Date().toISOString()
-    const departmentData: Omit<Department, 'id'> = {
-      name,
-      description: description || '',
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: decodedToken.uid
-    }
-    
-    const deptRef = await adminDB.collection('departments').add(departmentData)
-    
-    // Registrar auditoria
-    await logAudit(decodedToken.uid, 'create', 'department', deptRef.id, null, departmentData)
+    const logRef = await adminDB.collection('audit_logs').add(auditData)
     
     return NextResponse.json({ 
       success: true, 
-      data: { id: deptRef.id, ...departmentData },
-      message: 'Departamento criado com sucesso'
+      data: { id: logRef.id, ...auditData },
+      message: 'Log de auditoria registrado com sucesso'
     })
   } catch (error) {
-    console.error('Erro ao criar departamento:', error)
+    console.error('Erro ao registrar log de auditoria:', error)
     return NextResponse.json({ success: false, error: 'Erro interno do servidor' }, { status: 500 })
   }
 } 

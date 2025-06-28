@@ -26,10 +26,17 @@ export interface Customer {
 }
 
 export interface Sale {
-  paymentMethod: 'PIX' | 'Cartão de Crédito'
+  paymentMethod: 'pix' | 'cartao_credito'
   installments: number
   totalValue: number
-  firstPaymentDate: string
+  paymentDate: string
+  saleId: string
+  contractNumber?: string
+  saleDate: string
+  commission?: number
+  commissionValue?: number
+  paymentStatus: 'pendente' | 'pago' | 'atrasado' | 'cancelado'
+  paymentHistory: PaymentHistory[]
 }
 
 export interface Contract {
@@ -44,15 +51,38 @@ export interface Contract {
 }
 
 export interface Lead {
-  id?: string
+  id: string
   uid: string
   name: string
   phone: string
   email?: string
   stage: 'new' | 'proposal' | 'waiting_signature' | 'completed'
+  createdAt: string
+  updatedAt: string
+  cpf: string
+  birthDate: string
+  maritalStatus: 'solteiro' | 'casado' | 'divorciado' | 'viuvo'
+  profession: string
+  cep: string
+  address: string
+  neighborhood: string
+  city: string
+  state: string
+  number: string
+  complement?: string
+  paymentMethod: 'pix' | 'cartao_credito'
+  installments: number
+  totalValue: number
+  paymentDate: string
+  status: 'novo' | 'em_atendimento' | 'proposta_enviada' | 'fechado' | 'perdido'
+  assignedTo?: string
+  assignedToName?: string
+  departmentId?: string
+  departmentName?: string
+  source: string
   notes?: string
-  createdAt: Date
-  updatedAt: Date
+  createdBy: string
+  updatedBy: string
 }
 
 export interface DashboardMetrics {
@@ -83,7 +113,9 @@ export interface Department {
   name: string
   description?: string
   isActive: boolean
-  createdAt: Date
+  createdAt: string
+  updatedAt: string
+  createdBy: string
 }
 
 // Sistema de usuários com departamentos
@@ -203,4 +235,130 @@ export interface ChatCustomer {
   pausedBy?: string
   resolvedAt?: Date | string
   resolvedBy?: string
+}
+
+// ===== SISTEMA DE GESTÃO DE USUÁRIOS E PERMISSÕES =====
+
+export interface Permission {
+  id: string
+  name: string
+  description: string
+  module: string // 'admin' | 'atendimento' | 'crm' | 'vendas' | 'financeiro' | 'relatorios'
+  action: string // 'view' | 'create' | 'edit' | 'delete' | 'approve' | 'audit'
+  isActive: boolean
+}
+
+export interface UserProfile {
+  id: string
+  name: string
+  email: string
+  phone: string
+  departmentId: string
+  departmentName: string
+  role: string // 'admin' | 'gerente' | 'atendimento' | 'comercial' | 'financeiro'
+  permissions: string[] // Array de IDs de permissões
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  createdBy: string
+  lastLogin?: string
+}
+
+export interface AuditLog {
+  id: string
+  userId: string
+  userName: string
+  action: string // 'create' | 'update' | 'delete' | 'login' | 'logout' | 'permission_change'
+  module: string // 'user' | 'department' | 'lead' | 'sale' | 'permission'
+  recordId?: string // ID do registro afetado
+  recordType?: string // Tipo do registro
+  oldValues?: any
+  newValues?: any
+  ipAddress?: string
+  userAgent?: string
+  timestamp: string
+  details?: string
+}
+
+// ===== CRM DE LEADS E VENDAS =====
+
+export interface PaymentHistory {
+  id: string
+  amount: number
+  date: string
+  method: string
+  status: 'pending' | 'completed' | 'failed'
+  transactionId?: string
+  notes?: string
+}
+
+// ===== PERMISSÕES PREDEFINIDAS =====
+
+export const DEFAULT_PERMISSIONS: Omit<Permission, 'id'>[] = [
+  // Admin
+  { name: 'Visualizar Dashboard', description: 'Acesso ao dashboard principal', module: 'admin', action: 'view', isActive: true },
+  { name: 'Gerenciar Usuários', description: 'Criar, editar e excluir usuários', module: 'admin', action: 'create', isActive: true },
+  { name: 'Gerenciar Departamentos', description: 'Criar, editar e excluir departamentos', module: 'admin', action: 'create', isActive: true },
+  { name: 'Gerenciar Permissões', description: 'Configurar permissões de usuários', module: 'admin', action: 'create', isActive: true },
+  { name: 'Visualizar Auditoria', description: 'Acesso aos logs de auditoria', module: 'admin', action: 'audit', isActive: true },
+  
+  // Atendimento
+  { name: 'Acesso ao Chat', description: 'Usar sistema de atendimento', module: 'atendimento', action: 'view', isActive: true },
+  { name: 'Assumir Atendimentos', description: 'Assumir conversas do chat', module: 'atendimento', action: 'create', isActive: true },
+  { name: 'Gerenciar IA', description: 'Configurar treinamento da IA', module: 'atendimento', action: 'edit', isActive: true },
+  
+  // CRM
+  { name: 'Visualizar Leads', description: 'Ver lista de leads', module: 'crm', action: 'view', isActive: true },
+  { name: 'Criar Leads', description: 'Cadastrar novos leads', module: 'crm', action: 'create', isActive: true },
+  { name: 'Editar Leads', description: 'Modificar dados de leads', module: 'crm', action: 'edit', isActive: true },
+  { name: 'Excluir Leads', description: 'Remover leads do sistema', module: 'crm', action: 'delete', isActive: true },
+  { name: 'Atribuir Leads', description: 'Atribuir leads a usuários', module: 'crm', action: 'edit', isActive: true },
+  
+  // Vendas
+  { name: 'Visualizar Vendas', description: 'Ver histórico de vendas', module: 'vendas', action: 'view', isActive: true },
+  { name: 'Registrar Vendas', description: 'Cadastrar novas vendas', module: 'vendas', action: 'create', isActive: true },
+  { name: 'Editar Vendas', description: 'Modificar dados de vendas', module: 'vendas', action: 'edit', isActive: true },
+  { name: 'Aprovar Vendas', description: 'Aprovar vendas pendentes', module: 'vendas', action: 'approve', isActive: true },
+  
+  // Relatórios
+  { name: 'Relatórios de Vendas', description: 'Acesso a relatórios de vendas', module: 'relatorios', action: 'view', isActive: true },
+  { name: 'Relatórios de Atendimento', description: 'Acesso a relatórios de chat', module: 'relatorios', action: 'view', isActive: true },
+  { name: 'Relatórios Financeiros', description: 'Acesso a relatórios financeiros', module: 'relatorios', action: 'view', isActive: true },
+]
+
+export const DEFAULT_DEPARTMENTS: Omit<Department, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>[] = [
+  { name: 'Administração', description: 'Departamento administrativo', isActive: true },
+  { name: 'Atendimento', description: 'Atendimento ao cliente', isActive: true },
+  { name: 'Comercial', description: 'Vendas e prospecção', isActive: true },
+  { name: 'Financeiro', description: 'Controle financeiro', isActive: true },
+  { name: 'TI', description: 'Tecnologia da informação', isActive: true },
+]
+
+// ===== TIPOS DE PERFIL =====
+
+export const USER_ROLES = {
+  ADMIN: 'admin',
+  GERENTE: 'gerente',
+  ATENDIMENTO: 'atendimento',
+  COMERCIAL: 'comercial',
+  FINANCEIRO: 'financeiro',
+} as const
+
+export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES]
+
+// ===== UTILITÁRIOS =====
+
+export interface ApiResponse<T = any> {
+  success: boolean
+  data?: T
+  error?: string
+  message?: string
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
 } 

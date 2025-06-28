@@ -61,12 +61,12 @@ export default function LeadsPage() {
       const leadRef = doc(db, 'leads', leadId)
       await updateDoc(leadRef, {
         stage,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       })
       setLeads(prev =>
         prev.map(lead =>
           lead.id === leadId
-            ? { ...lead, stage, updatedAt: new Date() }
+            ? { ...lead, stage, updatedAt: new Date().toISOString() }
             : lead
         )
       )
@@ -92,8 +92,32 @@ export default function LeadsPage() {
         phone,
         email,
         stage: 'new' as Lead['stage'],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        cpf: '',
+        birthDate: '',
+        maritalStatus: 'solteiro' as const,
+        profession: '',
+        cep: '',
+        address: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+        number: '',
+        complement: '',
+        paymentMethod: 'pix' as const,
+        installments: 1,
+        totalValue: 0,
+        paymentDate: '',
+        status: 'novo' as const,
+        assignedTo: '',
+        assignedToName: '',
+        departmentId: '',
+        departmentName: '',
+        source: 'formulario',
+        notes: '',
+        createdBy: currentUser.uid,
+        updatedBy: currentUser.uid,
       }
       const docRef = await addDoc(collection(db, 'leads'), newLead)
       setLeads(prev => [...prev, { ...newLead, id: docRef.id }])

@@ -147,7 +147,7 @@ export default function ContractModal({ contract, isOpen, onClose }: ContractMod
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Data do 1º Pagamento</label>
-                    <p className="mt-1 text-sm text-gray-900">{contract.sale.firstPaymentDate}</p>
+                    <p className="mt-1 text-sm text-gray-900">{contract.sale.paymentDate}</p>
                   </div>
                 </div>
               </CardContent>
