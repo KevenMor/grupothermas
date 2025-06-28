@@ -276,11 +276,11 @@ export async function sendAudio(
   phone: string, 
   base64OrUrl: string,
   replyTo?: { id: string, text: string, author: 'agent' | 'customer' },
-  contentType?: string
+  contentType?: string,
+  caption?: string
 ): Promise<MessageResponse> {
   try {
     const config = await getZAPIConfig();
-    // Headers conforme documentação Z-API
     const headers: Record<string, string> = { 
       'Content-Type': 'application/json'
     };
@@ -288,51 +288,25 @@ export async function sendAudio(
       headers['Client-Token'] = config.zapiClientToken.trim();
     }
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-audio`;
-    // Validar formato do áudio usando regex robusto (igual ao backend)
     const match = base64OrUrl.match(/\.([a-zA-Z0-9]+)(?=\?|$)/)
     const urlExtension = match ? match[1].toLowerCase() : ''
     const supportedFormats = ['mp3', 'ogg', 'opus']
-    
-    console.log('=== VALIDAÇÃO Z-API ===')
-    console.log('URL:', base64OrUrl)
-    console.log('Regex match:', match)
-    console.log('Extensão detectada:', urlExtension)
-    console.log('Formatos suportados:', supportedFormats)
-    
     if (!urlExtension || !supportedFormats.includes(urlExtension)) {
-      console.error('=== ERRO Z-API - FORMATO NÃO SUPORTADO ===')
-      console.error('URL:', base64OrUrl)
-      console.error('Extensão detectada:', urlExtension)
       throw new Error(`Formato de áudio não suportado: ${urlExtension}. Use apenas MP3, OGG ou Opus.`)
     }
-    // Payload conforme documentação Z-API
+    // Payload limpo
     const payload: any = { 
       phone: phone,
-      audio: base64OrUrl,
-      viewOnce: false,
-      waveform: true
+      audio: base64OrUrl
     };
-    // Adicionar reply se especificado
-    if (replyTo?.id) {
-      payload.messageId = replyTo.id;
-    }
-    // LOG extra do Content-Type
-    if (contentType) {
-      console.log('Content-Type detectado para o áudio:', contentType)
-      // Não enviar contentType para a Z-API, apenas logar
-    }
-    // Remover campos undefined explicitamente (garantia extra)
+    if (caption !== undefined) payload.caption = caption;
+    // Nunca envie campos undefined
     Object.keys(payload).forEach(key => {
       if (payload[key] === undefined) delete payload[key];
     });
     console.log('=== ENVIANDO ÁUDIO VIA Z-API ===');
     console.log('URL:', zapiUrl);
-    console.log('Phone:', phone);
-    console.log('Audio URL:', base64OrUrl);
-    console.log('Audio Format:', urlExtension);
-    if (contentType) console.log('Audio Content-Type:', contentType);
-    console.log('Headers:', headers);
-    console.log('Payload completo:', JSON.stringify(payload, null, 2));
+    console.log('Payload:', JSON.stringify(payload, null, 2));
     const zapiResponse = await fetch(zapiUrl, {
       method: 'POST',
       headers,
@@ -343,15 +317,9 @@ export async function sendAudio(
     try { 
       zapiResult = JSON.parse(zapiResultText); 
     } catch (parseError) { 
-      console.error('Erro ao fazer parse da resposta Z-API:', parseError);
       zapiResult = { raw: zapiResultText };
     }
-    console.log('=== RESPOSTA Z-API ÁUDIO ===');
-    console.log('Status:', zapiResponse.status);
-    console.log('Status Text:', zapiResponse.statusText);
-    console.log('Response:', zapiResult);
     if (!zapiResponse.ok) {
-      // Log detalhado do erro
       console.error('Erro Z-API detalhado:', {
         status: zapiResponse.status,
         statusText: zapiResponse.statusText,
@@ -364,7 +332,6 @@ export async function sendAudio(
       });
       throw new Error(`Erro Z-API (${zapiResponse.status}): ${zapiResultText}`);
     }
-    // Criar objeto de mensagem local para atualização imediata da UI
     const localMessageObj = {
       id: `local_${Date.now()}`,
       content: '🎵 Áudio',

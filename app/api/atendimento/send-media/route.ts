@@ -175,9 +175,9 @@ export async function POST(request: NextRequest) {
               console.warn('Content-Type inválido:', contentType)
               // Não falhar aqui, apenas logar o warning
             }
-            // Chamar sendAudio passando o Content-Type detectado
+            // Chamar sendAudio passando o Content-Type detectado e caption (se houver)
             console.log('Chamando sendAudio com Content-Type:', contentType)
-            const audioResult = await sendAudio(phone, audioUrl, replyTo, contentType || undefined)
+            const audioResult = await sendAudio(phone, audioUrl, replyTo, contentType || undefined, caption || "")
             
             console.log('=== RESULTADO ENVIO ÁUDIO ===')
             console.log('Success:', audioResult.success)
