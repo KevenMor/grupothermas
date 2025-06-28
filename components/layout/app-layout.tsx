@@ -238,14 +238,28 @@ function AppSidebar() {
             <SidebarNavSubmenu
               title="Vendas"
               icon={<TrendingUp className="h-4 w-4" />}
-              defaultOpen={pathname.startsWith('/sales') || pathname === '/contracts'}
+              defaultOpen={pathname.startsWith('/sales') || pathname === '/contracts' || pathname === '/leads'}
             >
               <SidebarNavSubItem
                 icon={<ShoppingCart className="h-4 w-4" />}
+                active={pathname === '/sales'}
+                onClick={() => router.push('/sales' as any)}
+              >
+                Listar Vendas
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<Plus className="h-4 w-4" />}
                 active={pathname === '/sales/new'}
                 onClick={() => router.push('/sales/new' as any)}
               >
                 Nova Venda
+              </SidebarNavSubItem>
+              <SidebarNavSubItem
+                icon={<UserCheck className="h-4 w-4" />}
+                active={pathname === '/leads'}
+                onClick={() => router.push('/leads' as any)}
+              >
+                Leads
               </SidebarNavSubItem>
               <SidebarNavSubItem
                 icon={<FileText className="h-4 w-4" />}
@@ -260,6 +274,13 @@ function AppSidebar() {
 
         <SidebarGroup title="Gestão">
           <SidebarNav>
+            <SidebarNavItem
+              icon={<Users className="h-4 w-4" />}
+              active={pathname === '/admin/users'}
+              onClick={() => router.push('/admin/users' as any)}
+            >
+              Gestão de Usuários
+            </SidebarNavItem>
             <SidebarNavItem
               icon={<Settings className="h-4 w-4" />}
               onClick={() => router.push('/settings' as any)}

@@ -26,17 +26,35 @@ export interface Customer {
 }
 
 export interface Sale {
-  paymentMethod: 'pix' | 'cartao_credito'
-  installments: number
+  id: string
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  customerCpf: string
+  products: {
+    id: string
+    name: string
+    price: number
+    quantity: number
+  }[]
   totalValue: number
-  paymentDate: string
-  saleId: string
+  status: 'pending' | 'completed' | 'cancelled'
+  paymentMethod: 'pix' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'cash'
+  notes: string
+  createdAt: string
+  updatedAt: string
+  createdBy: string
+  isActive: boolean
+  // Campos legados para compatibilidade
+  installments?: number
+  paymentDate?: string
+  saleId?: string
   contractNumber?: string
-  saleDate: string
+  saleDate?: string
   commission?: number
   commissionValue?: number
-  paymentStatus: 'pendente' | 'pago' | 'atrasado' | 'cancelado'
-  paymentHistory: PaymentHistory[]
+  paymentStatus?: 'pendente' | 'pago' | 'atrasado' | 'cancelado'
+  paymentHistory?: PaymentHistory[]
 }
 
 export interface Contract {
