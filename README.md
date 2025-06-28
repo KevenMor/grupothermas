@@ -131,3 +131,33 @@ Sistema interno do Grupo Thermas. Contato: suporte@grupothermas.com.br
 **Sistema desenvolvido com ❤️ para o Grupo Thermas**
 
 # Grupo Thermas SaaS 
+
+## Erro ao iniciar Next.js em produção – Falta rodar o build
+
+Ao rodar `next start`, aparece o erro:
+
+```
+[Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server.]
+```
+
+### Solução:
+
+1. Sempre rode o comando de build antes do start:
+
+```bash
+npm run build
+# ou
+yarn build
+```
+
+2. Só depois rode:
+
+```bash
+npm start
+# ou
+yarn start
+```
+
+Assim a pasta `.next` é criada e o servidor de produção funciona corretamente.
+
+Se ocorrer erro no build, envie o log para análise. 
