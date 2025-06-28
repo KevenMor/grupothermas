@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminDB } from '@/lib/firebaseAdmin'
 import { Reaction } from '@/lib/models'
 import { sendReaction } from '@/lib/zapi'
+import { FieldValue } from 'firebase-admin/firestore'
 
 interface ReactionRequest {
   action: 'add' | 'remove'
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
 
       // Adicionar reação ao array
       await messageRef.update({
-        reactions: adminDB.FieldValue.arrayUnion(newReaction)
+        reactions: FieldValue.arrayUnion(newReaction)
       })
 
       console.log('Reação adicionada com sucesso')
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
 
       // Remover reação do array
       await messageRef.update({
-        reactions: adminDB.FieldValue.arrayRemove(reactionToRemove)
+        reactions: FieldValue.arrayRemove(reactionToRemove)
       })
 
       console.log('Reação removida com sucesso')
