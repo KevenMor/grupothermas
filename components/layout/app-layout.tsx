@@ -368,7 +368,7 @@ function AppSidebar() {
 
         <SidebarFooter>
           <div className="flex items-center gap-3 px-2">
-            <Avatar className="h-8 w-8 border">
+            <Avatar className="h-8 w-8 border cursor-pointer" onClick={() => router.push('/users/profile')}>
               <AvatarFallback className="text-xs bg-gradient-to-r from-thermas-blue-500 to-thermas-orange-500 text-white font-medium">
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
@@ -376,7 +376,8 @@ function AppSidebar() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex-1 min-w-0"
+              className="flex-1 min-w-0 cursor-pointer"
+              onClick={() => router.push('/users/profile')}
             >
               <p className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">
                 {user?.displayName || user?.email?.split('@')[0] || 'Usuário'}

@@ -88,34 +88,6 @@ export function ChatMessageItemComponent({ message, avatarUrl, contactName, show
       </span>
     ))
 
-  // Função para extrair e renderizar nome do remetente
-  const renderMessageContent = (content: string) => {
-    // Padrão para detectar nome no formato "*Nome:*" no início da mensagem
-    const namePattern = /^\*([^*]+):\*\s*\n?/
-    const match = content.match(namePattern)
-    
-    if (match) {
-      const name = match[1]
-      const messageText = content.replace(namePattern, '').trim()
-      return (
-        <div className="space-y-1">
-          <div className="font-bold text-white">
-            {name}:
-          </div>
-          <div className="text-white whitespace-pre-wrap">
-            {messageText}
-          </div>
-        </div>
-      )
-    }
-    // Se não há padrão de nome, renderizar normalmente preservando quebras de linha
-    return (
-      <div className="text-white whitespace-pre-wrap">
-        {content}
-      </div>
-    )
-  }
-
   // Obter URL completa para mídia
   const getFullUrl = (url?: string) => {
     if (!url) return ''

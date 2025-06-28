@@ -60,10 +60,11 @@ export default function AtendimentoPage() {
         return data
       })
       
-      // Selecionar automaticamente apenas no primeiro carregamento (selectedChat === null E chats ainda não carregados)
+      // Selecionar automaticamente apenas no primeiro carregamento absoluto
       if (data.length > 0 && selectedChat === null && chats.length === 0 && !hasSelectedChatManually) {
         setSelectedChat(data[0])
       }
+      // Nunca sobrescrever selectedChat se hasSelectedChatManually for true
     } catch (error) {
       console.error(error)
       toast.error('Erro ao carregar as conversas.')

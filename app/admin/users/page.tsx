@@ -96,15 +96,6 @@ interface Department {
   color: string
 }
 
-const departments: Department[] = [
-  { id: 'atendimento', name: 'Atendimento', description: 'Equipe de suporte ao cliente', color: 'bg-blue-500' },
-  { id: 'vendas', name: 'Vendas', description: 'Equipe comercial', color: 'bg-green-500' },
-  { id: 'marketing', name: 'Marketing', description: 'Equipe de marketing', color: 'bg-purple-500' },
-  { id: 'ti', name: 'TI', description: 'Equipe de tecnologia', color: 'bg-orange-500' },
-  { id: 'rh', name: 'RH', description: 'Recursos humanos', color: 'bg-pink-500' },
-  { id: 'financeiro', name: 'Financeiro', description: 'Equipe financeira', color: 'bg-red-500' },
-]
-
 const roles = [
   { id: 'admin', name: 'Administrador', description: 'Acesso total ao sistema' },
   { id: 'manager', name: 'Gerente', description: 'Gerencia equipes e projetos' },
@@ -137,6 +128,7 @@ export default function UsersPage() {
   const [showEditDrawer, setShowEditDrawer] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [departments, setDepartments] = useState<Department[]>([])
 
   // Form states
   const [formData, setFormData] = useState({
@@ -144,7 +136,6 @@ export default function UsersPage() {
     email: '',
     department: '',
     role: '',
-    permissions: [] as string[],
     status: 'active' as 'active' | 'inactive'
   })
 
@@ -175,6 +166,21 @@ export default function UsersPage() {
 
     setFilteredUsers(filtered)
   }, [users, searchTerm, statusFilter, departmentFilter])
+
+  useEffect(() => {
+    async function fetchDepartments() {
+      try {
+        const res = await fetch('/api/admin/departments', { headers: { 'Content-Type': 'application/json' } })
+        const data = await res.json()
+        if (data.success && data.data?.data) {
+          setDepartments(data.data.data)
+        }
+      } catch (e) {
+        // erro silencioso
+      }
+    }
+    fetchDepartments()
+  }, [])
 
   const fetchUsers = async () => {
     try {
@@ -270,7 +276,6 @@ export default function UsersPage() {
       email: user.email,
       department: user.department,
       role: user.role,
-      permissions: user.permissions,
       status: user.status
     })
     setShowEditDrawer(true)
@@ -282,18 +287,8 @@ export default function UsersPage() {
       email: '',
       department: '',
       role: '',
-      permissions: [],
       status: 'active'
     })
-  }
-
-  const togglePermission = (permissionId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      permissions: prev.permissions.includes(permissionId)
-        ? prev.permissions.filter(p => p !== permissionId)
-        : [...prev.permissions, permissionId]
-    }))
   }
 
   const getDepartmentColor = (departmentId: string) => {
@@ -342,52 +337,50 @@ export default function UsersPage() {
                   Novo Usuário
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl rounded-2xl shadow-2xl bg-white dark:bg-gray-900 border-0">
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <UserPlus className="w-5 h-5" />
-                    Criar Novo Usuário
+                  <DialogTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-2xl font-bold">
+                    <UserPlus className="w-6 h-6" />
+                    Novo Usuário
                   </DialogTitle>
                 </DialogHeader>
-                
-                <Tabs defaultValue="basic" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="basic">Informações</TabsTrigger>
-                    <TabsTrigger value="department">Departamento</TabsTrigger>
-                    <TabsTrigger value="permissions">Permissões</TabsTrigger>
+                <Tabs defaultValue="basic" className="w-full mt-2">
+                  <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4">
+                    <TabsTrigger value="basic" className="rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white">Informações</TabsTrigger>
+                    <TabsTrigger value="department" className="rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white">Departamento</TabsTrigger>
                   </TabsList>
-                  
                   <TabsContent value="basic" className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium">Nome Completo</label>
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Nome Completo</label>
                         <Input
+                          className="rounded-lg border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500"
                           value={formData.name}
                           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                           placeholder="Digite o nome completo"
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium">E-mail</label>
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">E-mail</label>
                         <Input
                           type="email"
+                          className="rounded-lg border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500"
                           value={formData.email}
                           onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                           placeholder="usuario@empresa.com"
                         />
                       </div>
                     </div>
-                    
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium">Cargo</label>
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Cargo</label>
                         <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}>
-                          <SelectTrigger>
+                          <SelectTrigger className="rounded-lg border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500">
                             <SelectValue placeholder="Selecione o cargo" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="rounded-lg">
                             {roles.map(role => (
-                              <SelectItem key={role.id} value={role.id}>
+                              <SelectItem key={role.id} value={role.id} className="rounded-lg">
                                 {role.name}
                               </SelectItem>
                             ))}
@@ -395,30 +388,29 @@ export default function UsersPage() {
                         </Select>
                       </div>
                       <div>
-                        <label className="text-sm font-medium">Status</label>
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Status</label>
                         <Select value={formData.status} onValueChange={(value: 'active' | 'inactive') => setFormData(prev => ({ ...prev, status: value }))}>
-                          <SelectTrigger>
-                            <SelectValue />
+                          <SelectTrigger className="rounded-lg border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500">
+                            <SelectValue placeholder="Status do usuário" />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">Ativo</SelectItem>
-                            <SelectItem value="inactive">Inativo</SelectItem>
+                          <SelectContent className="rounded-lg">
+                            <SelectItem value="active" className="rounded-lg">Ativo</SelectItem>
+                            <SelectItem value="inactive" className="rounded-lg">Inativo</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
                   </TabsContent>
-                  
                   <TabsContent value="department" className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium">Departamento</label>
+                      <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Departamento</label>
                       <Select value={formData.department} onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))}>
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-lg border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500">
                           <SelectValue placeholder="Selecione o departamento" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-lg">
                           {departments.map(dept => (
-                            <SelectItem key={dept.id} value={dept.id}>
+                            <SelectItem key={dept.id} value={dept.id} className="rounded-lg">
                               <div className="flex items-center gap-2">
                                 <div className={`w-3 h-3 rounded-full ${dept.color}`} />
                                 {dept.name}
@@ -445,50 +437,10 @@ export default function UsersPage() {
                       </Card>
                     )}
                   </TabsContent>
-                  
-                  <TabsContent value="permissions" className="space-y-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Selecione as permissões que este usuário terá acesso:
-                    </p>
-                    
-                    <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
-                      {permissions.map(permission => (
-                        <div
-                          key={permission.id}
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                            formData.permissions.includes(permission.id)
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                          }`}
-                          onClick={() => togglePermission(permission.id)}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.permissions.includes(permission.id)}
-                            onChange={() => togglePermission(permission.id)}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{permission.name}</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">{permission.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
                 </Tabs>
-                
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCreateModal(false)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={handleCreateUser}
-                    disabled={isSubmitting || !formData.name || !formData.email || !formData.department || !formData.role}
-                  >
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button variant="ghost" onClick={() => setShowCreateModal(false)} className="rounded-lg px-6 py-2 text-gray-600 dark:text-gray-300">Cancelar</Button>
+                  <Button onClick={handleCreateUser} disabled={isSubmitting} className="rounded-lg px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md">
                     {isSubmitting ? 'Criando...' : 'Criar Usuário'}
                   </Button>
                 </div>
@@ -674,7 +626,6 @@ export default function UsersPage() {
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="basic">Informações</TabsTrigger>
                 <TabsTrigger value="department">Departamento</TabsTrigger>
-                <TabsTrigger value="permissions">Permissões</TabsTrigger>
               </TabsList>
               
               <TabsContent value="basic" className="space-y-4 mt-4">
@@ -764,37 +715,6 @@ export default function UsersPage() {
                     </CardContent>
                   </Card>
                 )}
-              </TabsContent>
-              
-              <TabsContent value="permissions" className="space-y-4 mt-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Selecione as permissões que este usuário terá acesso:
-                </p>
-                
-                <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
-                  {permissions.map(permission => (
-                    <div
-                      key={permission.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        formData.permissions.includes(permission.id)
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                      }`}
-                      onClick={() => togglePermission(permission.id)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.permissions.includes(permission.id)}
-                        onChange={() => togglePermission(permission.id)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{permission.name}</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">{permission.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </TabsContent>
             </Tabs>
           </div>

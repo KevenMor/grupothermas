@@ -48,6 +48,26 @@ async function logAudit(userId: string, action: string, module: string, recordId
   }
 }
 
+// 1. Definir um mapa de permissões por role (ex: admin, manager, agent, viewer)
+const ROLE_PERMISSIONS = {
+  admin: [
+    'users_manage', 'departments_manage', 'sales_view', 'sales_manage',
+    'leads_view', 'leads_manage', 'chats_view', 'chats_manage',
+    'reports_view', 'settings_manage'
+  ],
+  manager: [
+    'users_manage', 'departments_manage', 'sales_view', 'sales_manage',
+    'leads_view', 'leads_manage', 'chats_view', 'chats_manage',
+    'reports_view'
+  ],
+  agent: [
+    'chats_view', 'chats_manage', 'leads_view', 'leads_manage'
+  ],
+  viewer: [
+    'chats_view', 'leads_view', 'sales_view', 'reports_view'
+  ]
+}
+
 // GET - Listar usuários com paginação
 export async function GET(request: NextRequest) {
   try {
@@ -155,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json()
-    const { name, email, phone, departmentId, role, permissions } = body
+    const { name, email, phone, departmentId, role } = body
     
     // Validações
     if (!name || !email || !phone || !departmentId || !role) {
@@ -185,7 +205,7 @@ export async function POST(request: NextRequest) {
       departmentId,
       departmentName: deptData?.name || '',
       role,
-      permissions: permissions || [],
+      permissions: (ROLE_PERMISSIONS as any)[role] || [],
       isActive: true,
       createdAt: now,
       updatedAt: now,
