@@ -255,13 +255,12 @@ export function ChatMessageItemComponent({ message, avatarUrl, contactName, show
     }
   }
 
-  // --- NOVA LÓGICA: Só renderizar se houver conteúdo real ---
-  const hasRealContent = (
-    (message.content && message.content !== '[Mensagem sem texto]') ||
-    message.mediaType ||
-    (message.reactions && message.reactions.length > 0)
-  )
-  if (!hasRealContent) return null;
+  // Log temporário para debug
+  if (typeof window !== 'undefined') {
+    console.debug('[ChatMessageItem] Mensagem recebida:', message)
+  }
+  // Sempre renderizar o balão, mesmo se não houver texto
+  const isEmptyText = !message.content || message.content.trim() === '' || message.content === '[Mensagem sem texto]';
 
   return (
     <>
@@ -304,6 +303,14 @@ export function ChatMessageItemComponent({ message, avatarUrl, contactName, show
             )}
             {/* Conteúdo da mensagem */}
             <div className="space-y-2">
+              {/* Texto principal */}
+              {(!message.mediaType) && (
+                <div className={isFromAgent ? 'text-white' : 'text-[#2563eb]'}>
+                  {isEmptyText
+                    ? <span className="italic opacity-60">Mensagem em branco</span>
+                    : renderMessageWithBreaks(message.content || '')}
+                </div>
+              )}
               {/* Imagem */}
               {message.mediaType === 'image' && message.mediaUrl && (
                 <div className="space-y-1">
@@ -507,12 +514,6 @@ export function ChatMessageItemComponent({ message, avatarUrl, contactName, show
                     <source src={getFullUrl(message.mediaUrl)} type="audio/mpeg" />
                     Seu navegador não suporta reprodução de áudio.
                   </audio>
-                </div>
-              )}
-              {/* Conteúdo textual - Preserva quebras de linha e parágrafos */}
-              {message.content && !message.mediaType && (
-                <div className={`break-words leading-relaxed ${isFromAgent ? 'text-white' : ''}`}>
-                  {renderMessageContent(message.content)}
                 </div>
               )}
             </div>
