@@ -71,6 +71,7 @@ interface AdminConfig {
   // Novo campo para delay humanizado
   responseDelayMin: number
   responseDelayMax: number
+  audioConverterUrl?: string
 }
 
 const defaultConfig: AdminConfig = {
@@ -100,7 +101,8 @@ const defaultConfig: AdminConfig = {
   updatedAt: '',
   // Valores padrão para delay humanizado
   responseDelayMin: 2,
-  responseDelayMax: 5
+  responseDelayMax: 5,
+  audioConverterUrl: ''
 }
 
 export default function AdminPage() {
@@ -918,6 +920,30 @@ export default function AdminPage() {
                       </div>
                     )}
                   </div>
+
+                  <Card className="shadow-sm border-gray-200 dark:border-gray-700">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Bot className="h-5 w-5 text-blue-600" />
+                        Microserviço de Conversão de Áudio
+                      </CardTitle>
+                      <CardDescription>
+                        URL do microserviço externo para conversão de áudio (webm/opus → MP3). Use http(s)://host:porta/convert-audio
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>URL do Microserviço de Áudio</Label>
+                        <Input
+                          type="text"
+                          value={config.audioConverterUrl || ''}
+                          onChange={e => setConfig(prev => ({ ...prev, audioConverterUrl: e.target.value }))}
+                          placeholder="http://localhost:3000/convert-audio"
+                        />
+                        <p className="text-xs text-gray-500">Exemplo: http://localhost:3000/convert-audio</p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </CardContent>
               </Card>
 
