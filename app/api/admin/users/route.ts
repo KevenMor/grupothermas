@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDB } from '@/lib/firebaseAdmin'
+import { adminDB, adminAuth } from '@/lib/firebaseAdmin'
 import { UserProfile, ApiResponse, PaginatedResponse } from '@/lib/models'
 
 // Função para verificar permissões do usuário
@@ -71,45 +71,64 @@ export async function GET(request: NextRequest) {
     if (!hasPermission) {
       return NextResponse.json({ success: false, error: 'Permissão negada' }, { status: 403 })
     }
-    
-    // Construir query
-    let query = adminDB.collection('users').orderBy('createdAt', 'desc')
-    
+
+    // Listar usuários do Firebase Auth
+    if (!adminAuth) throw new Error('adminAuth não inicializado')
+    const authUsers = await adminAuth.listUsers(1000)
+    console.log('[API] Usuários do Firebase Auth:', authUsers.users.length)
+
+    // Buscar dados extras do Firestore
+    const usersCollection = await adminDB.collection('users').get()
+    const firestoreUsers = usersCollection.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }))
+    const firestoreMap = new Map(firestoreUsers.map((u: any) => [u.email, u]))
+
+    // Mesclar dados do Auth e Firestore
+    const mergedUsers = authUsers.users.map(authUser => {
+      const extra: any = firestoreMap.get(authUser.email) || {};
+      return {
+        uid: authUser.uid,
+        email: authUser.email,
+        name: authUser.displayName || extra.name || '',
+        phone: authUser.phoneNumber || extra.phone || '',
+        role: extra.role || 'user',
+        isActive: extra.isActive !== undefined ? extra.isActive : true,
+        createdAt: authUser.metadata.creationTime || extra.createdAt || '',
+        lastLogin: authUser.metadata.lastSignInTime || extra.lastLogin || '',
+        ...extra
+      }
+    })
+
+    // Filtro de busca
+    let filtered = mergedUsers
     if (search) {
-      query = query.where('name', '>=', search).where('name', '<=', search + '\uf8ff')
+      filtered = filtered.filter(u =>
+        (u.name && u.name.toLowerCase().includes(search.toLowerCase())) ||
+        (u.email && u.email.toLowerCase().includes(search.toLowerCase()))
+      )
     }
-    
-    if (departmentId) {
-      query = query.where('departmentId', '==', departmentId)
-    }
-    
     if (status) {
-      query = query.where('isActive', '==', status === 'active')
+      filtered = filtered.filter(u => status === 'active' ? u.isActive : !u.isActive)
     }
-    
-    // Executar query com paginação
-    const snapshot = await query.limit(limit).offset((page - 1) * limit).get()
-    const totalSnapshot = await query.count().get()
-    
-    const users = snapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data()
-    }))
-    
-    const total = totalSnapshot.data().count
-    
+    if (departmentId) {
+      filtered = filtered.filter(u => u.departmentId === departmentId)
+    }
+
+    // Paginação
+    const total = filtered.length
+    const totalPages = Math.ceil(total / limit)
+    const paginated = filtered.slice((page - 1) * limit, page * limit)
+
     const response: PaginatedResponse<UserProfile> = {
-      data: users as UserProfile[],
+      data: paginated as UserProfile[],
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages
     }
-    
     return NextResponse.json({ success: true, data: response })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao listar usuários:', error)
-    return NextResponse.json({ success: false, error: 'Erro interno do servidor' }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Erro interno do servidor', details: error?.message }, { status: 500 })
   }
 }
 

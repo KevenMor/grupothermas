@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp, App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { getAuth } from "firebase-admin/auth";
 
 // Debug apenas em runtime, não durante build
 if (typeof window === 'undefined' && process.env.NODE_ENV !== 'production' && process.env.NEXT_PHASE !== 'phase-production-build') {
@@ -97,6 +98,7 @@ const mockFirestore = {
 
 export const adminDB = (admin && typeof admin.name === 'string') ? getFirestore(admin) : mockFirestore as any;
 export const adminStorage = (admin && typeof admin.name === 'string') ? getStorage(admin) : null;
+export const adminAuth = (admin && typeof admin.name === 'string') ? getAuth(admin) : null;
 
 export async function generateSignedUrl(storagePath: string, expiresInSeconds = 60 * 60) {
   if (!adminStorage) throw new Error('Firebase Storage não inicializado');
