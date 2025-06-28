@@ -53,7 +53,8 @@ export default function AtendimentoPage() {
       })
       
       if (data.length > 0 && !selectedChat) {
-        handleSelectChat(data[0])
+        // Só selecionar automaticamente se selectedChat for null (primeiro acesso)
+        setSelectedChat(data[0])
       }
     } catch (error) {
       console.error(error)

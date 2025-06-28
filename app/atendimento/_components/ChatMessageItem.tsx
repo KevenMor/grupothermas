@@ -91,28 +91,26 @@ export function ChatMessageItemComponent({ message, avatarUrl, contactName, show
   // Função para extrair e renderizar nome do remetente
   const renderMessageContent = (content: string) => {
     // Padrão para detectar nome no formato "*Nome:*" no início da mensagem
-    const namePattern = /^\\*([^*]+):\\*\\s*\\n?/
+    const namePattern = /^\*([^*]+):\*\s*\n?/
     const match = content.match(namePattern)
     
     if (match) {
       const name = match[1]
       const messageText = content.replace(namePattern, '').trim()
-      
       return (
         <div className="space-y-1">
-          <div className="font-bold text-gray-900 dark:text-gray-100">
+          <div className="font-bold text-white">
             {name}:
           </div>
-          <div className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+          <div className="text-white whitespace-pre-wrap">
             {messageText}
           </div>
         </div>
       )
     }
-    
     // Se não há padrão de nome, renderizar normalmente preservando quebras de linha
     return (
-      <div className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+      <div className="text-white whitespace-pre-wrap">
         {content}
       </div>
     )
@@ -300,7 +298,7 @@ export function ChatMessageItemComponent({ message, avatarUrl, contactName, show
           >
             {/* Nome em negrito no topo para sistema/atendente */}
             {(!isFromCustomer && (isAgent || isAI || isSystem)) && (
-              <div className="font-bold text-sm mb-1 text-gray-800 dark:text-gray-100 text-left">
+              <div className={`font-bold text-sm mb-1 ${isFromAgent ? 'text-white' : 'text-gray-800 dark:text-gray-100'} text-left`}>
                 {displayName}
               </div>
             )}
@@ -513,14 +511,14 @@ export function ChatMessageItemComponent({ message, avatarUrl, contactName, show
               )}
               {/* Conteúdo textual - Preserva quebras de linha e parágrafos */}
               {message.content && !message.mediaType && (
-                <div className="break-words leading-relaxed">
+                <div className={`break-words leading-relaxed ${isFromAgent ? 'text-white' : ''}`}>
                   {renderMessageContent(message.content)}
                 </div>
               )}
             </div>
             {/* Hora discreta abaixo do balão */}
             <div className="flex justify-end mt-2">
-              <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+              <span className={`text-xs flex items-center gap-1 ${isFromAgent ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}> 
                 <MessageStatus status={message.status} />
                 {['delivered','read'].includes(message.status) && message.statusTimestamp
                   ? formatTime(message.statusTimestamp)
