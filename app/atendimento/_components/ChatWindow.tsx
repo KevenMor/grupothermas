@@ -329,8 +329,11 @@ const MessageInput = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSend = () => {
-    if (!chat) return;
-    onSendMessage({ content: message });
+    if (!chat || !message.trim()) return;
+    
+    // Preservar quebras de linha na mensagem
+    const messageWithLineBreaks = message.trim();
+    onSendMessage({ content: messageWithLineBreaks });
     setMessage('');
   }
 
@@ -347,10 +350,14 @@ const MessageInput = ({
   }
 
   const canInteract = () => {
-    return chat?.conversationStatus === 'agent_assigned' || chat?.conversationStatus === 'ai_active'
+    // Só permite interação quando o agente assumiu o atendimento
+    // Quando está com IA ativa, o agente precisa assumir primeiro
+    return chat?.conversationStatus === 'agent_assigned'
   }
 
   const handleAttachment = (type: string) => {
+    console.log('📎 handleAttachment chamada:', { type, canInteract: canInteract(), chatId: chat?.id })
+    
     if (!canInteract()) {
       alert('Você precisa assumir o atendimento para enviar arquivos.')
       return
@@ -375,13 +382,15 @@ const MessageInput = ({
         input.accept = 'video/*'
         break
       case 'document':
-        input.accept = '.pdf,.doc,.docx,.txt'
+        input.accept = '.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx'
         break
     }
     
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
+
+      console.log('📁 Arquivo selecionado:', { name: file.name, size: file.size, type: file.type })
 
       // Mostrar preview antes de enviar
       setPreviewFile(file)
@@ -760,7 +769,7 @@ const MessageInput = ({
           <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
             <div className="flex items-center justify-between">
               <p className="text-yellow-700 dark:text-yellow-300 text-sm">
-                Para interagir com este chat, você precisa assumir o atendimento.
+                Para interagir com este chat, você precisa assumir o atendimento primeiro. A IA será desativada automaticamente.
               </p>
               <Button 
                 onClick={onAssumeChat}
@@ -819,17 +828,19 @@ const MessageInput = ({
                 textarea.style.height = 'auto';
                 textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
               }}
-              placeholder={canInteract() ? "Digite uma mensagem... (Shift+Enter para nova linha)" : "Assuma o atendimento para enviar mensagens"}
+              placeholder={canInteract() ? "Digite uma mensagem... (Enter para enviar, Shift+Enter para nova linha)" : "Assuma o atendimento para enviar mensagens"}
               disabled={!canInteract()}
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSend();
+                  if (message.trim()) {
+                    handleSend();
+                  }
                 }
                 // Shift+Enter permite nova linha (comportamento padrão)
               }}
               rows={1}
-              className="block w-full resize-none pr-10 px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none min-h-[40px] max-h-40 shadow-inner text-base transition-all"
+              className="block w-full resize-none pr-10 px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none min-h-[40px] max-h-40 shadow-inner text-base transition-all whitespace-pre-wrap"
               style={{ lineHeight: '1.5', overflow: 'auto' }}
             />
             <Button
