@@ -6,6 +6,7 @@ const { Storage } = require('@google-cloud/storage');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const cors = require('cors');
 
 const app = express();
 const upload = multer({ dest: os.tmpdir() });
@@ -20,6 +21,8 @@ const storage = new Storage({
 });
 // ATENÇÃO: O valor de process.env.FIREBASE_STORAGE_BUCKET deve ser apenas o nome do bucket, ex: 'grupo-thermas-a99fc'
 const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
+
+app.use(cors({ origin: '*' }));
 
 app.post('/convert-audio', upload.single('file'), async (req, res) => {
   try {
