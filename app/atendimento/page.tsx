@@ -36,6 +36,13 @@ export default function AtendimentoPage() {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const messagesCache = useRef<Map<string, ChatMessage[]>>(new Map())
 
+  // Função utilitária para normalizar conteúdo removendo prefixos como '*Nome:*'
+  function normalizeContent(content: string) {
+    if (!content) return '';
+    // Remove prefixo *Nome:*
+    return content.replace(/^\*[^*]+:\*\s*\n?/, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
   // Função para buscar chats com cache
   const fetchChats = async (showLoader = true) => {
     if (showLoader) setIsLoadingChats(true)
@@ -86,17 +93,18 @@ export default function AtendimentoPage() {
 
         // Combinar dados do servidor com mensagens falhadas sem duplicar IDs
         const merged = [...data, ...failed]
-        // Deduplicação aprimorada: remove temp-* se houver real com mesmo conteúdo, autor e timestamp próximo
+        // Deduplicação aprimorada: remove temp-* se houver real com mesmo conteúdo, autor, tipo e timestamp próximo
         const result: ChatMessage[] = []
         for (const msg of merged) {
           // Normalizar conteúdo para comparação
-          const normContent = (msg.content || '').replace(/\s+/g, ' ').trim().toLowerCase()
-          // Se já existe uma real igual (conteúdo, autor e timestamp ~10s), não adiciona temp-*
+          const normContent = normalizeContent(msg.content || '')
+          // Se já existe uma real igual (conteúdo, autor, tipo e timestamp ~10s), não adiciona temp-*
           if (msg.id.startsWith('temp-')) {
             const hasReal = merged.some(m2 =>
               !m2.id.startsWith('temp-') &&
-              ((m2.content || '').replace(/\s+/g, ' ').trim().toLowerCase() === normContent) &&
+              normalizeContent(m2.content || '') === normContent &&
               ((m2.userName || m2.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
+              (m2.mediaType || 'text') === (msg.mediaType || 'text') &&
               Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
             )
             if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
@@ -104,8 +112,9 @@ export default function AtendimentoPage() {
             // Remove qualquer temp-* duplicada
             const idx = result.findIndex(m =>
               m.id.startsWith('temp-') &&
-              ((m.content || '').replace(/\s+/g, ' ').trim().toLowerCase() === normContent) &&
+              normalizeContent(m.content || '') === normContent &&
               ((m.userName || m.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
+              (m.mediaType || 'text') === (msg.mediaType || 'text') &&
               Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
             )
             if (idx !== -1) result.splice(idx, 1)
@@ -144,17 +153,22 @@ export default function AtendimentoPage() {
           const combined = [...prev, ...newMessages]
           const result: ChatMessage[] = []
           for (const msg of combined) {
+            const normContent = normalizeContent(msg.content || '')
             if (msg.id.startsWith('temp-')) {
               const hasReal = combined.some(m2 =>
                 !m2.id.startsWith('temp-') &&
-                m2.content === msg.content &&
+                normalizeContent(m2.content || '') === normContent &&
+                ((m2.userName || m2.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
+                (m2.mediaType || 'text') === (msg.mediaType || 'text') &&
                 Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
               )
               if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
             } else {
               const idx = result.findIndex(m =>
                 m.id.startsWith('temp-') &&
-                m.content === msg.content &&
+                normalizeContent(m.content || '') === normContent &&
+                ((m.userName || m.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
+                (m.mediaType || 'text') === (msg.mediaType || 'text') &&
                 Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
               )
               if (idx !== -1) result.splice(idx, 1)
@@ -222,17 +236,22 @@ export default function AtendimentoPage() {
         const combined = [...prev, newMessage]
         const result: ChatMessage[] = []
         for (const msg of combined) {
+          const normContent = normalizeContent(msg.content || '')
           if (msg.id.startsWith('temp-')) {
             const hasReal = combined.some(m2 =>
               !m2.id.startsWith('temp-') &&
-              m2.content === msg.content &&
+              normalizeContent(m2.content || '') === normContent &&
+              ((m2.userName || m2.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
+              (m2.mediaType || 'text') === (msg.mediaType || 'text') &&
               Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
             )
             if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
           } else {
             const idx = result.findIndex(m =>
               m.id.startsWith('temp-') &&
-              m.content === msg.content &&
+              normalizeContent(m.content || '') === normContent &&
+              ((m.userName || m.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
+              (m.mediaType || 'text') === (msg.mediaType || 'text') &&
               Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
             )
             if (idx !== -1) result.splice(idx, 1)
