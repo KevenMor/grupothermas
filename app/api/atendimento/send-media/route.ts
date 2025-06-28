@@ -142,24 +142,23 @@ export async function POST(request: NextRequest) {
           console.log('URL inicial:', audioUrl)
           console.log('Formato inicial:', audioFormat)
           
-          if (oggUrl && isFirebaseStorageUrl(oggUrl) && (oggUrl.endsWith('.ogg') || oggUrl.endsWith('.opus'))) {
-            audioUrl = oggUrl
-            audioFormat = oggUrl.endsWith('.opus') ? 'opus' : 'ogg'
-            console.log('Usando URL OGG/Opus do Storage:', audioUrl)
-          } else if (mp3Url && isFirebaseStorageUrl(mp3Url) && mp3Url.endsWith('.mp3')) {
-            audioUrl = mp3Url
-            audioFormat = 'mp3'
-            console.log('Usando URL MP3 do Storage:', audioUrl)
-          } else if (localPath.endsWith('.ogg') || localPath.endsWith('.opus')) {
-            audioUrl = localPath
-            audioFormat = localPath.endsWith('.opus') ? 'opus' : 'ogg'
-            console.log('Usando URL OGG/Opus (localPath):', audioUrl)
-          } else if (localPath.endsWith('.mp3')) {
+          // Usar a extensão já detectada anteriormente
+          if (urlExtension === 'mp3') {
             audioUrl = localPath
             audioFormat = 'mp3'
             console.log('Usando URL MP3 (localPath):', audioUrl)
+          } else if (urlExtension === 'ogg') {
+            audioUrl = localPath
+            audioFormat = 'ogg'
+            console.log('Usando URL OGG (localPath):', audioUrl)
+          } else if (urlExtension === 'opus') {
+            audioUrl = localPath
+            audioFormat = 'opus'
+            console.log('Usando URL Opus (localPath):', audioUrl)
           } else {
             console.log('=== ERRO: NENHUMA URL VÁLIDA ENCONTRADA ===')
+            console.log('Extensão detectada:', urlExtension)
+            console.log('URL:', localPath)
             return NextResponse.json({ 
               error: 'Formato de áudio não suportado. Use MP3 ou OGG/Opus do Firebase Storage.' 
             }, { status: 400 })
