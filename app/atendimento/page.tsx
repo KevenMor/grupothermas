@@ -85,14 +85,17 @@ export default function AtendimentoPage() {
 
         // Combinar dados do servidor com mensagens falhadas sem duplicar IDs
         const merged = [...data, ...failed]
-        // Deduplicação aprimorada: remove temp-* se houver real com mesmo conteúdo e timestamp próximo
+        // Deduplicação aprimorada: remove temp-* se houver real com mesmo conteúdo, autor e timestamp próximo
         const result: ChatMessage[] = []
         for (const msg of merged) {
-          // Se já existe uma real igual (conteúdo e timestamp ~10s), não adiciona temp-*
+          // Normalizar conteúdo para comparação
+          const normContent = (msg.content || '').replace(/\s+/g, ' ').trim().toLowerCase()
+          // Se já existe uma real igual (conteúdo, autor e timestamp ~10s), não adiciona temp-*
           if (msg.id.startsWith('temp-')) {
             const hasReal = merged.some(m2 =>
               !m2.id.startsWith('temp-') &&
-              m2.content === msg.content &&
+              ((m2.content || '').replace(/\s+/g, ' ').trim().toLowerCase() === normContent) &&
+              ((m2.userName || m2.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
               Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
             )
             if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
@@ -100,7 +103,8 @@ export default function AtendimentoPage() {
             // Remove qualquer temp-* duplicada
             const idx = result.findIndex(m =>
               m.id.startsWith('temp-') &&
-              m.content === msg.content &&
+              ((m.content || '').replace(/\s+/g, ' ').trim().toLowerCase() === normContent) &&
+              ((m.userName || m.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
               Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
             )
             if (idx !== -1) result.splice(idx, 1)
