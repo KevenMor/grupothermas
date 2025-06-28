@@ -726,7 +726,9 @@ const MessageInput = ({
           body: JSON.stringify({
             phone: chat.customerPhone,
             type: 'audio',
-            localPath: backendMp3Url
+            localPath: backendMp3Url,
+            mp3Url: backendMp3Url, // Adicionar URL MP3 explicitamente
+            filename: `audio_${Date.now()}.mp3`
           })
         })
       }
