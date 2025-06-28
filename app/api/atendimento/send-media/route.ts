@@ -130,6 +130,10 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
           }
           
+          console.log('=== VALIDAÇÃO PASSOU - INICIANDO ENVIO ===')
+          console.log('URL válida:', localPath)
+          console.log('Extensão válida:', urlExtension)
+          
           // Priorizar OGG/Opus se disponível, senão MP3
           let audioUrl = localPath
           let audioFormat = urlExtension
@@ -177,6 +181,13 @@ export async function POST(request: NextRequest) {
             }
             // Chamar sendAudio passando o Content-Type detectado e caption (se houver)
             console.log('Chamando sendAudio com Content-Type:', contentType)
+            console.log('=== PAYLOAD PARA SEND AUDIO ===')
+            console.log('Phone:', phone)
+            console.log('Audio URL:', audioUrl)
+            console.log('ReplyTo:', replyTo)
+            console.log('ContentType:', contentType)
+            console.log('Caption:', caption || "")
+            console.log('================================')
             const audioResult = await sendAudio(phone, audioUrl, replyTo, contentType || undefined, caption || "")
             
             console.log('=== RESULTADO ENVIO ÁUDIO ===')
