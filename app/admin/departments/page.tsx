@@ -167,20 +167,19 @@ export default function DepartmentsPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Building2 className="w-8 h-8" />
-            Gerenciamento de Departamentos
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Configure os departamentos para roteamento inteligente de atendimento
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-0 py-6 px-2 border-b border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 rounded-xl shadow-sm mb-8">
+        <div className="flex items-center gap-4">
+          <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-xl">
+            <Building2 className="w-8 h-8 text-blue-600 dark:text-blue-300" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">Gerenciamento de Departamentos</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1 text-base">Configure os departamentos para roteamento inteligente de atendimento</p>
+          </div>
         </div>
-        
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <div>
-            <Button onClick={openCreateForm} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={openCreateForm} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg px-6 py-2">
               <Plus className="w-4 h-4 mr-2" />
               Novo Departamento
             </Button>
@@ -202,7 +201,7 @@ export default function DepartmentsPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ex: Suporte Técnico"
-                  className="w-full"
+                  className="w-full rounded-lg border-gray-300 dark:border-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 px-4 py-2"
                 />
               </div>
               
@@ -215,7 +214,7 @@ export default function DepartmentsPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Descrição opcional do departamento"
                   rows={3}
-                  className="w-full"
+                  className="w-full rounded-lg border-gray-300 dark:border-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 px-4 py-2"
                 />
               </div>
               
@@ -225,7 +224,7 @@ export default function DepartmentsPage() {
                   id="isActive"
                   checked={formData.isActive}
                   onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="rounded border-gray-300"
+                  className="rounded border-gray-300 focus:ring-2 focus:ring-blue-500 accent-blue-600 h-5 w-5"
                 />
                 <label htmlFor="isActive" className="text-sm text-gray-700 dark:text-gray-300">
                   Departamento ativo
@@ -250,18 +249,18 @@ export default function DepartmentsPage() {
       </div>
 
       {/* Lista de Departamentos */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {departments.map((department) => (
-          <Card key={department.id} className="hover:shadow-lg transition-shadow">
+          <Card key={department.id} className="rounded-2xl shadow-md hover:shadow-xl transition-shadow border-0 bg-white/90 dark:bg-gray-900/90">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <CardTitle className="text-lg flex items-center gap-2">
+                  <CardTitle className="text-lg flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
                     <Building2 className="w-5 h-5 text-blue-600" />
                     {department.name}
                   </CardTitle>
                   <div className="flex items-center gap-2 mt-2">
-                    <Badge variant={department.isActive ? "default" : "secondary"}>
+                    <Badge variant={department.isActive ? "default" : "secondary"} className="rounded-full px-3 py-1 text-xs">
                       {department.isActive ? (
                         <>
                           <CheckCircle className="w-3 h-3 mr-1" />
@@ -276,13 +275,12 @@ export default function DepartmentsPage() {
                     </Badge>
                   </div>
                 </div>
-                
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => openEditForm(department)}
-                    className="text-gray-500 hover:text-blue-600"
+                    className="text-gray-500 hover:text-blue-600 rounded-full"
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
@@ -290,7 +288,7 @@ export default function DepartmentsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => toggleDepartmentStatus(department)}
-                    className="text-gray-500 hover:text-orange-600"
+                    className="text-gray-500 hover:text-orange-600 rounded-full"
                   >
                     {department.isActive ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                   </Button>
@@ -298,21 +296,19 @@ export default function DepartmentsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => deleteDepartment(department)}
-                    className="text-gray-500 hover:text-red-600"
+                    className="text-gray-500 hover:text-red-600 rounded-full"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            
             <CardContent>
               {department.description && (
                 <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
                   {department.description}
                 </p>
               )}
-              
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 Criado em: {new Date(department.createdAt).toLocaleDateString('pt-BR')}
                 {department.updatedAt && (

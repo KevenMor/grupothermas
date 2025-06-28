@@ -66,7 +66,8 @@ import {
   RefreshCw,
   Plus,
   Settings,
-  History
+  History,
+  Users2
 } from 'lucide-react'
 import { Toaster, toast } from 'sonner'
 import { format } from 'date-fns'
@@ -329,29 +330,31 @@ export default function UsersPage() {
     <AppLayout>
       <Toaster richColors position="top-right" />
       
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Gestão de Usuários</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Gerencie usuários, permissões e departamentos do sistema
-            </p>
+      <div className="space-y-8">
+        {/* Header Moderno */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-0 py-6 px-2 border-b border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 rounded-xl shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-xl">
+              <Users2 className="w-8 h-8 text-blue-600 dark:text-blue-300" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">Gestão de Usuários</h1>
+              <p className="text-gray-500 dark:text-gray-400 mt-1 text-base">Gerencie usuários, permissões e departamentos do sistema</p>
+            </div>
           </div>
-          
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 mt-4 md:mt-0">
             <Button
               variant="outline"
               onClick={fetchUsers}
               disabled={isLoading}
+              className="rounded-lg border-gray-300 dark:border-gray-700 shadow-sm hover:shadow-md"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Atualizar
             </Button>
-            
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
               <DialogTrigger asChild>
-                <Button onClick={() => resetForm()}>
+                <Button onClick={() => resetForm()} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg px-6 py-2">
                   <UserPlus className="w-4 h-4 mr-2" />
                   Novo Usuário
                 </Button>
