@@ -698,7 +698,7 @@ const MessageInput = ({
       try {
         const panelConfigResponse = await fetch('/api/admin/config')
         const panelConfig = await panelConfigResponse.json()
-        const audioConverterUrl = panelConfig?.audioConverterUrl || 'http://localhost:3000/convert-audio'
+        const audioConverterUrl = panelConfig?.audioConverterUrl || 'http://localhost:4000/convert-audio'
         const uploadResponse = await fetch(audioConverterUrl, { method: 'POST', body: formData })
         if (uploadResponse.ok) {
           const uploadResult = await uploadResponse.json()
@@ -1001,7 +1001,7 @@ export function ChatWindow({
 
   // Hook para buscar config do painel (incluindo URL do microserviço)
   const { data: panelConfig } = useSWR('/api/admin/config', (url) => fetch(url).then(res => res.json()))
-  const audioConverterUrl = panelConfig?.audioConverterUrl || 'http://localhost:3000/convert-audio'
+  const audioConverterUrl = panelConfig?.audioConverterUrl || 'http://localhost:4000/convert-audio'
 
   useEffect(() => {
     async function checkFFmpeg() {
