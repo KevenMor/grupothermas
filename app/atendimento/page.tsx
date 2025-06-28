@@ -84,18 +84,30 @@ export default function AtendimentoPage() {
 
         // Combinar dados do servidor com mensagens falhadas sem duplicar IDs
         const merged = [...data, ...failed]
-        const uniqueMap = new Map<string, boolean>()
-        const unique = merged.filter(m => {
-          if (uniqueMap.has(m.id)) return false
-          uniqueMap.set(m.id, true)
-          return true
-        })
-        // Ordenar por timestamp ascendente
-        const sorted = unique.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-        
-        // Atualizar cache
+        // Deduplicação aprimorada: remove temp-* se houver real com mesmo conteúdo e timestamp próximo
+        const result: ChatMessage[] = []
+        for (const msg of merged) {
+          // Se já existe uma real igual (conteúdo e timestamp ~10s), não adiciona temp-*
+          if (msg.id.startsWith('temp-')) {
+            const hasReal = merged.some(m2 =>
+              !m2.id.startsWith('temp-') &&
+              m2.content === msg.content &&
+              Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+            )
+            if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
+          } else {
+            // Remove qualquer temp-* duplicada
+            const idx = result.findIndex(m =>
+              m.id.startsWith('temp-') &&
+              m.content === msg.content &&
+              Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+            )
+            if (idx !== -1) result.splice(idx, 1)
+            if (!result.find(m => m.id === msg.id)) result.push(msg)
+          }
+        }
+        const sorted = result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
         messagesCache.current.set(chatId, sorted)
-        
         return sorted
       })
       
@@ -124,17 +136,27 @@ export default function AtendimentoPage() {
       if (newMessages.length > 0) {
         setMessages(prev => {
           const combined = [...prev, ...newMessages]
-          const uniqueMap = new Map<string, boolean>()
-          const unique = combined.filter(m => {
-            if (uniqueMap.has(m.id)) return false
-            uniqueMap.set(m.id, true)
-            return true
-          })
-          const sorted = unique.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-          
-          // Atualizar cache
+          const result: ChatMessage[] = []
+          for (const msg of combined) {
+            if (msg.id.startsWith('temp-')) {
+              const hasReal = combined.some(m2 =>
+                !m2.id.startsWith('temp-') &&
+                m2.content === msg.content &&
+                Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+              )
+              if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
+            } else {
+              const idx = result.findIndex(m =>
+                m.id.startsWith('temp-') &&
+                m.content === msg.content &&
+                Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+              )
+              if (idx !== -1) result.splice(idx, 1)
+              if (!result.find(m => m.id === msg.id)) result.push(msg)
+            }
+          }
+          const sorted = result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
           messagesCache.current.set(chatId, sorted)
-          
           return sorted
         })
         
@@ -192,7 +214,33 @@ export default function AtendimentoPage() {
   useEffect(() => {
     const handleNewMessage = (event: CustomEvent) => {
       const newMessage = event.detail
-      setMessages(prev => [...prev, newMessage])
+      setMessages(prev => {
+        const combined = [...prev, newMessage]
+        const result: ChatMessage[] = []
+        for (const msg of combined) {
+          if (msg.id.startsWith('temp-')) {
+            const hasReal = combined.some(m2 =>
+              !m2.id.startsWith('temp-') &&
+              m2.content === msg.content &&
+              Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+            )
+            if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
+          } else {
+            const idx = result.findIndex(m =>
+              m.id.startsWith('temp-') &&
+              m.content === msg.content &&
+              Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+            )
+            if (idx !== -1) result.splice(idx, 1)
+            if (!result.find(m => m.id === msg.id)) result.push(msg)
+          }
+        }
+        const sorted = result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        if (selectedChat) {
+          messagesCache.current.set(selectedChat.id, sorted)
+        }
+        return sorted
+      })
       
       // Atualizar cache
       if (selectedChat) {
@@ -278,7 +326,31 @@ export default function AtendimentoPage() {
       agentName: currentUserName,
       ...(data.replyTo ? { replyTo: data.replyTo } : {})
     }
-    setMessages(prev => [...prev, optimisticMessage])
+    setMessages(prev => {
+      const combined = [...prev, optimisticMessage]
+      const result: ChatMessage[] = []
+      for (const msg of combined) {
+        if (msg.id.startsWith('temp-')) {
+          const hasReal = combined.some(m2 =>
+            !m2.id.startsWith('temp-') &&
+            m2.content === msg.content &&
+            Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+          )
+          if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
+        } else {
+          const idx = result.findIndex(m =>
+            m.id.startsWith('temp-') &&
+            m.content === msg.content &&
+            Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+          )
+          if (idx !== -1) result.splice(idx, 1)
+          if (!result.find(m => m.id === msg.id)) result.push(msg)
+        }
+      }
+      const sorted = result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      messagesCache.current.set(selectedChat.id, sorted)
+      return sorted
+    })
     try {
       const response = await fetch('/api/atendimento/messages', {
         method: 'POST',
