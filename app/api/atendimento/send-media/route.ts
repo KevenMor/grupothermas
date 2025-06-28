@@ -106,13 +106,25 @@ export async function POST(request: NextRequest) {
           console.log('Phone:', phone)
           console.log('LocalPath (Firebase URL):', localPath)
           console.log('ReplyTo:', replyTo)
+          console.log('OGG URL:', oggUrl)
+          console.log('MP3 URL:', mp3Url)
           
           // Validar formato de áudio de forma mais robusta
+          console.log('=== VALIDAÇÃO DE EXTENSÃO ===')
+          console.log('URL completa:', localPath)
           const match = localPath.match(/\.([a-zA-Z0-9]+)(?=\?|$)/)
+          console.log('Regex match:', match)
           const urlExtension = match ? match[1].toLowerCase() : ''
+          console.log('Extensão detectada:', urlExtension)
           const supportedFormats = ['mp3', 'ogg', 'opus']
+          console.log('Formatos suportados:', supportedFormats)
+          console.log('Extensão é suportada?', supportedFormats.includes(urlExtension))
           
           if (!urlExtension || !supportedFormats.includes(urlExtension)) {
+            console.error('=== ERRO DE VALIDAÇÃO ===')
+            console.error('URL:', localPath)
+            console.error('Extensão detectada:', urlExtension)
+            console.error('Formatos suportados:', supportedFormats)
             return NextResponse.json({ 
               error: `Formato de áudio não suportado: ${urlExtension}. Use apenas MP3, OGG ou Opus do Firebase Storage.` 
             }, { status: 400 })

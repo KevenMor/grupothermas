@@ -288,10 +288,21 @@ export async function sendAudio(
       headers['Client-Token'] = config.zapiClientToken.trim();
     }
     const zapiUrl = `https://api.z-api.io/instances/${config.zapiInstanceId}/token/${config.zapiApiKey}/send-audio`;
-    // Validar formato do áudio
-    const urlExtension = base64OrUrl.split('.').pop()?.toLowerCase()
+    // Validar formato do áudio usando regex robusto (igual ao backend)
+    const match = base64OrUrl.match(/\.([a-zA-Z0-9]+)(?=\?|$)/)
+    const urlExtension = match ? match[1].toLowerCase() : ''
     const supportedFormats = ['mp3', 'ogg', 'opus']
+    
+    console.log('=== VALIDAÇÃO Z-API ===')
+    console.log('URL:', base64OrUrl)
+    console.log('Regex match:', match)
+    console.log('Extensão detectada:', urlExtension)
+    console.log('Formatos suportados:', supportedFormats)
+    
     if (!urlExtension || !supportedFormats.includes(urlExtension)) {
+      console.error('=== ERRO Z-API - FORMATO NÃO SUPORTADO ===')
+      console.error('URL:', base64OrUrl)
+      console.error('Extensão detectada:', urlExtension)
       throw new Error(`Formato de áudio não suportado: ${urlExtension}. Use apenas MP3, OGG ou Opus.`)
     }
     // Payload conforme documentação Z-API
