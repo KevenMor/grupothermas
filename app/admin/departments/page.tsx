@@ -191,59 +191,58 @@ export default function DepartmentsPage() {
                 {editingDepartment ? 'Editar Departamento' : 'Novo Departamento'}
               </DialogTitle>
             </DialogHeader>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nome do Departamento *
-                </label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ex: Suporte Técnico"
-                  className="w-full rounded-lg border-gray-300 dark:border-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 px-4 py-2"
-                />
+            <form onSubmit={e => { e.preventDefault(); saveDepartment(); }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nome do Departamento *
+                  </label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Ex: Suporte Técnico"
+                    className="w-full rounded-lg border-gray-300 dark:border-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 px-4 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Descrição
+                  </label>
+                  <Textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Descrição opcional do departamento"
+                    rows={3}
+                    className="w-full rounded-lg border-gray-300 dark:border-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 px-4 py-2"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="rounded border-gray-300 focus:ring-2 focus:ring-blue-500 accent-blue-600 h-5 w-5"
+                  />
+                  <label htmlFor="isActive" className="text-sm text-gray-700 dark:text-gray-300">
+                    Departamento ativo
+                  </label>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg px-6 py-2 rounded-lg">
+                    {editingDepartment ? 'Atualizar' : 'Criar'}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="flex-1 rounded-lg"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Descrição
-                </label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Descrição opcional do departamento"
-                  rows={3}
-                  className="w-full rounded-lg border-gray-300 dark:border-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 px-4 py-2"
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="rounded border-gray-300 focus:ring-2 focus:ring-blue-500 accent-blue-600 h-5 w-5"
-                />
-                <label htmlFor="isActive" className="text-sm text-gray-700 dark:text-gray-300">
-                  Departamento ativo
-                </label>
-              </div>
-              
-              <div className="flex gap-2 pt-4">
-                <Button onClick={saveDepartment} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                  {editingDepartment ? 'Atualizar' : 'Criar'}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowForm(false)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

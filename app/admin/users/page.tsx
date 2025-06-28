@@ -74,6 +74,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { authFetch } from '@/lib/api'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface User {
   id: string
@@ -156,7 +157,8 @@ export default function UsersPage() {
     email: '',
     department: '',
     role: '',
-    status: 'active' as 'active' | 'inactive'
+    status: 'active' as 'active' | 'inactive',
+    permissions: [] as string[]
   })
 
   // Load users
@@ -201,6 +203,16 @@ export default function UsersPage() {
     }
     fetchDepartments()
   }, [])
+
+  // Atualizar permissões ao mudar o cargo
+  useEffect(() => {
+    if (formData.role) {
+      setFormData(prev => ({
+        ...prev,
+        permissions: [...(ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || [])]
+      }))
+    }
+  }, [formData.role])
 
   const fetchUsers = async () => {
     try {
@@ -296,7 +308,8 @@ export default function UsersPage() {
       email: user.email,
       department: user.department,
       role: user.role,
-      status: user.status
+      status: user.status,
+      permissions: user.permissions
     })
     setShowEditDrawer(true)
   }
@@ -307,7 +320,8 @@ export default function UsersPage() {
       email: '',
       department: '',
       role: '',
-      status: 'active'
+      status: 'active',
+      permissions: []
     })
   }
 
@@ -324,6 +338,16 @@ export default function UsersPage() {
   const getRoleName = (roleId: string) => {
     const role = roles.find(r => r.id === roleId)
     return role?.name || roleId
+  }
+
+  // Handler para alterar permissões manualmente
+  const handlePermissionToggle = (permId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(permId)
+        ? prev.permissions.filter(p => p !== permId)
+        : [...prev.permissions, permId]
+    }))
   }
 
   return (
@@ -412,12 +436,17 @@ export default function UsersPage() {
                       <div className="col-span-2">
                         <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Permissões atribuídas</label>
                         <div className="flex flex-wrap gap-2">
-                          {(ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || []).map((perm) => (
-                            <span key={perm} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-semibold">
-                              {perm}
-                            </span>
+                          {permissions.map((perm) => (
+                            <label key={perm.id} className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg cursor-pointer text-xs font-semibold">
+                              <Checkbox
+                                checked={formData.permissions.includes(perm.id)}
+                                onChange={e => handlePermissionToggle(perm.id)}
+                                className="w-4 h-4 border-gray-400"
+                              />
+                              {perm.name}
+                            </label>
                           ))}
-                          {(!formData.role || (ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || []).length === 0) && (
+                          {permissions.length === 0 && (
                             <span className="text-gray-400 text-xs">Selecione um cargo para ver as permissões</span>
                           )}
                         </div>
@@ -703,12 +732,17 @@ export default function UsersPage() {
                   <div className="col-span-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Permissões atribuídas</label>
                     <div className="flex flex-wrap gap-2">
-                      {(ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || []).map((perm) => (
-                        <span key={perm} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-semibold">
-                          {perm}
-                        </span>
+                      {permissions.map((perm) => (
+                        <label key={perm.id} className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg cursor-pointer text-xs font-semibold">
+                          <Checkbox
+                            checked={formData.permissions.includes(perm.id)}
+                            onChange={e => handlePermissionToggle(perm.id)}
+                            className="w-4 h-4 border-gray-400"
+                          />
+                          {perm.name}
+                        </label>
                       ))}
-                      {(!formData.role || (ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || []).length === 0) && (
+                      {permissions.length === 0 && (
                         <span className="text-gray-400 text-xs">Selecione um cargo para ver as permissões</span>
                       )}
                     </div>
