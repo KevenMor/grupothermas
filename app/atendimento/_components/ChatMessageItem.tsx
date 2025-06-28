@@ -305,7 +305,7 @@ export function ChatMessageItemComponent({ message, avatarUrl, contactName, show
             <div className="space-y-2">
               {/* Texto principal */}
               {(!message.mediaType) && (
-                <div className={isFromAgent ? 'text-white' : 'text-[#2563eb]'}>
+                <div className={isFromAgent ? 'text-white' : 'text-black'}>
                   {isEmptyText
                     ? <span className="italic opacity-60">Mensagem em branco</span>
                     : renderMessageWithBreaks(message.content || '')}
