@@ -152,52 +152,68 @@ export async function POST(request: NextRequest) {
                 error: `A URL do áudio não está acessível publicamente. Status: ${testResponse.status}` 
               }, { status: 400 })
             }
-            
             const contentType = testResponse.headers.get('content-type')
             console.log('Content-Type do áudio:', contentType)
-            
             // Validar content-type
             const validContentTypes = [
               'audio/mpeg', 'audio/mp3', 'audio/mpeg3', 'audio/x-mpeg-3',
               'audio/ogg', 'audio/opus', 'audio/ogg; codecs=opus'
             ]
-            
             if (!contentType || !validContentTypes.some(valid => contentType.includes(valid))) {
               console.warn('Content-Type inválido:', contentType)
               // Não falhar aqui, apenas logar o warning
             }
+            // Chamar sendAudio passando o Content-Type detectado
+            console.log('Chamando sendAudio com Content-Type:', contentType)
+            const audioResult = await sendAudio(phone, audioUrl, replyTo, contentType || undefined)
+            
+            console.log('=== RESULTADO ENVIO ÁUDIO ===')
+            console.log('Success:', audioResult.success)
+            console.log('MessageId:', audioResult.messageId)
+            console.log('Error:', audioResult.error)
+            
+            if (!audioResult.success) {
+              // Log detalhado do erro para debugging
+              console.error('Erro detalhado do envio de áudio:', {
+                phone,
+                audioUrl,
+                audioFormat,
+                error: audioResult.error,
+                timestamp: new Date().toISOString()
+              })
+              
+              throw new Error(audioResult.error || 'Erro ao enviar áudio')
+            }
+            
+            zapiResult = audioResult
+            break
           } catch (e) {
             console.warn('Erro ao testar URL do áudio:', e)
             // Não falhar aqui, apenas logar o warning
-          }
-          
-          console.log('=== ENVIANDO ÁUDIO VIA Z-API ===')
-          console.log('URL final:', audioUrl)
-          console.log('Formato:', audioFormat)
-          console.log('Phone:', phone)
-          
-          const audioResult = await sendAudio(phone, audioUrl, replyTo)
-          
-          console.log('=== RESULTADO ENVIO ÁUDIO ===')
-          console.log('Success:', audioResult.success)
-          console.log('MessageId:', audioResult.messageId)
-          console.log('Error:', audioResult.error)
-          
-          if (!audioResult.success) {
-            // Log detalhado do erro para debugging
-            console.error('Erro detalhado do envio de áudio:', {
-              phone,
-              audioUrl,
-              audioFormat,
-              error: audioResult.error,
-              timestamp: new Date().toISOString()
-            })
+            // Chamar sendAudio sem Content-Type
+            const audioResult = await sendAudio(phone, audioUrl, replyTo)
             
-            throw new Error(audioResult.error || 'Erro ao enviar áudio')
+            console.log('=== RESULTADO ENVIO ÁUDIO ===')
+            console.log('Success:', audioResult.success)
+            console.log('MessageId:', audioResult.messageId)
+            console.log('Error:', audioResult.error)
+            
+            if (!audioResult.success) {
+              // Log detalhado do erro para debugging
+              console.error('Erro detalhado do envio de áudio:', {
+                phone,
+                audioUrl,
+                audioFormat,
+                error: audioResult.error,
+                timestamp: new Date().toISOString()
+              })
+              
+              throw new Error(audioResult.error || 'Erro ao enviar áudio')
+            }
+            
+            zapiResult = audioResult
+            break
           }
-          
-          zapiResult = audioResult
-          break
         }
         case 'video': {
           console.log('=== ENVIANDO VÍDEO ===')
