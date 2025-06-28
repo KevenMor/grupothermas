@@ -18,6 +18,7 @@ const storage = new Storage({
     private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
   },
 });
+// ATENÇÃO: O valor de process.env.FIREBASE_STORAGE_BUCKET deve ser apenas o nome do bucket, ex: 'grupo-thermas-a99fc'
 const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
 
 app.post('/convert-audio', upload.single('file'), async (req, res) => {

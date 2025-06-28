@@ -67,16 +67,16 @@ export default function AtendimentoPage() {
     }
   }
 
-  // Polling para atualizar chats e mensagens a cada 1 segundo (mais fluido)
+  // Buscar chats ao montar
   useEffect(() => {
     fetchChats()
-    const interval = setInterval(() => {
-      fetchChats()
-      if (selectedChat) {
-        fetchMessages(selectedChat.id)
-      }
-    }, 1000) // Reduzido para 1 segundo
-    return () => clearInterval(interval)
+  }, [])
+
+  // Buscar mensagens ao selecionar chat
+  useEffect(() => {
+    if (selectedChat) {
+      fetchMessages(selectedChat.id)
+    }
   }, [selectedChat])
 
   // Escutar eventos de novas mensagens de mídia
@@ -84,11 +84,15 @@ export default function AtendimentoPage() {
     const handleNewMessage = (event: CustomEvent) => {
       const newMessage = event.detail
       setMessages(prev => [...prev, newMessage])
+      // Buscar mensagens atualizadas do chat selecionado
+      if (selectedChat) {
+        fetchMessages(selectedChat.id)
+      }
     }
 
     window.addEventListener('newMessage', handleNewMessage as EventListener)
     return () => window.removeEventListener('newMessage', handleNewMessage as EventListener)
-  }, [])
+  }, [selectedChat])
 
   const handleSelectChat = async (chat: Chat) => {
     setSelectedChat(chat)

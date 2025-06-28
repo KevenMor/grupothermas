@@ -12,7 +12,7 @@ Microserviço Node.js para conversão de áudio (webm/opus → MP3) e upload par
 - `FIREBASE_PROJECT_ID` – ID do projeto Firebase
 - `FIREBASE_CLIENT_EMAIL` – E-mail do service account
 - `FIREBASE_PRIVATE_KEY` – Chave privada do service account (atenção ao \n)
-- `FIREBASE_STORAGE_BUCKET` – Nome do bucket do Firebase Storage
+- `FIREBASE_STORAGE_BUCKET` – Nome do bucket do Firebase Storage (apenas o nome, ex: 'grupo-thermas-a99fc')
 - `PORT` – Porta do serviço (padrão: 3000)
 
 ## Build e Deploy (Docker)
@@ -26,7 +26,7 @@ sudo docker run -d \
   -e FIREBASE_PROJECT_ID=seu-projeto \
   -e FIREBASE_CLIENT_EMAIL=seu-email@projeto.iam.gserviceaccount.com \
   -e FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n" \
-  -e FIREBASE_STORAGE_BUCKET=seu-bucket.appspot.com \
+  -e FIREBASE_STORAGE_BUCKET=grupo-thermas-a99fc \
   --name audio-converter-service \
   audio-converter-service
 ```
