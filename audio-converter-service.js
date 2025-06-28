@@ -16,7 +16,7 @@ const storage = new Storage({
   keyFilename: path.join(__dirname, 'config', 'firebase-service-account.json'),
   projectId: 'grupo-thermas-a99fc',
 });
-const bucket = storage.bucket('grupo-thermas-a99fc.appspot.com');
+const bucket = storage.bucket('grupo-thermas-a99fc.firebasestorage.app');
 
 app.use(cors({ origin: '*' }));
 
