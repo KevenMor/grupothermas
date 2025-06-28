@@ -1,9 +1,9 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { AppLayout } from '@/components/layout/app-layout'
-import { Chat, ChatMessage, ChatStatus } from '@/lib/models'
+import { Chat, ChatMessage, ChatStatus, Reaction } from '@/lib/models'
 import { Toaster, toast } from 'sonner'
 import { ChatList } from './_components/ChatList'
 import { ChatWindow } from './_components/ChatWindow'
@@ -485,6 +485,54 @@ export default function AtendimentoPage() {
     setSelectedChat(prev => prev ? { ...prev, ...data } : null)
   }
 
+  // Função para responder a uma mensagem
+  const handleReplyMessage = (message: ChatMessage) => {
+    // Implementar lógica para mostrar preview da resposta
+    console.log('Respondendo à mensagem:', message)
+    // TODO: Implementar preview de resposta no MessageInput
+  }
+
+  // Função para editar uma mensagem
+  const handleEditMessage = (message: ChatMessage) => {
+    console.log('Editando mensagem:', message)
+    // TODO: Implementar edição inline
+  }
+
+  // Função para excluir uma mensagem
+  const handleDeleteMessage = (messageId: string) => {
+    console.log('Excluindo mensagem:', messageId)
+    // Atualizar mensagens localmente
+    setMessages(prev => prev.filter(msg => msg.id !== messageId))
+  }
+
+  // Função para mostrar informações da mensagem
+  const handleMessageInfo = (message: ChatMessage) => {
+    console.log('Informações da mensagem:', message)
+    // TODO: Implementar modal com informações detalhadas
+  }
+
+  // Função para adicionar/remover reações
+  const handleReaction = (messageId: string, emoji: string) => {
+    console.log('Reação adicionada:', messageId, emoji)
+    // Atualizar mensagens localmente
+    setMessages(prev => prev.map(msg => {
+      if (msg.id === messageId) {
+        const newReaction: Reaction = {
+          emoji: emoji,
+          by: 'Atendente',
+          fromMe: true,
+          timestamp: new Date().toISOString(),
+          agentId: 'current-user-id'
+        }
+        return {
+          ...msg,
+          reactions: [...(msg.reactions || []), newReaction]
+        }
+      }
+      return msg
+    }))
+  }
+
   return (
     <AppLayout>
       <Toaster richColors position="top-right" />
@@ -506,6 +554,11 @@ export default function AtendimentoPage() {
               onAssumeChat={handleAssumeChat}
               onAssignAgent={handleAssignAgent}
               onMarkResolved={handleMarkResolved}
+              onReplyMessage={handleReplyMessage}
+              onEditMessage={handleEditMessage}
+              onDeleteMessage={handleDeleteMessage}
+              onMessageInfo={handleMessageInfo}
+              onReaction={handleReaction}
               onCustomerUpdate={handleCustomerUpdate}
             />
           </div>

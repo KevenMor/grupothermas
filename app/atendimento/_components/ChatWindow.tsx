@@ -307,11 +307,17 @@ const ChatHeader = ({
 const MessageInput = ({ 
   chat,
   onSendMessage, 
-  onAssumeChat 
+  onAssumeChat,
+  replyToMessage,
+  textareaRef,
+  onClearReply
 }: { 
   chat: Chat | null
   onSendMessage: (data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } }) => void
   onAssumeChat?: () => void
+  replyToMessage?: ChatMessage | null
+  textareaRef: React.RefObject<HTMLTextAreaElement>
+  onClearReply?: () => void
 }) => {
   const [message, setMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -327,14 +333,27 @@ const MessageInput = ({
   const [previewFile, setPreviewFile] = useState<File | null>(null)
   const [previewType, setPreviewType] = useState<string>('')
   const [previewUrl, setPreviewUrl] = useState<string>('')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSend = () => {
     if (!chat || !message.trim()) return;
     
     // Preservar quebras de linha na mensagem
     const messageWithLineBreaks = message.trim();
-    onSendMessage({ content: messageWithLineBreaks });
+    
+    // Incluir dados de resposta se houver
+    const messageData: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } } = {
+      content: messageWithLineBreaks
+    }
+    
+    if (replyToMessage) {
+      messageData.replyTo = {
+        id: replyToMessage.id,
+        text: replyToMessage.content,
+        author: replyToMessage.role === 'user' ? 'customer' : 'agent'
+      }
+    }
+    
+    onSendMessage(messageData);
     setMessage('');
   }
 
@@ -882,6 +901,32 @@ const MessageInput = ({
           </div>
 
           <div className="flex-1 relative">
+            {/* Preview de resposta */}
+            {replyToMessage && (
+              <div className="mb-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                        Respondendo a {replyToMessage.role === 'user' ? 'cliente' : 'agente'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-blue-800 dark:text-blue-200 truncate">
+                      {replyToMessage.content}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClearReply}
+                    className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <textarea
               ref={textareaRef}
               value={message}
@@ -1062,35 +1107,21 @@ export function ChatWindow({
   onReaction,
   onCustomerUpdate
 }: ChatWindowProps) {
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement | null>(null)
-  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
-  const [ffmpegStatus, setFfmpegStatus] = useState<'checking'|'supported'|'not_supported'|'error'>('checking')
-  const [ffmpegError, setFfmpegError] = useState<string>('')
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Hook para buscar config do painel (incluindo URL do microserviço)
-  const { data: panelConfig } = useSWR('/api/admin/config', (url) => fetch(url).then(res => res.json()))
-  const audioConverterUrl = panelConfig?.audioConverterUrl || 'http://localhost:4000/convert-audio'
-
+  // Verificar suporte ao FFmpeg
   useEffect(() => {
     async function checkFFmpeg() {
       try {
-        if (isFFmpegSupported()) {
-          // Testar se arquivos estão acessíveis
-          const js = await fetch('/ffmpeg/ffmpeg-core.js', { method: 'HEAD' })
-          const wasm = await fetch('/ffmpeg/ffmpeg-core.wasm', { method: 'HEAD' })
-          if (js.ok && wasm.ok) {
-            setFfmpegStatus('supported')
-          } else {
-            setFfmpegStatus('error')
-            setFfmpegError('Arquivos ffmpeg-core.js/wasm não encontrados no servidor.')
-          }
-        } else {
-          setFfmpegStatus('not_supported')
-        }
-      } catch (e) {
-        setFfmpegStatus('error')
-        setFfmpegError(e instanceof Error ? e.message : 'Erro desconhecido')
+        const { isFFmpegSupported } = await import('@/lib/audioConverter')
+        const supported = await isFFmpegSupported()
+        console.log('FFmpeg suportado:', supported)
+      } catch (error) {
+        console.warn('FFmpeg não disponível:', error)
       }
     }
     checkFFmpeg()
@@ -1163,14 +1194,18 @@ export function ChatWindow({
   }, [chat, onAssumeChat])
 
   const handleReplyMessage = useCallback((message: ChatMessage) => {
-    if (onReplyMessage) {
-      onReplyMessage(message)
-    }
-  }, [onReplyMessage])
+    setReplyToMessage(message)
+    // Focar no input após definir resposta
+    setTimeout(() => {
+      textareaRef.current?.focus()
+    }, 100)
+  }, [])
 
-  const handleSend = useCallback((data: { content: string }) => {
+  const handleSend = useCallback((data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } }) => {
     if (!chat) return
     onSendMessage(data)
+    // Limpar mensagem de resposta após enviar
+    setReplyToMessage(null)
   }, [chat, onSendMessage])
 
   const handleEditMessage = useCallback(async (message: ChatMessage) => {
@@ -1257,10 +1292,11 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
     if (!chat) return
 
     try {
-      const response = await fetch('/api/atendimento/send-reaction', {
+      const response = await fetch('/api/atendimento/reactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'add',
           phone: chat.id,
           messageId: messageId,
           emoji: emoji,
@@ -1269,18 +1305,23 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         })
       })
 
+      const result = await response.json()
+
       if (response.ok) {
-        console.log('Reação enviada com sucesso')
+        console.log('Reação enviada com sucesso:', result)
+        // Atualizar mensagens localmente se necessário
+        if (onReaction) {
+          onReaction(messageId, emoji)
+        }
       } else {
-        const error = await response.json()
-        console.error('Erro ao enviar reação:', error)
-        alert(`Erro ao enviar reação: ${error.error || 'Erro desconhecido'}`)
+        console.error('Erro ao enviar reação:', result)
+        alert(`Erro ao enviar reação: ${result.error || 'Erro desconhecido'}`)
       }
     } catch (error) {
       console.error('Erro ao enviar reação:', error)
       alert('Erro ao enviar reação. Tente novamente.')
     }
-  }, [chat])
+  }, [chat, onReaction])
 
   return (
     <div className="relative h-full flex flex-col">
@@ -1340,6 +1381,9 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         chat={chat}
         onSendMessage={handleSend}
         onAssumeChat={() => onAssumeChat?.(chat?.id || '')}
+        replyToMessage={replyToMessage}
+        textareaRef={textareaRef}
+        onClearReply={() => setReplyToMessage(null)}
       />
 
       {/* Botão flutuante de seta para baixo */}
