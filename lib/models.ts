@@ -119,7 +119,8 @@ export interface Chat {
   aiPaused: boolean
   conversationStatus: ConversationStatus
   assignedAgent?: string
-  assignedDepartment?: string // Novo campo para departamento
+  assignedDepartment?: string // ID do departamento atribuído
+  departmentName?: string // Nome do departamento para exibição
   pausedAt?: string
   pausedBy?: string
   resolvedAt?: string
@@ -129,6 +130,8 @@ export interface Chat {
     from: 'ai' | 'agent'
     to: 'ai' | 'agent'
     agentId?: string
+    departmentId?: string // ID do departamento de destino
+    departmentName?: string // Nome do departamento de destino
     timestamp: string
     reason?: string
   }[]

@@ -91,7 +91,7 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   // Função para extrair e renderizar nome do remetente
   const renderMessageContent = (content: string) => {
     // Padrão para detectar nome no formato "*Nome:*" no início da mensagem
-    const namePattern = /^\*([^*]+):\*\s*\n?/
+    const namePattern = /^\\*([^*]+):\\*\\s*\\n?/
     const match = content.match(namePattern)
     
     if (match) {
@@ -100,22 +100,20 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
       
       return (
         <div className="space-y-1">
-          <div className="font-bold text-sm">
-            {name}
+          <div className="font-bold text-gray-900 dark:text-gray-100">
+            {name}:
           </div>
-          {messageText && (
-            <div className="break-words leading-relaxed">
-              {renderMessageWithBreaks(messageText)}
-            </div>
-          )}
+          <div className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+            {messageText}
+          </div>
         </div>
       )
     }
     
-    // Se não há padrão de nome, renderizar normalmente
+    // Se não há padrão de nome, renderizar normalmente preservando quebras de linha
     return (
-      <div className="break-words leading-relaxed">
-        {renderMessageWithBreaks(content)}
+      <div className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+        {content}
       </div>
     )
   }

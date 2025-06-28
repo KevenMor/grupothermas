@@ -40,6 +40,7 @@ import {
   validateAudioBlob 
 } from '@/lib/audioConverter'
 import useSWR from 'swr'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface ChatWindowProps {
   chat: Chat | null
@@ -87,13 +88,17 @@ const ChatHeader = ({
   onAssumeChat?: (chatId: string) => void
   onCustomerUpdate?: (data: Partial<Chat>) => void
 }) => {
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editingName, setEditingName] = useState(chat.customerName)
+  const [showNameEditModal, setShowNameEditModal] = useState(false)
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'waiting': return 'text-yellow-500'
-      case 'ai_active': return 'text-blue-500'
-      case 'agent_assigned': return 'text-green-500'
-      case 'resolved': return 'text-gray-500'
-      default: return 'text-gray-500'
+      case 'waiting': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
+      case 'ai_active': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
+      case 'agent_assigned': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+      case 'resolved': return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
     }
   }
 
@@ -101,9 +106,9 @@ const ChatHeader = ({
     switch (status) {
       case 'waiting': return 'Aguardando'
       case 'ai_active': return 'IA Ativa'
-      case 'agent_assigned': return 'Em Atendimento'
+      case 'agent_assigned': return 'Atendente'
       case 'resolved': return 'Resolvido'
-      default: return 'Online'
+      default: return 'Desconhecido'
     }
   }
 
@@ -176,81 +181,37 @@ const ChatHeader = ({
     }
   }
 
-  const [editingName, setEditingName] = useState(false)
-  const [name, setName] = useState(chat.customerName)
-  const [savingName, setSavingName] = useState(false)
-  const [editingAvatar, setEditingAvatar] = useState(false)
-  const [avatar, setAvatar] = useState(chat.customerAvatar)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    setName(chat.customerName)
-    setAvatar(chat.customerAvatar)
-    // Buscar avatar do WhatsApp via Z-API se não houver ou for padrão
-    const isDefaultAvatar = !chat.customerAvatar || chat.customerAvatar.includes('ui-avatars.com') || chat.customerAvatar.includes('default');
-    if (isDefaultAvatar && chat.customerPhone) {
-      fetch(`/api/zapi/avatar?phone=${encodeURIComponent(chat.customerPhone)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data?.avatarUrl && data.avatarUrl !== chat.customerAvatar) {
-            setAvatar(data.avatarUrl);
-            // Atualizar no backend
-            fetch(`/api/atendimento/chats/${chat.customerPhone}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ customerAvatar: data.avatarUrl })
-            });
-            onCustomerUpdate?.({ customerAvatar: data.avatarUrl });
-          }
-        });
-    }
-  }, [chat.customerName, chat.customerAvatar, chat.customerPhone]);
-
   const handleNameSave = async () => {
-    if (!name.trim() || name === chat.customerName) {
-      setEditingName(false)
+    if (!editingName.trim()) {
+      alert('Nome não pode estar vazio')
       return
     }
-    setSavingName(true)
+
     try {
-      const res = await fetch(`/api/atendimento/chats/${chat.customerPhone}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerName: name })
-      })
-      if (res.ok) {
-        setEditingName(false)
-        onCustomerUpdate?.({ customerName: name })
+      if (onCustomerUpdate) {
+        await onCustomerUpdate({ customerName: editingName.trim() })
       }
-    } finally {
-      setSavingName(false)
+      setShowNameEditModal(false)
+      setIsEditingName(false)
+    } catch (error) {
+      console.error('Erro ao atualizar nome:', error)
+      alert('Erro ao atualizar nome do cliente')
     }
   }
 
   const handleAvatarClick = () => {
-    fileInputRef.current?.click()
+    // Implementar upload de avatar se necessário
   }
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // Upload para storage (pode ser Firebase Storage ou base64 temporário)
-    const formData = new FormData()
-    formData.append('file', file)
-    // Supondo endpoint /api/atendimento/upload retorna { url }
-    const res = await fetch('/api/atendimento/upload', {
-      method: 'POST',
-      body: formData
-    })
-    const data = await res.json()
-    if (data.url) {
-      setAvatar(data.url)
-      await fetch(`/api/atendimento/chats/${chat.customerPhone}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerAvatar: data.url })
-      })
-      onCustomerUpdate?.({ customerAvatar: data.url })
+
+    try {
+      // Implementar upload de avatar
+      console.log('Upload de avatar:', file)
+    } catch (error) {
+      console.error('Erro ao fazer upload do avatar:', error)
     }
   }
 
@@ -258,14 +219,33 @@ const ChatHeader = ({
     <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
       <div className="flex items-center gap-4">
         <Avatar className="w-14 h-14">
-          <AvatarImage src={avatar} />
-          <AvatarFallback className="text-lg">{name.charAt(0)}</AvatarFallback>
+          <AvatarImage src={chat.customerAvatar} alt={chat.customerName} />
+          <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
+            {chat.customerName.charAt(0).toUpperCase()}
+          </AvatarFallback>
         </Avatar>
-        <div className="flex flex-col gap-1">
+        
+        <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-100">{name}</h3>
-            <span className="text-xs text-gray-400">{chat.customerPhone}</span>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {chat.customerName}
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setEditingName(chat.customerName)
+                setShowNameEditModal(true)
+              }}
+              className="text-gray-500 hover:text-blue-600 p-1 h-auto"
+              title="Editar nome do cliente"
+            >
+              <Edit className="w-3 h-3" />
+            </Button>
           </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {chat.customerPhone}
+          </p>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-xs text-gray-500 dark:text-gray-400">Ticket: <span className="font-bold text-blue-700 dark:text-blue-300">#{chat.id?.slice(-6) || '----'}</span></span>
             <span className="text-xs text-gray-500 dark:text-gray-400">Tempo: <span className="font-semibold">{formatTimeAgo(chat.timestamp) || '--'}</span></span>
@@ -274,20 +254,51 @@ const ChatHeader = ({
           </div>
         </div>
       </div>
+      
       <div className="flex items-center gap-2">
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow" size="sm">
-          <Play className="w-4 h-4 mr-1" /> Participar
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-          disabled
-          title="Opções em breve"
-        >
-          <MoreVertical className="w-5 h-5" />
-        </Button>
+        {renderControls()}
       </div>
+
+      {/* Modal para editar nome do cliente */}
+      <Dialog open={showNameEditModal} onOpenChange={setShowNameEditModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Nome do Cliente</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Nome do Cliente
+              </label>
+              <Input
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                placeholder="Digite o nome do cliente"
+                className="w-full"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleNameSave()
+                  }
+                }}
+              />
+            </div>
+            
+            <div className="flex gap-2 pt-4">
+              <Button onClick={handleNameSave} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                Salvar
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowNameEditModal(false)}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -315,6 +326,7 @@ const MessageInput = ({
   const [previewFile, setPreviewFile] = useState<File | null>(null)
   const [previewType, setPreviewType] = useState<string>('')
   const [previewUrl, setPreviewUrl] = useState<string>('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSend = () => {
     if (!chat) return;
@@ -805,21 +817,22 @@ const MessageInput = ({
 
           <div className="flex-1 relative">
             <textarea
+              ref={textareaRef}
               value={message}
-              onChange={e => {
-                setMessage(e.target.value)
+              onChange={(e) => setMessage(e.target.value)}
+              onInput={(e) => {
                 const textarea = e.target as HTMLTextAreaElement;
                 textarea.style.height = 'auto';
                 textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
               }}
-              placeholder={canInteract() ? "Digite uma mensagem..." : "Assuma o atendimento para enviar mensagens"}
+              placeholder={canInteract() ? "Digite uma mensagem... (Shift+Enter para nova linha)" : "Assuma o atendimento para enviar mensagens"}
               disabled={!canInteract()}
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSend();
                 }
-                // Shift+Enter permite nova linha
+                // Shift+Enter permite nova linha (comportamento padrão)
               }}
               rows={1}
               className="block w-full resize-none pr-10 px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none min-h-[40px] max-h-40 shadow-inner text-base transition-all"
