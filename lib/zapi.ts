@@ -319,8 +319,12 @@ export async function sendAudio(
     // LOG extra do Content-Type
     if (contentType) {
       console.log('Content-Type detectado para o áudio:', contentType)
-      payload.contentType = contentType // Não é usado pela Z-API, mas loga para debug
+      // Não enviar contentType para a Z-API, apenas logar
     }
+    // Remover campos undefined explicitamente (garantia extra)
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === undefined) delete payload[key];
+    });
     console.log('=== ENVIANDO ÁUDIO VIA Z-API ===');
     console.log('URL:', zapiUrl);
     console.log('Phone:', phone);
@@ -353,7 +357,7 @@ export async function sendAudio(
         statusText: zapiResponse.statusText,
         response: zapiResult,
         url: zapiUrl,
-        payload: payload,
+        payload: JSON.stringify(payload, null, 2),
         audioFormat: urlExtension,
         contentType,
         timestamp: new Date().toISOString()
