@@ -3,6 +3,10 @@ import { adminDB } from '@/lib/firebaseAdmin'
 import { ChatMessage, Reaction } from '@/lib/models'
 import { downloadAndSaveMedia, isFirebaseStorageUrl } from '@/lib/mediaUpload'
 
+// Adicionar no topo do arquivo:
+const recentReactionLogs = new Map<string, number>() // chave: messageId+reaction, valor: timestamp
+const REACTION_LOG_THROTTLE_MS = 5000 // 5 segundos
+
 // Recebe eventos enviados pela Z-API (https://developer.z-api.io/en/webhooks)
 // Configure no painel da instância a URL: https://SEU_DOMINIO/api/zapi/webhook
 export async function POST(request: NextRequest) {
@@ -70,12 +74,26 @@ export async function POST(request: NextRequest) {
       content = text.message
       console.log('Processando texto:', content)
     } else if (body.reaction) {
-      console.log('Processando reação:', body.reaction)
-      
-      // Processar reação de mensagem
+      // Controle de logs repetidos
       const reactionData = body.reaction
       const targetMessageId = reactionData.messageId
       const reactionEmoji = reactionData.reaction
+      const reactionLogKey = `${targetMessageId || ''}_${reactionEmoji || ''}`
+      const now = Date.now()
+      if (recentReactionLogs.has(reactionLogKey)) {
+        const lastLog = recentReactionLogs.get(reactionLogKey) || 0
+        if (now - lastLog < REACTION_LOG_THROTTLE_MS) {
+          // Ignorar log repetido
+        } else {
+          recentReactionLogs.set(reactionLogKey, now)
+          console.log('Processando reação:', body.reaction)
+        }
+      } else {
+        recentReactionLogs.set(reactionLogKey, now)
+        console.log('Processando reação:', body.reaction)
+      }
+      
+      // Processar reação de mensagem
       const isReactionRemoved = reactionData.reaction === ''
       
       console.log('Dados da reação:', {
