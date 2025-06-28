@@ -286,21 +286,28 @@ function AppSidebar() {
               <SidebarNavSubmenu
                 title="Gestão de Usuários"
                 icon={<Users2 className="h-4 w-4" />}
-                defaultOpen={pathname === '/admin/users'}
+                defaultOpen={pathname.startsWith('/admin/users')}
               >
                 <SidebarNavSubItem
-                  icon={<Users className="h-4 w-4" />}
-                  active={pathname === '/admin/users'}
+                  icon={<UserPlus className="h-4 w-4" />}
+                  active={pathname.startsWith('/admin/users')}
                   onClick={() => router.push('/admin/users' as any)}
                 >
-                  Usuários
+                  Gerenciar Usuários
                 </SidebarNavSubItem>
+              </SidebarNavSubmenu>
+              {/* Departamentos como submenu expansível */}
+              <SidebarNavSubmenu
+                title="Departamentos"
+                icon={<Building className="h-4 w-4" />}
+                defaultOpen={pathname.startsWith('/admin/departments')}
+              >
                 <SidebarNavSubItem
                   icon={<Building className="h-4 w-4" />}
-                  active={pathname === '/admin/departments'}
+                  active={pathname.startsWith('/admin/departments')}
                   onClick={() => router.push('/admin/departments' as any)}
                 >
-                  Departamentos
+                  Gerenciar Departamentos
                 </SidebarNavSubItem>
               </SidebarNavSubmenu>
 
