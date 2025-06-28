@@ -116,6 +116,25 @@ const permissions = [
   { id: 'settings_manage', name: 'Gerenciar Configurações', description: 'Alterar configurações do sistema' },
 ]
 
+const ROLE_PERMISSIONS = {
+  admin: [
+    'users_manage', 'departments_manage', 'sales_view', 'sales_manage',
+    'leads_view', 'leads_manage', 'chats_view', 'chats_manage',
+    'reports_view', 'settings_manage'
+  ],
+  manager: [
+    'users_manage', 'departments_manage', 'sales_view', 'sales_manage',
+    'leads_view', 'leads_manage', 'chats_view', 'chats_manage',
+    'reports_view'
+  ],
+  agent: [
+    'chats_view', 'chats_manage', 'leads_view', 'leads_manage'
+  ],
+  viewer: [
+    'chats_view', 'leads_view', 'sales_view', 'reports_view'
+  ]
+}
+
 export default function UsersPage() {
   const { user } = useAuth()
   const [users, setUsers] = useState<User[]>([])
@@ -386,6 +405,19 @@ export default function UsersPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Permissões atribuídas</label>
+                        <div className="flex flex-wrap gap-2">
+                          {(ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || []).map((perm) => (
+                            <span key={perm} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-semibold">
+                              {perm}
+                            </span>
+                          ))}
+                          {(!formData.role || (ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || []).length === 0) && (
+                            <span className="text-gray-400 text-xs">Selecione um cargo para ver as permissões</span>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Status</label>
@@ -664,6 +696,19 @@ export default function UsersPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Permissões atribuídas</label>
+                    <div className="flex flex-wrap gap-2">
+                      {(ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || []).map((perm) => (
+                        <span key={perm} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-semibold">
+                          {perm}
+                        </span>
+                      ))}
+                      {(!formData.role || (ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || []).length === 0) && (
+                        <span className="text-gray-400 text-xs">Selecione um cargo para ver as permissões</span>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Status</label>
