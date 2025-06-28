@@ -559,22 +559,28 @@ export default function AtendimentoPage() {
             isLoading={isLoadingChats}
           />
           <div className="flex-1 flex flex-col min-w-0">
-            <ChatWindow
-              chat={selectedChat}
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              isLoading={isLoadingMessages && messages.length === 0}
-              onToggleAI={handleToggleAI}
-              onAssumeChat={handleAssumeChat}
-              onAssignAgent={handleAssignAgent}
-              onMarkResolved={handleMarkResolved}
-              onReplyMessage={handleReplyMessage}
-              onEditMessage={handleEditMessage}
-              onDeleteMessage={handleDeleteMessage}
-              onMessageInfo={handleMessageInfo}
-              onReaction={handleReaction}
-              onCustomerUpdate={handleCustomerUpdate}
-            />
+            {selectedChat ? (
+              <ChatWindow
+                chat={selectedChat}
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                isLoading={isLoadingMessages && messages.length === 0}
+                onToggleAI={handleToggleAI}
+                onAssumeChat={handleAssumeChat}
+                onAssignAgent={handleAssignAgent}
+                onMarkResolved={handleMarkResolved}
+                onReplyMessage={handleReplyMessage}
+                onEditMessage={handleEditMessage}
+                onDeleteMessage={handleDeleteMessage}
+                onMessageInfo={handleMessageInfo}
+                onReaction={handleReaction}
+                onCustomerUpdate={handleCustomerUpdate}
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-gray-500">
+                Selecione um chat para começar o atendimento.
+              </div>
+            )}
           </div>
         </div>
       </div>
