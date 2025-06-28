@@ -296,13 +296,6 @@ function AppSidebar() {
                   Usuários
                 </SidebarNavSubItem>
                 <SidebarNavSubItem
-                  icon={<UserCog className="h-4 w-4" />}
-                  active={pathname === '/admin/users'}
-                  onClick={() => router.push('/admin/users' as any)}
-                >
-                  Permissões
-                </SidebarNavSubItem>
-                <SidebarNavSubItem
                   icon={<Building className="h-4 w-4" />}
                   active={pathname === '/admin/users'}
                   onClick={() => router.push('/admin/users' as any)}
