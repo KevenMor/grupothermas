@@ -270,69 +270,40 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
   return (
     <>
       {isFirstOfDay && (
-        <div className="flex justify-center my-4">
-          <div className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-3 py-1 rounded-full">
+        <div className="flex justify-center my-6">
+          <div className="bg-blue-50 dark:bg-gray-800 text-blue-700 dark:text-gray-200 text-xs px-4 py-1 rounded-full shadow-sm font-semibold">
             {formatDate(dateObj)}
           </div>
         </div>
       )}
-      
       {/* Balão da mensagem principal */}
-      <div className={`flex gap-2 mb-3 ${isFromAgent ? 'justify-end' : 'justify-start'}`} id={`msg-${message.id}`}>
-        {!isFromAgent && showAvatar && (
-          <Avatar className="w-8 h-8 flex-shrink-0">
+      <div className={`flex gap-2 mb-2 ${isFromAgent ? 'justify-end' : isFromCustomer ? 'justify-start' : 'justify-center'}`} id={`msg-${message.id}`}>
+        {/* Avatar apenas para cliente */}
+        {!isFromAgent && isFromCustomer && showAvatar && (
+          <Avatar className="w-8 h-8 flex-shrink-0 mt-auto">
             <AvatarImage src={avatar} />
             <AvatarFallback className="text-xs">
               {isAI ? '🤖' : isSystem ? '⚙️' : isAgent ? '👤' : (contactName?.charAt(0) || '?')}
             </AvatarFallback>
           </Avatar>
         )}
-        
-        <div className={`max-w-[70%] ${isFromAgent ? 'items-end' : 'items-start'} flex flex-col`}>
-          {!isFromAgent && showName && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 px-1">
-              {isAI ? 'IA Assistente' : isAgent ? 'Atendente' : isSystem ? 'Sistema' : contactName}
-            </div>
-          )}
-          
-          {/* Mini-bubble de reply visual */}
-          {message.replyTo && (
-            <div
-              className="mb-2 px-2 py-1 rounded bg-blue-100/80 dark:bg-blue-900/20 border-l-4 border-blue-500/80 dark:border-blue-400/70 text-xs shadow-sm flex flex-col gap-1 cursor-pointer hover:bg-blue-200/80 dark:hover:bg-blue-800/40 transition"
-              aria-label="Mensagem citada"
-              onClick={handleReplyBubbleClick}
-            >
-              <span className="flex items-center gap-1 font-semibold text-blue-700 dark:text-blue-200" style={{fontSize:'0.95em'}}>
-                ↩
-                {message.replyTo.author === 'agent' ? 'Você' : (contactName || 'Cliente')}
-              </span>
-              <span className="text-gray-700 dark:text-gray-200 truncate" style={{display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>
-                {message.replyTo.text ? (message.replyTo.text.length > 45 ? message.replyTo.text.slice(0, 45) + '…' : message.replyTo.text) : 'Mensagem removida'}
-              </span>
-            </div>
-          )}
+        <div className={`max-w-[70%] flex flex-col ${isFromAgent ? 'items-end' : isFromCustomer ? 'items-start' : 'items-center'} w-full`}>
+          {/* Balão visual */}
           <div 
-            className={`relative group rounded-2xl px-3 py-2 max-w-full ${
-              isFromAgent 
-                ? 'bg-blue-500 text-white rounded-br-md' 
-                : isFromCustomer
-                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-md'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-md'
-            }`}
+            className={`relative group px-4 py-3 max-w-full rounded-2xl shadow-sm
+              ${isFromAgent ? 'bg-blue-600 text-white rounded-br-md' :
+                isFromCustomer ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-md' :
+                'bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-xl text-center'}
+              ${isSystem ? 'mx-auto' : ''}
+            `}
             onMouseEnter={() => setShowActions(true)}
             onMouseLeave={() => setShowActions(false)}
+            style={{ minWidth: 80 }}
           >
-            {/* Menu de ações */}
-            {showActions && (
-              <div className={`absolute -top-9 ${isFromAgent ? 'right-2' : 'left-2'} flex gap-1 z-30 bg-white/90 dark:bg-gray-800/90 rounded shadow p-1`}>
-                <Button size="icon" variant="ghost" onClick={() => onReply && onReply(message)} title="Responder"><Reply className="w-4 h-4" /></Button>
-                {isFromAgent && (
-                  <Button size="icon" variant="ghost" onClick={() => onEdit && onEdit(message)} title="Editar"><Edit className="w-4 h-4" /></Button>
-                )}
-                {isFromAgent && (
-                  <Button size="icon" variant="ghost" onClick={() => onDelete && onDelete(message.id)} title="Excluir"><Trash2 className="w-4 h-4" /></Button>
-                )}
-                <Button size="icon" variant="ghost" onClick={() => onInfo && onInfo(message)} title="Info"><Info className="w-4 h-4" /></Button>
+            {/* Nome em negrito no topo para sistema/atendente */}
+            {(!isFromCustomer && (isAgent || isAI || isSystem)) && (
+              <div className="font-bold text-sm mb-1 text-gray-800 dark:text-gray-100 text-left">
+                {displayName}
               </div>
             )}
             {/* Conteúdo da mensagem */}
@@ -544,24 +515,20 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
               )}
               {/* Conteúdo textual - Preserva quebras de linha e parágrafos */}
               {message.content && !message.mediaType && (
-                <div 
-                  className="break-words leading-relaxed"
-                  style={{ wordBreak: 'break-word' }}
-                >
+                <div className="break-words leading-relaxed">
                   {renderMessageContent(message.content)}
                 </div>
               )}
             </div>
-            {/* Status da mensagem */}
-            <div className="flex justify-end mt-1">
-              <span className="text-xs text-gray-300 dark:text-gray-500 flex items-center gap-1">
+            {/* Hora discreta abaixo do balão */}
+            <div className="flex justify-end mt-2">
+              <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
                 <MessageStatus status={message.status} />
                 {['delivered','read'].includes(message.status) && message.statusTimestamp
                   ? formatTime(message.statusTimestamp)
                   : formatTime(message.timestamp)}
               </span>
             </div>
-            
             {/* Reações da mensagem */}
             {message.reactions && message.reactions.length > 0 && (
               <MessageReactions
@@ -570,7 +537,6 @@ export function ChatMessageItem({ message, avatarUrl, contactName, showAvatar = 
                 className="mt-1"
               />
             )}
-            
             {/* Botão de reação (apenas para mensagens do cliente) */}
             {isFromCustomer && onReaction && (
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">

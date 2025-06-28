@@ -234,10 +234,13 @@ export async function POST(request: NextRequest) {
     try {
       const conversationRef = adminDB.collection('conversations').doc(phone)
       // Garantir que não salva undefined
-      const safeMessageId = typeof zapiResult.messageId === 'string' && zapiResult.messageId ? zapiResult.messageId : null
-      console.log('DEBUG zapiResult:', JSON.stringify(zapiResult, null, 2))
+      const safeMessageId = typeof zapiResult.messageId === 'string' && zapiResult.messageId ? zapiResult.messageId : (typeof zapiResult.id === 'string' && zapiResult.id ? zapiResult.id : null)
+      if (!safeMessageId) {
+        console.warn('Z-API não retornou messageId nem id:', JSON.stringify(zapiResult, null, 2))
+      }
+      const safeContent = type === 'audio' ? '[AUDIO]' : (typeof content === 'string' && content.trim() ? content : `[${type.toUpperCase()}]`)
       const messageData: MessageData = {
-        content: `[${type.toUpperCase()}]`,
+        content: safeContent,
         role: 'agent',
         timestamp: new Date().toISOString(),
         status: 'sent',

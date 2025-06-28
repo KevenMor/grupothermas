@@ -255,76 +255,29 @@ const ChatHeader = ({
   }
 
   return (
-    <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      <div className="flex items-center gap-3">
-        <div className="relative group">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={avatar} />
-            <AvatarFallback>{name.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <button
-            className="absolute bottom-0 right-0 bg-white dark:bg-gray-700 rounded-full p-1 shadow group-hover:opacity-100 opacity-60 transition-opacity border border-gray-300 dark:border-gray-600"
-            onClick={handleAvatarClick}
-            title="Editar foto"
-            type="button"
-          >
-            <Camera className="w-4 h-4 text-gray-600 dark:text-gray-200" />
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleAvatarChange}
-          />
-        </div>
-        <div>
-          {editingName ? (
-            <div className="flex items-center gap-2">
-              <Input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                onBlur={handleNameSave}
-                onKeyDown={e => { if (e.key === 'Enter') handleNameSave() }}
-                className="h-7 text-sm px-2 py-1"
-                autoFocus
-                disabled={savingName}
-              />
-              <Button size="icon" variant="ghost" onClick={handleNameSave} disabled={savingName}>
-                <CheckCircle className="w-4 h-4 text-green-600" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-800 dark:text-gray-100">{name}</h3>
-              <button
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                onClick={() => setEditingName(true)}
-                title="Editar nome"
-                type="button"
-              >
-                <Edit className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-          )}
-          <p className="text-xs text-gray-500 dark:text-gray-400">{chat.customerPhone}</p>
+    <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+      <div className="flex items-center gap-4">
+        <Avatar className="w-14 h-14">
+          <AvatarImage src={avatar} />
+          <AvatarFallback className="text-lg">{name.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <p className={`text-sm ${getStatusColor(chat.conversationStatus || 'waiting')}`}>{getStatusText(chat.conversationStatus || 'waiting')}</p>
-            {chat.conversationStatus === 'ai_active' && (
-              <div title="IA Ativa"><Bot className="w-4 h-4 text-blue-500" /></div>
-            )}
-            {chat.conversationStatus === 'agent_assigned' && (
-              <div title="Agente Atribuído"><User className="w-4 h-4 text-green-500" /></div>
-            )}
+            <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-100">{name}</h3>
+            <span className="text-xs text-gray-400">{chat.customerPhone}</span>
+          </div>
+          <div className="flex items-center gap-3 mt-1">
+            <span className="text-xs text-gray-500 dark:text-gray-400">Ticket: <span className="font-bold text-blue-700 dark:text-blue-300">#{chat.ticketNumber || '----'}</span></span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Tempo: <span className="font-semibold">{chat.openTime || '--'}</span></span>
+            <span className={`text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 ${getStatusColor(chat.conversationStatus || 'waiting')}`}>{getStatusText(chat.conversationStatus || 'waiting')}</span>
+            {chat.absent && <span className="text-xs text-orange-500 font-medium">Ausente</span>}
           </div>
         </div>
       </div>
-      
-      <div className="flex items-center gap-1">
-        {/* Controles dinâmicos baseados no status */}
-        {renderControls()}
-        
-        {/* Menu de opções (desabilitado por enquanto) */}
+      <div className="flex items-center gap-2">
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow" size="sm">
+          <Play className="w-4 h-4 mr-1" /> Participar
+        </Button>
         <Button 
           variant="ghost" 
           size="icon" 
@@ -1240,11 +1193,24 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         <div ref={messagesEndRef} />
       </div>
       
-      <MessageInput
-        chat={chat}
-        onSendMessage={handleSend}
-        onAssumeChat={handleAssumeChat}
-      />
+      <div className="sticky bottom-0 left-0 w-full bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-20 px-4 py-3 flex items-center gap-3 shadow-lg">
+        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-blue-600">
+          <Paperclip className="w-5 h-5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-blue-600">
+          <Smile className="w-5 h-5" />
+        </Button>
+        <Input
+          className="flex-1 rounded-2xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm"
+          placeholder="Digite uma mensagem..."
+        />
+        <Button variant="ghost" size="icon" className="text-gray-500 dark:text-gray-400 hover:text-blue-600">
+          <Mic className="w-5 h-5" />
+        </Button>
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 ml-1 shadow" size="icon">
+          <Send className="w-5 h-5" />
+        </Button>
+      </div>
 
       {/* Botão flutuante de seta para baixo */}
       {showScrollToBottom && (
