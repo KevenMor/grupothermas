@@ -1091,22 +1091,8 @@ const formatDate = (date: Date) => {
   return format(date, 'dd/MM/yyyy', { locale: ptBR })
 }
 
-export function ChatWindow({ 
-  chat, 
-  messages, 
-  onSendMessage, 
-  isLoading, 
-  onToggleAI, 
-  onAssignAgent, 
-  onMarkResolved,
-  onAssumeChat,
-  onReplyMessage,
-  onEditMessage,
-  onDeleteMessage,
-  onMessageInfo,
-  onReaction,
-  onCustomerUpdate
-}: ChatWindowProps) {
+export function ChatWindow(props: ChatWindowProps) {
+  console.debug('[ChatWindow] props:', props)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
@@ -1149,14 +1135,14 @@ export function ChatWindow({
     return () => {
       container.removeEventListener('scroll', handleScroll)
     }
-  }, [messages])
+  }, [props.messages])
 
   // Sempre rolar para o final ao receber nova mensagem
   useEffect(() => {
     scrollToBottom()
-  }, [messages.length])
+  }, [props.messages.length])
 
-  if (!chat) {
+  if (!props.chat) {
     return <WelcomeScreen />
   }
 
@@ -1165,7 +1151,7 @@ export function ChatWindow({
     const groups: Array<{ date: Date; messages: ChatMessage[] }> = []
     let currentGroup: { date: Date; messages: ChatMessage[] } | null = null
 
-    messages.forEach((msg) => {
+    props.messages.forEach((msg) => {
       const dateObj = new Date(msg.timestamp)
       const isFirstOfDay = !currentGroup || !isSameDay(currentGroup.date, dateObj)
       
@@ -1184,14 +1170,14 @@ export function ChatWindow({
     }
 
     return groups
-  }, [messages])
+  }, [props.messages])
 
   // Memoizar funções de callback para evitar re-renderizações
   const handleAssumeChat = useCallback(() => {
-    if (chat && onAssumeChat) {
-      onAssumeChat(chat.id)
+    if (props.chat && props.onAssumeChat) {
+      props.onAssumeChat(props.chat.id)
     }
-  }, [chat, onAssumeChat])
+  }, [props.chat, props.onAssumeChat])
 
   const handleReplyMessage = useCallback((message: ChatMessage) => {
     setReplyToMessage(message)
@@ -1202,14 +1188,14 @@ export function ChatWindow({
   }, [])
 
   const handleSend = useCallback((data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } }) => {
-    if (!chat) return
-    onSendMessage(data)
+    if (!props.chat) return
+    props.onSendMessage(data)
     // Limpar mensagem de resposta após enviar
     setReplyToMessage(null)
-  }, [chat, onSendMessage])
+  }, [props.chat, props.onSendMessage])
 
   const handleEditMessage = useCallback(async (message: ChatMessage) => {
-    if (!chat) return
+    if (!props.chat) return
     
     const newContent = prompt('Editar mensagem:', message.content)
     if (!newContent || newContent === message.content) return
@@ -1220,22 +1206,22 @@ export function ChatWindow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'edit',
-          chatId: chat.id,
+          chatId: props.chat.id,
           messageId: message.id,
           content: newContent
         })
       })
 
       if (response.ok) {
-        if (onEditMessage) onEditMessage(message)
+        if (props.onEditMessage) props.onEditMessage(message)
       }
     } catch (error) {
       console.error('Erro ao editar mensagem:', error)
     }
-  }, [chat, onEditMessage])
+  }, [props.chat, props.onEditMessage])
 
   const handleDeleteMessage = useCallback(async (messageId: string) => {
-    if (!chat) return
+    if (!props.chat) return
     
     if (!confirm('Tem certeza que deseja excluir esta mensagem?')) return
 
@@ -1245,21 +1231,21 @@ export function ChatWindow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'delete',
-          chatId: chat.id,
+          chatId: props.chat.id,
           messageId
         })
       })
 
       if (response.ok) {
-        if (onDeleteMessage) onDeleteMessage(messageId)
+        if (props.onDeleteMessage) props.onDeleteMessage(messageId)
       }
     } catch (error) {
       console.error('Erro ao excluir mensagem:', error)
     }
-  }, [chat, onDeleteMessage])
+  }, [props.chat, props.onDeleteMessage])
 
   const handleMessageInfo = useCallback(async (message: ChatMessage) => {
-    if (!chat) return
+    if (!props.chat) return
 
     try {
       const response = await fetch('/api/atendimento/message-actions', {
@@ -1267,7 +1253,7 @@ export function ChatWindow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'info',
-          chatId: chat.id,
+          chatId: props.chat.id,
           messageId: message.id
         })
       })
@@ -1286,10 +1272,10 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
     } catch (error) {
       console.error('Erro ao buscar informações da mensagem:', error)
     }
-  }, [chat])
+  }, [props.chat])
 
   const handleReaction = useCallback(async (messageId: string, emoji: string) => {
-    if (!chat) return
+    if (!props.chat) return
 
     try {
       const response = await fetch('/api/atendimento/reactions', {
@@ -1297,7 +1283,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'add',
-          phone: chat.id,
+          phone: props.chat.id,
           messageId: messageId,
           emoji: emoji,
           agentName: 'Atendente',
@@ -1310,8 +1296,8 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
       if (response.ok) {
         console.log('Reação enviada com sucesso:', result)
         // Atualizar mensagens localmente se necessário
-        if (onReaction) {
-          onReaction(messageId, emoji)
+        if (props.onReaction) {
+          props.onReaction(messageId, emoji)
         }
       } else {
         console.error('Erro ao enviar reação:', result)
@@ -1321,20 +1307,20 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
       console.error('Erro ao enviar reação:', error)
       alert('Erro ao enviar reação. Tente novamente.')
     }
-  }, [chat, onReaction])
+  }, [props.chat, props.onReaction])
 
   return (
     <div className="relative h-full flex flex-col">
       <ChatHeader 
-        chat={chat} 
-        onToggleAI={onToggleAI} 
-        onAssignAgent={onAssignAgent} 
-        onMarkResolved={onMarkResolved}
+        chat={props.chat} 
+        onToggleAI={props.onToggleAI} 
+        onAssignAgent={props.onAssignAgent} 
+        onMarkResolved={props.onMarkResolved}
         onAssumeChat={handleAssumeChat}
-        onCustomerUpdate={onCustomerUpdate}
+        onCustomerUpdate={props.onCustomerUpdate}
       />
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-2 pb-4" style={{ scrollBehavior: 'smooth' }}>
-        {isLoading && messages.length === 0 ? (
+        {props.isLoading && props.messages.length === 0 ? (
           <div className="flex justify-center items-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           </div>
@@ -1356,8 +1342,8 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
                     <ChatMessageItem
                       key={msg.id}
                       message={msg}
-                      avatarUrl={!isAgent ? chat?.customerAvatar : undefined}
-                      contactName={!isAgent ? chat?.customerName : undefined}
+                      avatarUrl={!isAgent ? props.chat?.customerAvatar : undefined}
+                      contactName={!isAgent ? props.chat?.customerName : undefined}
                       showAvatar={true}
                       showName={true}
                       isFirstOfDay={false} // Já agrupamos por data
@@ -1366,7 +1352,7 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
                       onDelete={handleDeleteMessage}
                       onInfo={handleMessageInfo}
                       onReaction={handleReaction}
-                      messages={messages}
+                      messages={props.messages}
                     />
                   )
                 })}
@@ -1378,9 +1364,9 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
       </div>
       
       <MessageInput 
-        chat={chat}
+        chat={props.chat}
         onSendMessage={handleSend}
-        onAssumeChat={() => onAssumeChat?.(chat?.id || '')}
+        onAssumeChat={() => props.onAssumeChat?.(props.chat?.id || '')}
         replyToMessage={replyToMessage}
         textareaRef={textareaRef}
         onClearReply={() => setReplyToMessage(null)}

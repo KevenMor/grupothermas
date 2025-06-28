@@ -117,26 +117,27 @@ const ChatListItem = ({ chat, isSelected, onSelectChat }: { chat: Chat, isSelect
   )
 }
 
-export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatListProps) {
+export function ChatList(props: ChatListProps) {
+  console.debug('[ChatList] props:', props)
   const [searchTerm, setSearchTerm] = useState('')
   const [showAddContact, setShowAddContact] = useState(false)
   const [newContact, setNewContact] = useState({ name: '', phone: '' })
   const [isSaving, setIsSaving] = useState(false)
 
   // Calcular total de mensagens não lidas
-  const totalUnread = chats.reduce((sum, chat) => sum + chat.unreadCount, 0)
-  const unreadChats = chats.filter(chat => chat.unreadCount > 0).length
+  const totalUnread = props.chats.reduce((sum, chat) => sum + chat.unreadCount, 0)
+  const unreadChats = props.chats.filter(chat => chat.unreadCount > 0).length
 
   // Filtrar chats por status
   const chatsByStatus = {
-    waiting: chats.filter(chat => chat.conversationStatus === 'waiting'),
-    ai_active: chats.filter(chat => chat.conversationStatus === 'ai_active'),
-    agent_assigned: chats.filter(chat => chat.conversationStatus === 'agent_assigned'),
-    resolved: chats.filter(chat => chat.conversationStatus === 'resolved')
+    waiting: props.chats.filter(chat => chat.conversationStatus === 'waiting'),
+    ai_active: props.chats.filter(chat => chat.conversationStatus === 'ai_active'),
+    agent_assigned: props.chats.filter(chat => chat.conversationStatus === 'agent_assigned'),
+    resolved: props.chats.filter(chat => chat.conversationStatus === 'resolved')
   }
 
   // Filtrar por termo de busca
-  const filteredChats = chats.filter(chat =>
+  const filteredChats = props.chats.filter(chat =>
     chat.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     chat.customerPhone.includes(searchTerm) ||
     chat.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
@@ -223,7 +224,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
         <div className="flex-grow overflow-y-auto">
           {/* Aba Chats - Conversas aguardando */}
           <TabsContent value="chats" className="m-0">
-            {isLoading ? (
+            {props.isLoading ? (
               <div className="flex justify-center items-center h-full p-8">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
               </div>
@@ -233,8 +234,8 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
                   <ChatListItem
                     key={chat.id}
                     chat={chat}
-                    isSelected={selectedChat?.id === chat.id}
-                    onSelectChat={onSelectChat}
+                    isSelected={props.selectedChat?.id === chat.id}
+                    onSelectChat={props.onSelectChat}
                   />
                 ))}
                 {filteredChatsByStatus.waiting.length === 0 && (
@@ -253,8 +254,8 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
                 <ChatListItem
                   key={chat.id}
                   chat={chat}
-                  isSelected={selectedChat?.id === chat.id}
-                  onSelectChat={onSelectChat}
+                  isSelected={props.selectedChat?.id === chat.id}
+                  onSelectChat={props.onSelectChat}
                 />
               ))}
               {filteredChatsByStatus.ai_active.length === 0 && (
@@ -272,8 +273,8 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
                 <ChatListItem
                   key={chat.id}
                   chat={chat}
-                  isSelected={selectedChat?.id === chat.id}
-                  onSelectChat={onSelectChat}
+                  isSelected={props.selectedChat?.id === chat.id}
+                  onSelectChat={props.onSelectChat}
                 />
               ))}
               {filteredChatsByStatus.agent_assigned.length === 0 && (
@@ -291,8 +292,8 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
                 <ChatListItem
                   key={chat.id}
                   chat={chat}
-                  isSelected={selectedChat?.id === chat.id}
-                  onSelectChat={onSelectChat}
+                  isSelected={props.selectedChat?.id === chat.id}
+                  onSelectChat={props.onSelectChat}
                 />
               ))}
               {filteredChatsByStatus.resolved.length === 0 && (
