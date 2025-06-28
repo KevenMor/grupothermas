@@ -25,6 +25,7 @@ export default function AtendimentoPage() {
 
   const [chats, setChats] = useState<Chat[]>([])
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
+  const [hasSelectedChatManually, setHasSelectedChatManually] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoadingChats, setIsLoadingChats] = useState(true)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
@@ -53,7 +54,7 @@ export default function AtendimentoPage() {
       })
       
       // Selecionar automaticamente apenas no primeiro carregamento (selectedChat === null E chats ainda não carregados)
-      if (data.length > 0 && selectedChat === null && chats.length === 0) {
+      if (data.length > 0 && selectedChat === null && chats.length === 0 && !hasSelectedChatManually) {
         setSelectedChat(data[0])
       }
     } catch (error) {
@@ -258,6 +259,7 @@ export default function AtendimentoPage() {
 
   const handleSelectChat = async (chat: Chat) => {
     setSelectedChat(chat)
+    setHasSelectedChatManually(true)
     
     // Buscar foto de perfil do WhatsApp automaticamente
     try {
