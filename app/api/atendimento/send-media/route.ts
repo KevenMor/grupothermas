@@ -138,6 +138,10 @@ export async function POST(request: NextRequest) {
           let audioUrl = localPath
           let audioFormat = urlExtension
           
+          console.log('=== DEFININDO URL FINAL ===')
+          console.log('URL inicial:', audioUrl)
+          console.log('Formato inicial:', audioFormat)
+          
           if (oggUrl && isFirebaseStorageUrl(oggUrl) && (oggUrl.endsWith('.ogg') || oggUrl.endsWith('.opus'))) {
             audioUrl = oggUrl
             audioFormat = oggUrl.endsWith('.opus') ? 'opus' : 'ogg'
@@ -155,19 +159,30 @@ export async function POST(request: NextRequest) {
             audioFormat = 'mp3'
             console.log('Usando URL MP3 (localPath):', audioUrl)
           } else {
+            console.log('=== ERRO: NENHUMA URL VÁLIDA ENCONTRADA ===')
             return NextResponse.json({ 
               error: 'Formato de áudio não suportado. Use MP3 ou OGG/Opus do Firebase Storage.' 
             }, { status: 400 })
           }
           
+          console.log('=== URL FINAL DEFINIDA ===')
+          console.log('URL final:', audioUrl)
+          console.log('Formato final:', audioFormat)
+          
           // Verificar se a URL está realmente acessível e tem o content-type correto
+          console.log('=== TESTANDO ACESSIBILIDADE DA URL ===')
           try {
             const testResponse = await fetch(audioUrl, { method: 'HEAD' });
+            console.log('Status da resposta HEAD:', testResponse.status)
+            console.log('Headers da resposta:', Object.fromEntries(testResponse.headers.entries()))
+            
             if (!testResponse.ok) {
+              console.log('=== ERRO: URL NÃO ACESSÍVEL ===')
               return NextResponse.json({ 
                 error: `A URL do áudio não está acessível publicamente. Status: ${testResponse.status}` 
               }, { status: 400 })
             }
+            
             const contentType = testResponse.headers.get('content-type')
             console.log('Content-Type do áudio:', contentType)
             // Validar content-type
@@ -179,6 +194,8 @@ export async function POST(request: NextRequest) {
               console.warn('Content-Type inválido:', contentType)
               // Não falhar aqui, apenas logar o warning
             }
+            
+            console.log('=== URL ACESSÍVEL - CHAMANDO SEND AUDIO ===')
             // Chamar sendAudio passando o Content-Type detectado e caption (se houver)
             console.log('Chamando sendAudio com Content-Type:', contentType)
             console.log('=== PAYLOAD PARA SEND AUDIO ===')
