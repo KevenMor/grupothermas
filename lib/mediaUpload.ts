@@ -64,6 +64,16 @@ async function convertAudioToMp3(inputBuffer: Buffer, inputFormat: string): Prom
               outputFormat: 'mp3'
             })
             
+            // Validação: checar magic bytes do MP3
+            const isMp3 = convertedBuffer.slice(0,3).toString('hex') === '494433' || (convertedBuffer[0] === 0xFF && (convertedBuffer[1] & 0xE0) === 0xE0)
+            if (!isMp3) {
+              console.error('Arquivo convertido não é um MP3 válido!')
+              return {
+                success: false,
+                error: 'Conversão para MP3 falhou: arquivo inválido.'
+              }
+            }
+            
             resolve(Buffer.from(convertedBuffer))
           } catch (error) {
             reject(error)
@@ -202,6 +212,16 @@ export async function uploadToFirebaseStorage(
             originalFormat: inputFormat,
             finalFormat: 'mp3'
           })
+          
+          // Validação: checar magic bytes do MP3
+          const isMp3 = finalBuffer.slice(0,3).toString('hex') === '494433' || (finalBuffer[0] === 0xFF && (finalBuffer[1] & 0xE0) === 0xE0)
+          if (!isMp3) {
+            console.error('Arquivo convertido não é um MP3 válido!')
+            return {
+              success: false,
+              error: 'Conversão para MP3 falhou: arquivo inválido.'
+            }
+          }
         } catch (conversionError) {
           console.error('Erro na conversão para MP3, tentando OGG:', conversionError)
           
