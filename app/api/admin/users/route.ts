@@ -65,7 +65,10 @@ export async function GET(request: NextRequest) {
     }
     
     const token = authHeader.replace('Bearer ', '')
-    const decodedToken = await adminDB.auth().verifyIdToken(token)
+    if (!adminAuth) {
+      return NextResponse.json({ success: false, error: 'adminAuth não inicializado' }, { status: 500 })
+    }
+    const decodedToken = await adminAuth.verifyIdToken(token)
     const hasPermission = await checkUserPermission(decodedToken.uid, 'admin_users_view')
     
     if (!hasPermission) {
@@ -141,7 +144,10 @@ export async function POST(request: NextRequest) {
     }
     
     const token = authHeader.replace('Bearer ', '')
-    const decodedToken = await adminDB.auth().verifyIdToken(token)
+    if (!adminAuth) {
+      return NextResponse.json({ success: false, error: 'adminAuth não inicializado' }, { status: 500 })
+    }
+    const decodedToken = await adminAuth.verifyIdToken(token)
     const hasPermission = await checkUserPermission(decodedToken.uid, 'admin_users_create')
     
     if (!hasPermission) {
