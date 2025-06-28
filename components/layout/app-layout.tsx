@@ -297,8 +297,8 @@ function AppSidebar() {
                 </SidebarNavSubItem>
                 <SidebarNavSubItem
                   icon={<Building className="h-4 w-4" />}
-                  active={pathname === '/admin/users'}
-                  onClick={() => router.push('/admin/users' as any)}
+                  active={pathname === '/admin/departments'}
+                  onClick={() => router.push('/admin/departments' as any)}
                 >
                   Departamentos
                 </SidebarNavSubItem>
