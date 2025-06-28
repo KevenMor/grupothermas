@@ -267,10 +267,10 @@ const ChatHeader = ({
             <span className="text-xs text-gray-400">{chat.customerPhone}</span>
           </div>
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Ticket: <span className="font-bold text-blue-700 dark:text-blue-300">#{chat.ticketNumber || '----'}</span></span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">Tempo: <span className="font-semibold">{chat.openTime || '--'}</span></span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Ticket: <span className="font-bold text-blue-700 dark:text-blue-300">#{chat.id?.slice(-6) || '----'}</span></span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Tempo: <span className="font-semibold">{formatTimeAgo(chat.timestamp) || '--'}</span></span>
             <span className={`text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 ${getStatusColor(chat.conversationStatus || 'waiting')}`}>{getStatusText(chat.conversationStatus || 'waiting')}</span>
-            {chat.absent && <span className="text-xs text-orange-500 font-medium">Ausente</span>}
+            {chat.status === 'closed' && <span className="text-xs text-orange-500 font-medium">Fechado</span>}
           </div>
         </div>
       </div>
@@ -930,6 +930,20 @@ const MessageInput = ({
       )}
     </>
   )
+}
+
+// Função para formatar tempo decorrido
+const formatTimeAgo = (timestamp: string) => {
+  if (!timestamp) return '--'
+  
+  const now = new Date()
+  const messageTime = new Date(timestamp)
+  const diffInMinutes = Math.floor((now.getTime() - messageTime.getTime()) / (1000 * 60))
+  
+  if (diffInMinutes < 1) return 'Agora'
+  if (diffInMinutes < 60) return `${diffInMinutes}m`
+  if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`
+  return `${Math.floor(diffInMinutes / 1440)}d`
 }
 
 export function ChatWindow({ 
