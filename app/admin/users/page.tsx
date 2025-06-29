@@ -80,7 +80,6 @@ interface User {
   id: string
   name: string
   email: string
-  department: string
   role: string
   permissions: string[]
   status: 'active' | 'inactive'
@@ -91,23 +90,15 @@ interface User {
   avatar?: string
 }
 
-interface Department {
-  id: string
-  name: string
-  description: string
-  color: string
-}
-
 const roles = [
   { id: 'admin', name: 'Administrador', description: 'Acesso total ao sistema' },
-  { id: 'manager', name: 'Gerente', description: 'Gerencia equipes e projetos' },
-  { id: 'agent', name: 'Agente', description: 'Usuário operacional' },
+  { id: 'manager', name: 'Gerente', description: 'Gerencia equipes e processos' },
+  { id: 'agent', name: 'Agente', description: 'Atendimento e operações' },
   { id: 'viewer', name: 'Visualizador', description: 'Apenas visualização' },
 ]
 
 const permissions = [
   { id: 'users_manage', name: 'Gerenciar Usuários', description: 'Criar, editar e excluir usuários' },
-  { id: 'departments_manage', name: 'Gerenciar Departamentos', description: 'Criar e editar departamentos' },
   { id: 'sales_view', name: 'Visualizar Vendas', description: 'Ver relatórios de vendas' },
   { id: 'sales_manage', name: 'Gerenciar Vendas', description: 'Criar e editar vendas' },
   { id: 'leads_view', name: 'Visualizar Leads', description: 'Ver lista de leads' },
@@ -120,12 +111,12 @@ const permissions = [
 
 const ROLE_PERMISSIONS = {
   admin: [
-    'users_manage', 'departments_manage', 'sales_view', 'sales_manage',
+    'users_manage', 'sales_view', 'sales_manage',
     'leads_view', 'leads_manage', 'chats_view', 'chats_manage',
     'reports_view', 'settings_manage'
   ],
   manager: [
-    'users_manage', 'departments_manage', 'sales_view', 'sales_manage',
+    'users_manage', 'sales_view', 'sales_manage',
     'leads_view', 'leads_manage', 'chats_view', 'chats_manage',
     'reports_view'
   ],
@@ -144,18 +135,15 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [departmentFilter, setDepartmentFilter] = useState<string>('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditDrawer, setShowEditDrawer] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [departments, setDepartments] = useState<Department[]>([])
 
   // Form states
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    department: '',
     role: '',
     status: 'active' as 'active' | 'inactive',
     permissions: [] as string[]
@@ -173,8 +161,7 @@ export default function UsersPage() {
     if (searchTerm) {
       filtered = filtered.filter(user => 
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.department.toLowerCase().includes(searchTerm.toLowerCase())
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -182,37 +169,8 @@ export default function UsersPage() {
       filtered = filtered.filter(user => user.status === statusFilter)
     }
 
-    if (departmentFilter !== 'all') {
-      filtered = filtered.filter(user => user.department === departmentFilter)
-    }
-
     setFilteredUsers(filtered)
-  }, [users, searchTerm, statusFilter, departmentFilter])
-
-  useEffect(() => {
-    async function fetchDepartments() {
-      try {
-        const res = await fetch('/api/admin/departments', { headers: { 'Content-Type': 'application/json' } })
-        const data = await res.json()
-        if (data.success && data.data?.data) {
-          setDepartments(data.data.data)
-        }
-      } catch (e) {
-        // erro silencioso
-      }
-    }
-    fetchDepartments()
-  }, [])
-
-  // Atualizar permissões ao mudar o cargo
-  useEffect(() => {
-    if (formData.role) {
-      setFormData(prev => ({
-        ...prev,
-        permissions: [...(ROLE_PERMISSIONS[formData.role as keyof typeof ROLE_PERMISSIONS] || [])]
-      }))
-    }
-  }, [formData.role])
+  }, [users, searchTerm, statusFilter])
 
   const fetchUsers = async () => {
     try {
@@ -306,7 +264,6 @@ export default function UsersPage() {
     setFormData({
       name: user.name,
       email: user.email,
-      department: user.department,
       role: user.role,
       status: user.status,
       permissions: user.permissions
@@ -318,21 +275,10 @@ export default function UsersPage() {
     setFormData({
       name: '',
       email: '',
-      department: '',
       role: '',
       status: 'active',
       permissions: []
     })
-  }
-
-  const getDepartmentColor = (departmentId: string) => {
-    const dept = departments.find(d => d.id === departmentId)
-    return dept?.color || 'bg-gray-500'
-  }
-
-  const getDepartmentName = (departmentId: string) => {
-    const dept = departments.find(d => d.id === departmentId)
-    return dept?.name || departmentId
   }
 
   const getRoleName = (roleId: string) => {
@@ -363,7 +309,7 @@ export default function UsersPage() {
             </div>
             <div>
               <h1 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">Gestão de Usuários</h1>
-              <p className="text-gray-500 dark:text-gray-400 mt-1 text-base">Gerencie usuários, permissões e departamentos do sistema</p>
+              <p className="text-gray-500 dark:text-gray-400 mt-1 text-base">Gerencie usuários e permissões do sistema</p>
             </div>
           </div>
           <div className="flex items-center gap-2 mt-4 md:mt-0">
@@ -393,7 +339,6 @@ export default function UsersPage() {
                 <Tabs defaultValue="basic" className="w-full mt-2">
                   <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4">
                     <TabsTrigger value="basic" className="rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white">Informações</TabsTrigger>
-                    <TabsTrigger value="department" className="rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white">Departamento</TabsTrigger>
                   </TabsList>
                   <TabsContent value="basic" className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -465,42 +410,6 @@ export default function UsersPage() {
                       </div>
                     </div>
                   </TabsContent>
-                  <TabsContent value="department" className="space-y-4">
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1 block">Departamento</label>
-                      <Select value={formData.department} onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))}>
-                        <SelectTrigger className="rounded-lg border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500">
-                          <SelectValue placeholder="Selecione o departamento" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-lg">
-                          {departments.map(dept => (
-                            <SelectItem key={dept.id} value={dept.id} className="rounded-lg">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-3 h-3 rounded-full ${dept.color}`} />
-                                {dept.name}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {formData.department && (
-                      <Card>
-                        <CardContent className="pt-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-4 h-4 rounded-full ${getDepartmentColor(formData.department)}`} />
-                            <div>
-                              <p className="font-medium">{getDepartmentName(formData.department)}</p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {departments.find(d => d.id === formData.department)?.description}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </TabsContent>
                 </Tabs>
                 <div className="flex justify-end gap-2 mt-6">
                   <Button variant="ghost" onClick={() => setShowCreateModal(false)} className="rounded-lg px-6 py-2 text-gray-600 dark:text-gray-300">Cancelar</Button>
@@ -522,7 +431,7 @@ export default function UsersPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
-                    placeholder="Nome, email ou departamento..."
+                    placeholder="Nome ou email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -540,23 +449,6 @@ export default function UsersPage() {
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="active">Ativos</SelectItem>
                     <SelectItem value="inactive">Inativos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium mb-2 block">Departamento</label>
-                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -592,7 +484,6 @@ export default function UsersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Usuário</TableHead>
-                    <TableHead>Departamento</TableHead>
                     <TableHead>Cargo</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Criado em</TableHead>
@@ -615,12 +506,6 @@ export default function UsersPage() {
                             <p className="font-medium">{user.name}</p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${getDepartmentColor(user.department)}`} />
-                          <span>{getDepartmentName(user.department)}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -689,7 +574,6 @@ export default function UsersPage() {
             <Tabs defaultValue="basic" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="basic">Informações</TabsTrigger>
-                <TabsTrigger value="department">Departamento</TabsTrigger>
               </TabsList>
               
               <TabsContent value="basic" className="space-y-4 mt-4">
@@ -761,50 +645,13 @@ export default function UsersPage() {
                   </div>
                 </div>
               </TabsContent>
-              
-              <TabsContent value="department" className="space-y-4 mt-4">
-                <div>
-                  <label className="text-sm font-medium">Departamento</label>
-                  <Select value={formData.department} onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o departamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map(dept => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${dept.color}`} />
-                            {dept.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {formData.department && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-4 h-4 rounded-full ${getDepartmentColor(formData.department)}`} />
-                        <div>
-                          <p className="font-medium">{getDepartmentName(formData.department)}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {departments.find(d => d.id === formData.department)?.description}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
             </Tabs>
           </div>
           
           <DrawerFooter>
             <Button
               onClick={handleUpdateUser}
-              disabled={isSubmitting || !formData.name || !formData.email || !formData.department || !formData.role}
+              disabled={isSubmitting || !formData.name || !formData.email || !formData.role}
               className="w-full"
             >
               {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}

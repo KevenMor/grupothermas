@@ -22,16 +22,9 @@ interface User {
   name: string
   email: string
   phone: string
-  department: string
   role: 'admin' | 'manager' | 'agent'
   status: 'active' | 'inactive'
   permissions: string[]
-}
-
-interface Department {
-  id: string
-  name: string
-  description: string
 }
 
 interface UserManagementMenuProps {
@@ -39,19 +32,12 @@ interface UserManagementMenuProps {
   onClose: () => void
 }
 
-const mockDepartments: Department[] = [
-  { id: '1', name: 'Atendimento', description: 'Suporte ao cliente' },
-  { id: '2', name: 'Vendas', description: 'Equipe comercial' },
-  { id: '3', name: 'Gerência', description: 'Gestão e supervisão' }
-]
-
 const mockUsers: User[] = [
   {
     id: '1',
     name: 'João Silva',
     email: 'joao@grupothermas.com.br',
     phone: '+55 11 99999-0001',
-    department: 'Atendimento',
     role: 'agent',
     status: 'active',
     permissions: ['chat', 'view_reports']
@@ -61,7 +47,6 @@ const mockUsers: User[] = [
     name: 'Maria Santos',
     email: 'maria@grupothermas.com.br',
     phone: '+55 11 99999-0002',
-    department: 'Vendas',
     role: 'manager',
     status: 'active',
     permissions: ['chat', 'view_reports', 'manage_team', 'admin_panel']
@@ -78,22 +63,20 @@ const availablePermissions = [
 ]
 
 export function UserManagementMenu({ isOpen, onClose }: UserManagementMenuProps) {
-  const [activeTab, setActiveTab] = useState<'users' | 'departments' | 'add-user'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'add-user'>('users')
   const [users, setUsers] = useState<User[]>(mockUsers)
-  const [departments] = useState<Department[]>(mockDepartments)
   
   // Form states
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
     phone: '',
-    department: '',
     role: 'agent' as const,
     permissions: [] as string[]
   })
 
   const handleAddUser = () => {
-    if (!newUser.name || !newUser.email || !newUser.department) {
+    if (!newUser.name || !newUser.email) {
       alert('Preencha todos os campos obrigatórios')
       return
     }
@@ -109,7 +92,6 @@ export function UserManagementMenu({ isOpen, onClose }: UserManagementMenuProps)
       name: '',
       email: '',
       phone: '',
-      department: '',
       role: 'agent',
       permissions: []
     })
@@ -189,17 +171,6 @@ export function UserManagementMenu({ isOpen, onClose }: UserManagementMenuProps)
             Usuários ({users.length})
           </button>
           <button
-            onClick={() => setActiveTab('departments')}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'departments'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
-            }`}
-          >
-            <Building2 className="w-4 h-4 inline mr-2" />
-            Departamentos ({departments.length})
-          </button>
-          <button
             onClick={() => setActiveTab('add-user')}
             className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'add-user'
@@ -240,9 +211,6 @@ export function UserManagementMenu({ isOpen, onClose }: UserManagementMenuProps)
                             </span>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
-                            <Badge className="bg-blue-100 text-blue-800">
-                              {user.department}
-                            </Badge>
                             <Badge className={getRoleColor(user.role)}>
                               {getRoleText(user.role)}
                             </Badge>
@@ -265,28 +233,6 @@ export function UserManagementMenu({ isOpen, onClose }: UserManagementMenuProps)
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Tab: Departamentos */}
-          {activeTab === 'departments' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {departments.map(dept => (
-                <Card key={dept.id}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{dept.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                      {dept.description}
-                    </p>
-                    <div className="flex items-center gap-1 mt-2 text-sm text-gray-600">
-                      <Users className="w-4 h-4" />
-                      {users.filter(u => u.department === dept.name).length} usuários
                     </div>
                   </CardContent>
                 </Card>
@@ -322,19 +268,6 @@ export function UserManagementMenu({ isOpen, onClose }: UserManagementMenuProps)
                     onChange={(e) => setNewUser(prev => ({ ...prev, phone: e.target.value }))}
                     placeholder="+55 11 99999-0000"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Departamento *</label>
-                  <select
-                    value={newUser.department}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, department: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
-                  >
-                    <option value="">Selecione um departamento</option>
-                    {departments.map(dept => (
-                      <option key={dept.id} value={dept.name}>{dept.name}</option>
-                    ))}
-                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Cargo</label>
@@ -375,7 +308,7 @@ export function UserManagementMenu({ isOpen, onClose }: UserManagementMenuProps)
                 <Button 
                   variant="outline" 
                   onClick={() => setNewUser({
-                    name: '', email: '', phone: '', department: '', role: 'agent', permissions: []
+                    name: '', email: '', phone: '', role: 'agent', permissions: []
                   })}
                 >
                   Limpar

@@ -95,8 +95,6 @@ export interface Lead {
   status: 'novo' | 'em_atendimento' | 'proposta_enviada' | 'fechado' | 'perdido'
   assignedTo?: string
   assignedToName?: string
-  departmentId?: string
-  departmentName?: string
   source: string
   notes?: string
   createdBy: string
@@ -125,28 +123,14 @@ export interface Reaction {
   agentId?: string // ID do agente se foi reagido por um agente
 }
 
-// Novo enum para departamentos
-export interface Department {
-  id: string
-  name: string
-  description?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-  createdBy: string
-}
-
-// Sistema de usuários com departamentos
 export interface SystemUser {
   id: string
   name: string
   email: string
   role: 'admin' | 'agent' | 'supervisor'
-  departmentId?: string
   permissions: {
     canViewAllChats: boolean
     canManageUsers: boolean
-    canManageDepartments: boolean
     canAccessReports: boolean
   }
   isActive: boolean
@@ -169,8 +153,6 @@ export interface Chat {
   aiPaused: boolean
   conversationStatus: ConversationStatus
   assignedAgent?: string
-  assignedDepartment?: string // ID do departamento atribuído
-  departmentName?: string // Nome do departamento para exibição
   pausedAt?: string
   pausedBy?: string
   resolvedAt?: string
@@ -180,8 +162,6 @@ export interface Chat {
     from: 'ai' | 'agent'
     to: 'ai' | 'agent'
     agentId?: string
-    departmentId?: string // ID do departamento de destino
-    departmentName?: string // Nome do departamento de destino
     timestamp: string
     reason?: string
   }[]
@@ -245,12 +225,11 @@ export interface ChatCustomer {
   unreadCount: number
   priority: 'low' | 'medium' | 'high'
   tags: string[]
-  // Campos de controle de IA e departamento
+  // Campos de controle de IA
   aiEnabled: boolean
   aiPaused: boolean
   conversationStatus: ConversationStatus
   assignedAgent?: string
-  assignedDepartment?: string
   pausedAt?: Date | string
   pausedBy?: string
   resolvedAt?: Date | string
@@ -273,8 +252,6 @@ export interface UserProfile {
   name: string
   email: string
   phone: string
-  departmentId: string
-  departmentName: string
   role: string // 'admin' | 'gerente' | 'atendimento' | 'comercial' | 'financeiro'
   permissions: string[] // Array de IDs de permissões
   isActive: boolean
@@ -289,7 +266,7 @@ export interface AuditLog {
   userId: string
   userName: string
   action: string // 'create' | 'update' | 'delete' | 'login' | 'logout' | 'permission_change'
-  module: string // 'user' | 'department' | 'lead' | 'sale' | 'permission'
+  module: string // 'user' | 'lead' | 'sale' | 'permission'
   recordId?: string // ID do registro afetado
   recordType?: string // Tipo do registro
   oldValues?: any
@@ -318,7 +295,6 @@ export const DEFAULT_PERMISSIONS: Omit<Permission, 'id'>[] = [
   // Admin
   { name: 'Visualizar Dashboard', description: 'Acesso ao dashboard principal', module: 'admin', action: 'view', isActive: true },
   { name: 'Gerenciar Usuários', description: 'Criar, editar e excluir usuários', module: 'admin', action: 'create', isActive: true },
-  { name: 'Gerenciar Departamentos', description: 'Criar, editar e excluir departamentos', module: 'admin', action: 'create', isActive: true },
   { name: 'Gerenciar Permissões', description: 'Configurar permissões de usuários', module: 'admin', action: 'create', isActive: true },
   { name: 'Visualizar Auditoria', description: 'Acesso aos logs de auditoria', module: 'admin', action: 'audit', isActive: true },
   
@@ -337,21 +313,6 @@ export const DEFAULT_PERMISSIONS: Omit<Permission, 'id'>[] = [
   // Vendas
   { name: 'Visualizar Vendas', description: 'Ver histórico de vendas', module: 'vendas', action: 'view', isActive: true },
   { name: 'Registrar Vendas', description: 'Cadastrar novas vendas', module: 'vendas', action: 'create', isActive: true },
-  { name: 'Editar Vendas', description: 'Modificar dados de vendas', module: 'vendas', action: 'edit', isActive: true },
-  { name: 'Aprovar Vendas', description: 'Aprovar vendas pendentes', module: 'vendas', action: 'approve', isActive: true },
-  
-  // Relatórios
-  { name: 'Relatórios de Vendas', description: 'Acesso a relatórios de vendas', module: 'relatorios', action: 'view', isActive: true },
-  { name: 'Relatórios de Atendimento', description: 'Acesso a relatórios de chat', module: 'relatorios', action: 'view', isActive: true },
-  { name: 'Relatórios Financeiros', description: 'Acesso a relatórios financeiros', module: 'relatorios', action: 'view', isActive: true },
-]
-
-export const DEFAULT_DEPARTMENTS: Omit<Department, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>[] = [
-  { name: 'Administração', description: 'Departamento administrativo', isActive: true },
-  { name: 'Atendimento', description: 'Atendimento ao cliente', isActive: true },
-  { name: 'Comercial', description: 'Vendas e prospecção', isActive: true },
-  { name: 'Financeiro', description: 'Controle financeiro', isActive: true },
-  { name: 'TI', description: 'Tecnologia da informação', isActive: true },
 ]
 
 // ===== TIPOS DE PERFIL =====

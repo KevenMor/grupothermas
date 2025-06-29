@@ -77,6 +77,7 @@ import toast from 'react-hot-toast'
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { Toaster } from 'sonner'
+import DepartmentsPanel from '../DepartmentsPanel'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -277,6 +278,14 @@ function AppSidebar() {
                   Relatórios
                 </SidebarNavSubItem>
               </SidebarNavSubmenu>
+
+              <SidebarNavItem
+                icon={<Building className="h-4 w-4" />}
+                active={pathname === '/departments'}
+                onClick={() => router.push('/departments' as any)}
+              >
+                Departamentos
+              </SidebarNavItem>
             </SidebarNav>
           </SidebarGroup>
 
@@ -294,20 +303,6 @@ function AppSidebar() {
                   onClick={() => router.push('/admin/users' as any)}
                 >
                   Gerenciar Usuários
-                </SidebarNavSubItem>
-              </SidebarNavSubmenu>
-              {/* Departamentos como submenu expansível */}
-              <SidebarNavSubmenu
-                title="Departamentos"
-                icon={<Building className="h-4 w-4" />}
-                defaultOpen={pathname.startsWith('/admin/departments')}
-              >
-                <SidebarNavSubItem
-                  icon={<Building className="h-4 w-4" />}
-                  active={pathname.startsWith('/admin/departments')}
-                  onClick={() => router.push('/admin/departments' as any)}
-                >
-                  Gerenciar Departamentos
                 </SidebarNavSubItem>
               </SidebarNavSubmenu>
 
@@ -465,6 +460,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   console.debug('[AppLayout] MONTADO')
   const router = useRouter()
   const { user, loading } = useAuth()
+  const [activeMenu, setActiveMenu] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (loading) {
@@ -512,7 +508,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               transition={{ duration: 0.3 }}
               className="h-full"
             >
-              {children}
+              {activeMenu === 'departments' ? <DepartmentsPanel /> : children}
             </motion.div>
           </main>
         </div>

@@ -109,7 +109,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || ''
-    const departmentId = searchParams.get('departmentId') || ''
     const assignedTo = searchParams.get('assignedTo') || ''
     
     // Verificar permissão
@@ -135,10 +134,6 @@ export async function GET(request: NextRequest) {
     
     if (status) {
       query = query.where('status', '==', status)
-    }
-    
-    if (departmentId) {
-      query = query.where('departmentId', '==', departmentId)
     }
     
     if (assignedTo) {
@@ -192,7 +187,7 @@ export async function POST(request: NextRequest) {
       name, cpf, birthDate, maritalStatus, profession,
       cep, address, neighborhood, city, state, number, complement,
       phone, email, paymentMethod, installments, totalValue, paymentDate,
-      source, notes, assignedTo, departmentId
+      source, notes, assignedTo
     } = body
     
     // Validações obrigatórias
@@ -224,19 +219,11 @@ export async function POST(request: NextRequest) {
     
     // Buscar dados do usuário atribuído
     let assignedToName = ''
-    let departmentName = ''
     
     if (assignedTo) {
       const userDoc = await adminDB.collection('users').doc(assignedTo).get()
       if (userDoc.exists) {
         assignedToName = userDoc.data()?.name || ''
-      }
-    }
-    
-    if (departmentId) {
-      const deptDoc = await adminDB.collection('departments').doc(departmentId).get()
-      if (deptDoc.exists) {
-        departmentName = deptDoc.data()?.name || ''
       }
     }
     
@@ -264,8 +251,6 @@ export async function POST(request: NextRequest) {
       status: 'novo',
       assignedTo: assignedTo || '',
       assignedToName,
-      departmentId: departmentId || '',
-      departmentName,
       source: source || 'formulario',
       notes: notes || '',
       createdAt: now,

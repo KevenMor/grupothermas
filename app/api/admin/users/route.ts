@@ -51,12 +51,12 @@ async function logAudit(userId: string, action: string, module: string, recordId
 // 1. Definir um mapa de permissões por role (ex: admin, manager, agent, viewer)
 const ROLE_PERMISSIONS = {
   admin: [
-    'users_manage', 'departments_manage', 'sales_view', 'sales_manage',
+    'users_manage', 'sales_view', 'sales_manage',
     'leads_view', 'leads_manage', 'chats_view', 'chats_manage',
     'reports_view', 'settings_manage'
   ],
   manager: [
-    'users_manage', 'departments_manage', 'sales_view', 'sales_manage',
+    'users_manage', 'sales_view', 'sales_manage',
     'leads_view', 'leads_manage', 'chats_view', 'chats_manage',
     'reports_view'
   ],
@@ -75,7 +75,6 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const search = searchParams.get('search') || ''
-    const departmentId = searchParams.get('departmentId') || ''
     const status = searchParams.get('status') || ''
     
     // Verificar permissão
@@ -132,9 +131,6 @@ export async function GET(request: NextRequest) {
     if (status) {
       filtered = filtered.filter(u => status === 'active' ? u.isActive : !u.isActive)
     }
-    if (departmentId) {
-      filtered = filtered.filter(u => u.departmentId === departmentId)
-    }
 
     // Paginação
     const total = filtered.length
@@ -175,10 +171,10 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json()
-    const { name, email, phone, departmentId, role } = body
+    const { name, email, phone, role } = body
     
     // Validações
-    if (!name || !email || !phone || !departmentId || !role) {
+    if (!name || !email || !phone || !role) {
       return NextResponse.json({ success: false, error: 'Todos os campos obrigatórios devem ser preenchidos' }, { status: 400 })
     }
     
@@ -188,22 +184,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'E-mail já cadastrado' }, { status: 400 })
     }
     
-    // Verificar se departamento existe
-    const deptDoc = await adminDB.collection('departments').doc(departmentId).get()
-    if (!deptDoc.exists) {
-      return NextResponse.json({ success: false, error: 'Departamento não encontrado' }, { status: 400 })
-    }
-    
-    const deptData = deptDoc.data()
-    
     // Criar usuário
     const now = new Date().toISOString()
     const userData: Omit<UserProfile, 'id'> = {
       name,
       email,
       phone,
-      departmentId,
-      departmentName: deptData?.name || '',
       role,
       permissions: (ROLE_PERMISSIONS as any)[role] || [],
       isActive: true,

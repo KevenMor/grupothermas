@@ -59,7 +59,6 @@ async function main() {
   // Permissões administrativas completas
   const allPermissions = [
     'admin_users_view', 'admin_users_create', 'admin_users_edit', 'admin_users_delete',
-    'admin_departments_view', 'admin_departments_create', 'admin_departments_edit', 'admin_departments_delete',
     'admin_permissions_view', 'admin_permissions_edit',
     'admin_audit_view', 'admin_audit_export',
     'admin_config_view', 'admin_config_edit',

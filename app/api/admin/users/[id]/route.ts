@@ -95,7 +95,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Permissão negada' }, { status: 403 })
     }
     const body = await request.json()
-    const { name, email, phone, departmentId, role, permissions, isActive } = body
+    const { name, email, phone, role, permissions, isActive } = body
     // Buscar usuário atual
     const userDoc = await adminDB.collection('users').doc(id).get()
     if (!userDoc.exists) {
@@ -103,7 +103,7 @@ export async function PUT(request: NextRequest) {
     }
     const oldUserData = userDoc.data() as UserProfile
     // Validações
-    if (!name || !email || !phone || !departmentId || !role) {
+    if (!name || !email || !phone || !role) {
       return NextResponse.json({ success: false, error: 'Todos os campos obrigatórios devem ser preenchidos' }, { status: 400 })
     }
     // Verificar se email já existe (exceto para o próprio usuário)
@@ -113,19 +113,11 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'E-mail já cadastrado' }, { status: 400 })
       }
     }
-    // Verificar se departamento existe
-    const deptDoc = await adminDB.collection('departments').doc(departmentId).get()
-    if (!deptDoc.exists) {
-      return NextResponse.json({ success: false, error: 'Departamento não encontrado' }, { status: 400 })
-    }
-    const deptData = deptDoc.data()
     // Atualizar usuário
     const updateData = {
       name,
       email,
       phone,
-      departmentId,
-      departmentName: deptData?.name || '',
       role,
       permissions: permissions || [],
       isActive: isActive !== undefined ? isActive : oldUserData.isActive,
