@@ -712,7 +712,7 @@ const MessageInput = ({
         try {
           const panelConfigResponse = await fetch('/api/admin/config')
           const panelConfig = await panelConfigResponse.json()
-          const audioConverterUrl = panelConfig?.audioConverterUrl || 'http://localhost:4000/convert-audio'
+          const audioConverterUrl = panelConfig?.audioConverterUrl || 'https://audio.grupothermas.com.br/convert-audio'
           console.log('🔄 Enviando para conversão:', audioConverterUrl)
           console.log('Arquivo enviado:', {
             name: `audio_${Date.now()}.webm`,
