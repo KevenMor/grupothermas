@@ -822,262 +822,63 @@ const MessageInput = ({
   }
 
   return (
-    <>
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        {/* Interface de gravação estilo WhatsApp */}
-        {isRecording && (
-          <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-red-600 dark:text-red-400 text-sm font-medium">
-                  {formatRecordingTime(recordingTime)}
-                </span>
-              </div>
-              
-              {/* Visualizador de onda sonora fixo */}
-              <div className="flex-1 flex items-center gap-1 px-4">
-                {[12, 8, 16, 20, 14, 10, 18, 22, 16, 12, 14, 8, 20, 16, 10, 18, 14, 12, 16, 8].map((height, i) => (
-                  <div
-                    key={i}
-                    className="w-1 bg-blue-500 rounded-full"
-                    style={{ height: `${height}px` }}
-                  />
-                ))}
-              </div>
-              
-              <Button 
-                onClick={toggleRecording}
-                size="sm"
-                className="bg-red-500 hover:bg-red-600 text-white rounded-full px-4"
-              >
-                <Square className="w-4 h-4 mr-1" />
-                Enviar
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {!canInteract() && (
-          <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <div className="flex items-center justify-between">
-              <p className="text-yellow-700 dark:text-yellow-300 text-sm">
-                Para interagir com este chat, você precisa assumir o atendimento primeiro. A IA será desativada automaticamente.
-              </p>
-              <Button 
-                onClick={onAssumeChat}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Assumir Atendimento
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => handleAttachment('image')}
-              disabled={!canInteract()}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              title="Enviar imagem"
-            >
-              <Image className="w-5 h-5" />
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => handleAttachment('camera')}
-              disabled={!canInteract()}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              title="Tirar foto"
-            >
-              <Camera className="w-5 h-5" />
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => handleAttachment('document')}
-              disabled={!canInteract()}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              title="Enviar documento"
-            >
-              <FileText className="w-5 h-5" />
-            </Button>
-          </div>
-
-          <div className="flex-1 relative">
-            {/* Preview de resposta */}
-            {replyToMessage && (
-              <div className="mb-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                        Respondendo a {replyToMessage.role === 'user' ? 'cliente' : 'agente'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-blue-800 dark:text-blue-200 truncate">
-                      {replyToMessage.content}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onClearReply}
-                    className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <textarea
-              ref={textareaRef}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onInput={(e) => {
-                const textarea = e.target as HTMLTextAreaElement;
-                textarea.style.height = 'auto';
-                textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
-              }}
-              placeholder={canInteract() ? "Digite uma mensagem... (Enter para enviar, Shift+Enter para nova linha)" : "Assuma o atendimento para enviar mensagens"}
-              disabled={!canInteract()}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (message.trim()) {
-                    handleSend();
-                  }
-                }
-                // Shift+Enter permite nova linha (comportamento padrão)
-              }}
-              rows={1}
-              className="block w-full resize-none pr-10 px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none min-h-[40px] max-h-40 shadow-inner text-base transition-all whitespace-pre-wrap"
-              style={{ lineHeight: '1.5', overflow: 'auto' }}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              disabled={!canInteract()}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            >
-              <Smile className="w-5 h-5" />
-            </Button>
-            
-            {showEmojiPicker && (
-              <div className="absolute bottom-full right-0 mb-2 z-50">
-                <EmojiPicker 
-                  onEmojiSelect={(emoji) => {
-                    setMessage(prev => prev + emoji)
-                    setShowEmojiPicker(false)
-                  }}
-                  onClose={() => setShowEmojiPicker(false)}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleRecording}
-              disabled={!canInteract()}
-              className={`${isRecording ? 'text-red-500 bg-red-50 dark:bg-red-900/20' : 'text-gray-500 dark:text-gray-400'} hover:text-gray-700 dark:hover:text-gray-200`}
-              title={isRecording ? "Parar gravação" : "Gravar áudio"}
-            >
-              <Mic className="w-5 h-5" />
-            </Button>
-
-            <Button
-              onClick={handleSend}
-              disabled={!message.trim() || !canInteract()}
-              size="icon"
-              className="bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 dark:disabled:bg-gray-600"
-            >
-              <Send className="w-5 h-5" />
-            </Button>
-          </div>
+    <div className="audio-recording-bar flex items-center bg-[#f6f8fb] border-2 border-[#5873d6] rounded-[25px] px-4 h-12 w-full max-w-[900px] mx-auto my-4 box-border relative">
+      <input
+        className="chat-input flex-1 border-none bg-transparent text-[#6c6c6c] text-base outline-none"
+        type="text"
+        placeholder="Digite sua mensagem..."
+        value={message}
+        onChange={e => setMessage(e.target.value)}
+        disabled={isRecording || !canInteract()}
+      />
+      {isRecording ? (
+        <div className="audio-controls flex items-center ml-auto gap-2">
+          <button
+            className="audio-cancel border-none bg-[#fff0f0] text-[#e94545] border border-[#e94545] rounded-full w-8 h-8 flex items-center justify-center text-xl hover:bg-[#ffd6d6] transition"
+            title="Cancelar"
+            onClick={() => {
+              setIsRecording(false);
+              setRecordingTime(0);
+              if (mediaRecorder) mediaRecorder.stop();
+            }}
+          >
+            ✖
+          </button>
+          <span className="audio-timer font-semibold text-[1.05rem] text-[#222] bg-[#e6ecfa] px-2 rounded-[12px]">
+            {formatRecordingTime(recordingTime)}
+          </span>
+          <button
+            className="audio-send border-none bg-[#eaffea] text-[#21b366] border border-[#21b366] rounded-full w-8 h-8 flex items-center justify-center text-xl hover:bg-[#d1f8de] transition"
+            title="Enviar"
+            onClick={() => {
+              if (mediaRecorder) mediaRecorder.stop();
+              setIsRecording(false);
+            }}
+          >
+            ✔
+          </button>
         </div>
-      </div>
-
-      {/* Modal de Preview de Mídia */}
-      {showMediaPreview && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Confirmar envio</h3>
-            
-            {previewType === 'image' && previewUrl && (
-              <div className="mb-4">
-                <img 
-                  src={previewUrl} 
-                  alt="Preview" 
-                  className="max-w-full max-h-64 mx-auto rounded-lg"
-                />
-              </div>
-            )}
-            
-            {previewType === 'document' && previewFile && (
-              <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-8 h-8 text-gray-500" />
-                  <div>
-                    <p className="font-medium">{previewFile.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {(previewFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Deseja enviar este {previewType === 'image' ? 'imagem' : 'documento'}?
-            </p>
-            
-            <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={cancelSendMedia}>
-                Cancelar
-              </Button>
-              <Button onClick={confirmSendMedia} className="bg-blue-600 hover:bg-blue-700 text-white">
-                Enviar
-              </Button>
-            </div>
-          </div>
+      ) : (
+        <div className="audio-controls flex items-center ml-auto gap-2">
+          <button
+            className="text-gray-500 hover:text-gray-700 text-xl"
+            title="Gravar áudio"
+            onClick={toggleRecording}
+            disabled={!canInteract()}
+          >
+            <Mic className="w-5 h-5" />
+          </button>
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-8 h-8 flex items-center justify-center text-xl"
+            title="Enviar mensagem"
+            onClick={handleSend}
+            disabled={!message.trim() || !canInteract()}
+          >
+            <Send className="w-5 h-5" />
+          </button>
         </div>
       )}
-
-      {/* Modal de Confirmação de Mensagem Longa */}
-      {showLongMessageConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Mensagem longa</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Sua mensagem tem mais de 100 caracteres. Deseja enviar mesmo assim?
-            </p>
-            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded mb-6 max-h-32 overflow-y-auto">
-              <p className="text-sm">{pendingMessage}</p>
-            </div>
-            <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={cancelSendLongMessage}>
-                Cancelar
-              </Button>
-              <Button onClick={confirmSendLongMessage} className="bg-blue-600 hover:bg-blue-700 text-white">
-                Enviar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   )
 }
 
