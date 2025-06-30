@@ -697,28 +697,28 @@ const MessageInput = ({
   // 3. Ajustar sendAudioDirectly para lidar com diferentes formatos
   const sendAudioDirectly = async (audioBlob: Blob, mimeType: string) => {
     if (!chat) return
-    
     try {
       console.log('🎵 Iniciando envio de áudio:', {
         blobSize: audioBlob.size,
         mimeType,
         phone: chat.customerPhone
       })
-      
       if (!isFFmpegSupported()) {
         // Fallback: upload do webm/opus para microserviço externo
         console.warn('FFmpeg não suportado, usando microserviço externo para conversão backend.')
         const formData = new FormData()
         formData.append('file', audioBlob, `audio_${Date.now()}.webm`)
         let backendMp3Url = ''
-        
         try {
           const panelConfigResponse = await fetch('/api/admin/config')
           const panelConfig = await panelConfigResponse.json()
           const audioConverterUrl = panelConfig?.audioConverterUrl || 'http://localhost:4000/convert-audio'
-          
           console.log('🔄 Enviando para conversão:', audioConverterUrl)
-          
+          console.log('Arquivo enviado:', {
+            name: `audio_${Date.now()}.webm`,
+            size: audioBlob.size,
+            type: mimeType
+          })
           const uploadResponse = await fetch(audioConverterUrl, { method: 'POST', body: formData })
           if (uploadResponse.ok) {
             const uploadResult = await uploadResponse.json()
@@ -727,15 +727,25 @@ const MessageInput = ({
             await sendLog('info', 'media', 'Upload/conversão via microserviço concluídos', { url: backendMp3Url })
           } else {
             const errorText = await uploadResponse.text()
-            console.error('❌ Falha no upload/conversão via microserviço:', errorText)
-            await sendLog('error', 'media', 'Falha no upload/conversão via microserviço', { error: errorText })
-            alert('Erro ao converter áudio no microserviço: ' + errorText)
+            console.error('❌ Falha no upload/conversão via microserviço:', {
+              status: uploadResponse.status,
+              statusText: uploadResponse.statusText,
+              url: audioConverterUrl,
+              errorText
+            })
+            await sendLog('error', 'media', 'Falha no upload/conversão via microserviço', {
+              status: uploadResponse.status,
+              statusText: uploadResponse.statusText,
+              url: audioConverterUrl,
+              errorText
+            })
+            alert(`Erro ao converter áudio no microserviço:\nStatus: ${uploadResponse.status} ${uploadResponse.statusText}\nURL: ${audioConverterUrl}\nErro: ${errorText}`)
             return
           }
         } catch (error) {
           console.error('❌ Erro no upload/conversão via microserviço:', error)
           await sendLog('error', 'media', 'Erro no upload/conversão via microserviço', { error: error instanceof Error ? error.message : error })
-          alert('Erro ao converter áudio no microserviço. Tente novamente.')
+          alert('Erro ao converter áudio no microserviço. Detalhes no console.')
           return
         }
         
@@ -795,7 +805,7 @@ const MessageInput = ({
       
     } catch (error) {
       console.error('❌ Erro geral no envio de áudio:', error)
-      alert('Erro ao enviar áudio. Tente novamente.')
+      alert('Erro ao enviar áudio. Detalhes no console.')
     }
   }
 
