@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const id = getIdFromRequest(request)
+    console.log('[API][PUT /admin/users/[id]] ID recebido:', id)
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
       return NextResponse.json({ success: false, error: 'Token não fornecido' }, { status: 401 })
@@ -104,10 +105,22 @@ export async function PUT(request: NextRequest) {
     const { name, email, phone, role, permissions, isActive } = body
     // Buscar usuário atual
     const userDoc = await adminDB.collection('users').doc(id).get()
+    console.log('[API][PUT /admin/users/[id]] Firestore userDoc.exists:', userDoc.exists)
     if (!userDoc.exists) {
-      return NextResponse.json({ success: false, error: 'Usuário não encontrado' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'Usuário não encontrado no Firestore' }, { status: 404 })
     }
     const oldUserData = userDoc.data() as UserProfile
+    // Buscar no Auth
+    let authUser = null
+    try {
+      authUser = await adminAuth.getUser(id)
+      console.log('[API][PUT /admin/users/[id]] Firebase Auth user encontrado:', !!authUser)
+    } catch (e) {
+      console.log('[API][PUT /admin/users/[id]] Firebase Auth user NÃO encontrado:', e instanceof Error ? e.message : e)
+    }
+    if (!authUser) {
+      return NextResponse.json({ success: false, error: 'Usuário não encontrado no Firebase Auth' }, { status: 404 })
+    }
     // Validações
     if (!name || !email || !phone || !role) {
       return NextResponse.json({ success: false, error: 'Todos os campos obrigatórios devem ser preenchidos' }, { status: 400 })
@@ -151,6 +164,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const id = getIdFromRequest(request)
+    console.log('[API][DELETE /admin/users/[id]] ID recebido:', id)
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
       return NextResponse.json({ success: false, error: 'Token não fornecido' }, { status: 401 })
@@ -170,10 +184,22 @@ export async function DELETE(request: NextRequest) {
     }
     // Buscar usuário
     const userDoc = await adminDB.collection('users').doc(id).get()
+    console.log('[API][DELETE /admin/users/[id]] Firestore userDoc.exists:', userDoc.exists)
     if (!userDoc.exists) {
-      return NextResponse.json({ success: false, error: 'Usuário não encontrado' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'Usuário não encontrado no Firestore' }, { status: 404 })
     }
     const oldUserData = userDoc.data() as UserProfile
+    // Buscar no Auth
+    let authUser = null
+    try {
+      authUser = await adminAuth.getUser(id)
+      console.log('[API][DELETE /admin/users/[id]] Firebase Auth user encontrado:', !!authUser)
+    } catch (e) {
+      console.log('[API][DELETE /admin/users/[id]] Firebase Auth user NÃO encontrado:', e instanceof Error ? e.message : e)
+    }
+    if (!authUser) {
+      return NextResponse.json({ success: false, error: 'Usuário não encontrado no Firebase Auth' }, { status: 404 })
+    }
     // Soft delete - apenas desativar
     await adminDB.collection('users').doc(id).update({
       isActive: false,
