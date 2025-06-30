@@ -67,6 +67,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Deduplicação robusta: se fromMe: true, buscar por zapiMessageId antes de criar nova mensagem
+    if (body.fromMe && body.messageId) {
+      const conversationRef = adminDB.collection('conversations').doc(body.phone)
+      const zapiMsgQuery = await conversationRef.collection('messages')
+        .where('zapiMessageId', '==', body.messageId)
+        .limit(1)
+        .get()
+      if (!zapiMsgQuery.empty) {
+        const msgDoc = zapiMsgQuery.docs[0]
+        const updateData: any = {}
+        if (body.senderName && msgDoc.data()?.agentName !== body.senderName) {
+          updateData.agentName = body.senderName
+          updateData.userName = body.senderName
+        }
+        if (msgDoc.data()?.status !== 'sent') {
+          updateData.status = 'sent'
+        }
+        if (Object.keys(updateData).length > 0) {
+          await msgDoc.ref.update(updateData)
+          console.log('Mensagem do atendente atualizada por zapiMessageId:', body.messageId)
+        } else {
+          console.log('Mensagem do atendente já processada por zapiMessageId:', body.messageId)
+        }
+        return NextResponse.json({ ignored: true, reason: 'already_processed_by_zapiMessageId' })
+      }
+    }
+
     console.log('Processando mensagem de entrada...')
     console.log('Estrutura completa do body:', JSON.stringify(body, null, 2))
     
