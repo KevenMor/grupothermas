@@ -42,10 +42,28 @@ export async function POST(request: NextRequest) {
     if (body.messageId) {
       const conversationRef = adminDB.collection('conversations').doc(body.phone)
       const existingMessage = await conversationRef.collection('messages').doc(body.messageId).get()
-      
       if (existingMessage.exists) {
-        console.log('Mensagem já processada:', body.messageId)
-        return NextResponse.json({ ignored: true, reason: 'already_processed' })
+        // Se a mensagem é do atendente (fromMe: true), atualizar nome/status se necessário
+        if (body.fromMe) {
+          const updateData: any = {}
+          if (body.senderName && existingMessage.data()?.agentName !== body.senderName) {
+            updateData.agentName = body.senderName
+            updateData.userName = body.senderName
+          }
+          if (existingMessage.data()?.status !== 'sent') {
+            updateData.status = 'sent'
+          }
+          if (Object.keys(updateData).length > 0) {
+            await existingMessage.ref.update(updateData)
+            console.log('Mensagem do atendente atualizada (nome/status):', body.messageId)
+          } else {
+            console.log('Mensagem já processada:', body.messageId)
+          }
+          return NextResponse.json({ ignored: true, reason: 'already_processed_and_updated' })
+        } else {
+          console.log('Mensagem já processada:', body.messageId)
+          return NextResponse.json({ ignored: true, reason: 'already_processed' })
+        }
       }
     }
 
