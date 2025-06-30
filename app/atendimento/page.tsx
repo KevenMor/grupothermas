@@ -86,54 +86,47 @@ export default function AtendimentoPage() {
       if (!response.ok) throw new Error('Failed to fetch messages')
       const data: ChatMessage[] = await response.json()
       
+      const currentUserName = user?.name || '';
+      
       // === FORÇADO: Deduplicação robusta de mensagens ===
       // Em fetchMessages, fetchNewMessages e handleNewMessage, deduplicar por messageId, autor, tipo, timestamp (10s) e conteúdo normalizado
       // Se já existe mensagem real igual, não adicionar temp-* nem real duplicada
       // Se chega real, remover temp-* igual
       // Manter mensagens com erro (failed) no array
-      setMessages(prev => {
-        const failed = prev.filter(m => m.status === 'failed')
-
-        // Combinar dados do servidor com mensagens falhadas sem duplicar IDs
-        const merged = [...data, ...failed]
-        // Deduplicação aprimorada: remove temp-* se houver real com mesmo conteúdo, autor, tipo e timestamp próximo
-        const result: ChatMessage[] = []
-        for (const msg of merged) {
-          // Normalizar conteúdo para comparação
-          const normContent = normalizeContent(msg.content || '')
-          // Se já existe uma real igual (conteúdo, autor, tipo e timestamp ~10s), não adiciona temp-*
-          if (msg.id.startsWith('temp-')) {
-            const hasReal = merged.some(m2 =>
-              !m2.id.startsWith('temp-') &&
-              normalizeContent(m2.content || '') === normContent &&
-              ((m2.userName || m2.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
-              (m2.mediaType || 'text') === (msg.mediaType || 'text') &&
-              Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
-            )
-            if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
-          } else {
-            // Remove qualquer temp-* duplicada
-            const idx = result.findIndex(m =>
-              m.id.startsWith('temp-') &&
-              normalizeContent(m.content || '') === normContent &&
-              ((m.userName || m.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
-              (m.mediaType || 'text') === (msg.mediaType || 'text') &&
-              Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
-            )
-            if (idx !== -1) result.splice(idx, 1)
-            if (!result.find(m => m.id === msg.id)) result.push(msg)
-          }
+      const failed = data.filter(m => m.status === 'failed')
+      const merged = [...data, ...failed]
+      const result: ChatMessage[] = []
+      for (const msg of merged) {
+        const normContent = normalizeContent(msg.content || '')
+        // Se a mensagem veio do backend e é do atendente logado, force role: 'agent'
+        if ((msg.agentName === currentUserName || msg.userName === currentUserName) && msg.role !== 'agent') {
+          msg.role = 'agent'
         }
-        const sorted = result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-        messagesCache.current.set(chatId, sorted)
-        return sorted
-      })
-      
-      // Atualizar timestamp da última mensagem
-      if (data.length > 0) {
-        const lastMsg = data[data.length - 1]
-        setLastMessageTimestamp(lastMsg.timestamp)
+        if (msg.id.startsWith('temp-')) {
+          const hasReal = merged.some(m2 =>
+            !m2.id.startsWith('temp-') &&
+            normalizeContent(m2.content || '') === normContent &&
+            ((m2.userName || m2.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
+            (m2.mediaType || 'text') === (msg.mediaType || 'text') &&
+            Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+          )
+          if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
+        } else {
+          // Remove qualquer temp-* duplicada
+          const idx = result.findIndex(m =>
+            m.id.startsWith('temp-') &&
+            normalizeContent(m.content || '') === normContent &&
+            ((m.userName || m.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
+            (m.mediaType || 'text') === (msg.mediaType || 'text') &&
+            Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
+          )
+          if (idx !== -1) result.splice(idx, 1)
+          if (!result.find(m => m.id === msg.id)) result.push(msg)
+        }
       }
+      const sorted = result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      messagesCache.current.set(chatId, sorted)
+      return sorted
     } catch (error) {
       console.error(error)
       toast.error('Erro ao carregar mensagens.')
