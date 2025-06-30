@@ -16,6 +16,22 @@ export async function POST(request: NextRequest) {
     console.log('=== WEBHOOK Z-API RECEBIDO ===')
     console.log('Body completo:', JSON.stringify(body, null, 2))
 
+    // 1. Ignorar eventos de status e callbacks que não são mensagens reais
+    const type = body.type || ''
+    if (
+      type === 'MessageStatusCallback' ||
+      type === 'DeliveryCallback' ||
+      type === 'ReadCallback' ||
+      type === 'MessageStatus' ||
+      type === 'StatusCallback' ||
+      type === 'PresenceCallback' ||
+      type === 'AckCallback' ||
+      type === 'ReactionCallback'
+    ) {
+      console.log('Evento de status/callback ignorado:', type)
+      return NextResponse.json({ ignored: true, reason: 'status_callback' })
+    }
+
     // Validações básicas
     if (!body.phone || !body.messageId) {
       console.error('Dados obrigatórios ausentes:', { phone: body.phone, messageId: body.messageId })
