@@ -278,14 +278,6 @@ function AppSidebar() {
                   Relatórios
                 </SidebarNavSubItem>
               </SidebarNavSubmenu>
-
-              <SidebarNavItem
-                icon={<Building className="h-4 w-4" />}
-                active={pathname === '/departments'}
-                onClick={() => router.push('/departments' as any)}
-              >
-                Departamentos
-              </SidebarNavItem>
             </SidebarNav>
           </SidebarGroup>
 
