@@ -132,8 +132,12 @@ export async function PUT(request: NextRequest) {
       message: 'Usuário atualizado com sucesso'
     })
   } catch (error) {
-    console.error('Erro ao atualizar usuário:', error)
-    return NextResponse.json({ success: false, error: 'Erro interno do servidor' }, { status: 500 })
+    console.error('[API][PUT /admin/users/[id]] Erro ao atualizar usuário:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      body: await request.text()
+    })
+    return NextResponse.json({ success: false, error: 'Erro interno do servidor', details: error instanceof Error ? error.message : error }, { status: 500 })
   }
 }
 
@@ -173,7 +177,11 @@ export async function DELETE(request: NextRequest) {
       message: 'Usuário desativado com sucesso'
     })
   } catch (error) {
-    console.error('Erro ao deletar usuário:', error)
-    return NextResponse.json({ success: false, error: 'Erro interno do servidor' }, { status: 500 })
+    console.error('[API][DELETE /admin/users/[id]] Erro ao deletar usuário:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      body: await request.text()
+    })
+    return NextResponse.json({ success: false, error: 'Erro interno do servidor', details: error instanceof Error ? error.message : error }, { status: 500 })
   }
 } 
