@@ -379,113 +379,25 @@ export function ChatMessageItemComponent({ message, avatarUrl, contactName, show
               )}
               {/* Áudio - Layout customizado estilo WhatsApp */}
               {message.mediaType === 'audio' && message.mediaUrl && (
-                <div className={`flex items-center gap-3 p-3 rounded-2xl min-w-[200px] ${
-                  isFromAgent 
-                    ? 'bg-blue-600/20' 
-                    : 'bg-gray-200 dark:bg-gray-600'
-                }`}>
-                  {/* Botão Play/Pause com loading */}
-                  <Button
-                    onClick={toggleAudioPlayback}
-                    size="icon"
-                    disabled={!audioLoaded}
-                    className={`w-10 h-10 rounded-full ${
-                      isFromAgent 
-                        ? 'bg-white/20 hover:bg-white/30 text-white' 
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    }`}
-                  >
-                    {!audioLoaded ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : isPlaying ? (
-                      <Pause className="w-5 h-5" />
-                    ) : (
-                      <Play className="w-5 h-5 ml-0.5" />
-                    )}
-                  </Button>
-                  
-                  {/* Progress bar e controles */}
-                  <div className="flex-1 flex flex-col gap-1">
-                    {/* Visualizador de onda sonora animado */}
-                    <div className="flex items-center gap-1 h-4">
-                      {[12, 8, 16, 14, 10, 18, 16, 12, 14, 8, 16, 12].map((height, i) => (
-                        <div
-                          key={i}
-                          className={`w-1 rounded-full transition-all duration-200 ${
-                            isFromAgent ? 'bg-white/40' : 'bg-gray-400'
-                          } ${isPlaying ? 'animate-pulse' : ''}`}
-                          style={{ 
-                            height: `${height}px`,
-                            opacity: isPlaying ? 0.8 : 0.5
-                          }}
-                        />
-                      ))}
-                    </div>
-                    
-                    {/* Progress bar */}
-                    <div className="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-1">
-                      <div 
-                        className={`h-1 rounded-full transition-all duration-100 ${
-                          isFromAgent ? 'bg-white/60' : 'bg-blue-500'
-                        }`}
-                        style={{ 
-                          width: audioDuration > 0 ? `${(audioCurrentTime / audioDuration) * 100}%` : '0%' 
-                        }}
-                      />
-                    </div>
+                <div className="audio-msg-box flex items-center gap-3 p-3 rounded-2xl min-w-[200px] bg-white shadow border border-gray-200 relative">
+                  {/* Menu de opções (três pontinhos SVG) */}
+                  <div className="audio-menu absolute top-2 right-2 cursor-pointer opacity-80 hover:opacity-100">
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                      <circle cx="11" cy="5.5" r="1.5" fill="#888"/>
+                      <circle cx="11" cy="11" r="1.5" fill="#888"/>
+                      <circle cx="11" cy="16.5" r="1.5" fill="#888"/>
+                    </svg>
                   </div>
-                  
-                  {/* Duração */}
-                  <span className={`text-xs font-mono min-w-[40px] text-right ${
-                    isFromAgent ? 'text-white/80' : 'text-gray-600 dark:text-gray-300'
-                  }`}>
-                    {isPlaying ? formatAudioTime(audioCurrentTime) : formatAudioTime(audioDuration || 0)}
-                  </span>
-                  
-                  {/* Elemento audio oculto com fallback */}
-                  <audio 
-                    ref={audioRef}
-                    onLoadedMetadata={() => {
-                      setAudioLoaded(true)
-                      if (audioRef.current && audioRef.current.duration) {
-                        setAudioDuration(audioRef.current.duration)
-                      }
-                    }}
-                    onDurationChange={() => {
-                      if (audioRef.current && audioRef.current.duration) {
-                        setAudioDuration(audioRef.current.duration)
-                      }
-                    }}
-                    onTimeUpdate={() => {
-                      if (audioRef.current) {
-                        setAudioCurrentTime(audioRef.current.currentTime)
-                      }
-                    }}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onEnded={() => {
-                      setIsPlaying(false)
-                      setAudioCurrentTime(0)
-                    }}
-                    onError={(e) => {
-                      console.error('Erro ao carregar áudio:', e)
-                      setAudioLoaded(false)
-                      // Tentar fallback para MP3 se for OGG
-                      if (message.mediaUrl && (message.mediaUrl.includes('.ogg') || message.mediaUrl.includes('.opus'))) {
-                        const mp3Url = message.mediaUrl.replace(/\.(ogg|opus)$/i, '.mp3')
-                        if (audioRef.current) {
-                          audioRef.current.src = mp3Url
-                          audioRef.current.load()
-                        }
-                      }
-                    }}
-                  >
-                    {/* Fallback sources */}
-                    <source src={getFullUrl(message.mediaUrl)} type="audio/ogg" />
-                    <source src={getFullUrl(message.mediaUrl.replace(/\.(ogg|opus)$/i, '.mp3'))} type="audio/mpeg" />
-                    <source src={getFullUrl(message.mediaUrl)} type="audio/mpeg" />
-                    Seu navegador não suporta reprodução de áudio.
+                  {/* Player de áudio */}
+                  <audio controls className="w-full max-w-xs">
+                    <source src={getFullUrl(message.mediaUrl)} type="audio/mp3" />
+                    Seu navegador não suporta áudio.
                   </audio>
+                  {/* Data/hora do envio */}
+                  <div className="flex flex-col items-end ml-2">
+                    <span className="text-xs text-gray-400">{formatDateString(message.timestamp)}</span>
+                    <span className="text-xs text-gray-400">{formatTime(message.timestamp)}</span>
+                  </div>
                 </div>
               )}
             </div>
