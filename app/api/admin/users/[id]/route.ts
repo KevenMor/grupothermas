@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDB } from '@/lib/firebaseAdmin'
+import { adminDB, adminAuth } from '@/lib/firebaseAdmin'
 import { UserProfile } from '@/lib/models'
 
 // Função para verificar permissões do usuário
@@ -63,7 +63,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Token não fornecido' }, { status: 401 })
     }
     const token = authHeader.replace('Bearer ', '')
-    const decodedToken = await adminDB.auth().verifyIdToken(token)
+    if (!adminAuth) {
+      return NextResponse.json({ success: false, error: 'adminAuth não inicializado' }, { status: 500 })
+    }
+    const decodedToken = await adminAuth.verifyIdToken(token)
     const hasPermission = await checkUserPermission(decodedToken.uid, 'admin_users_view')
     if (!hasPermission) {
       return NextResponse.json({ success: false, error: 'Permissão negada' }, { status: 403 })
@@ -89,7 +92,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Token não fornecido' }, { status: 401 })
     }
     const token = authHeader.replace('Bearer ', '')
-    const decodedToken = await adminDB.auth().verifyIdToken(token)
+    if (!adminAuth) {
+      return NextResponse.json({ success: false, error: 'adminAuth não inicializado' }, { status: 500 })
+    }
+    const decodedToken = await adminAuth.verifyIdToken(token)
     const hasPermission = await checkUserPermission(decodedToken.uid, 'admin_users_edit')
     if (!hasPermission) {
       return NextResponse.json({ success: false, error: 'Permissão negada' }, { status: 403 })
@@ -150,7 +156,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Token não fornecido' }, { status: 401 })
     }
     const token = authHeader.replace('Bearer ', '')
-    const decodedToken = await adminDB.auth().verifyIdToken(token)
+    if (!adminAuth) {
+      return NextResponse.json({ success: false, error: 'adminAuth não inicializado' }, { status: 500 })
+    }
+    const decodedToken = await adminAuth.verifyIdToken(token)
     const hasPermission = await checkUserPermission(decodedToken.uid, 'admin_users_delete')
     if (!hasPermission) {
       return NextResponse.json({ success: false, error: 'Permissão negada' }, { status: 403 })
