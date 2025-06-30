@@ -42,11 +42,12 @@ import {
 } from '@/lib/audioConverter'
 import useSWR from 'swr'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useAuth } from '@/components/auth/AuthProvider'
 
 interface ChatWindowProps {
   chat: Chat | null
   messages: ChatMessage[]
-  onSendMessage: (data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } }) => void
+  onSendMessage: (data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' }, agentName?: string, userName?: string }) => void
   isLoading: boolean
   onToggleAI?: (chatId: string, enabled: boolean) => void
   onAssignAgent?: (chatId: string) => void
@@ -313,12 +314,13 @@ const MessageInput = ({
   onClearReply
 }: { 
   chat: Chat | null
-  onSendMessage: (data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } }) => void
+  onSendMessage: (data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' }, agentName?: string, userName?: string }) => void
   onAssumeChat?: () => void
   replyToMessage?: ChatMessage | null
   textareaRef: React.RefObject<HTMLTextAreaElement>
   onClearReply?: () => void
 }) => {
+  const { user } = useAuth();
   const [message, setMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -336,23 +338,20 @@ const MessageInput = ({
 
   const handleSend = () => {
     if (!chat || !message.trim()) return;
-    
-    // Preservar quebras de linha na mensagem
     const messageWithLineBreaks = message.trim();
-    
-    // Incluir dados de resposta se houver
-    const messageData: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } } = {
-      content: messageWithLineBreaks
-    }
-    
+    const agentName = user?.displayName || user?.name || user?.email || 'Atendente';
+    const messageData: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' }, agentName?: string, userName?: string } = {
+      content: messageWithLineBreaks,
+      agentName,
+      userName: agentName
+    };
     if (replyToMessage) {
       messageData.replyTo = {
         id: replyToMessage.id,
         text: replyToMessage.content,
         author: replyToMessage.role === 'user' ? 'customer' : 'agent'
-      }
+      };
     }
-    
     onSendMessage(messageData);
     setMessage('');
   }
@@ -1201,7 +1200,7 @@ export function ChatWindow(props: ChatWindowProps) {
     }, 100)
   }, [])
 
-  const handleSend = useCallback((data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' } }) => {
+  const handleSend = useCallback((data: { content: string, replyTo?: { id: string, text: string, author: 'agent' | 'customer' }, agentName?: string, userName?: string }) => {
     if (!props.chat) return
     props.onSendMessage(data)
     // Limpar mensagem de resposta após enviar
