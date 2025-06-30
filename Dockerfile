@@ -37,6 +37,9 @@ RUN npm run build
 FROM node:18 AS runner
 WORKDIR /app
 
+# Instala ffmpeg para conversão de áudio
+RUN apt-get update && apt-get install -y ffmpeg
+
 # Define variável de ambiente para produção
 ENV NODE_ENV=production
 
