@@ -35,6 +35,8 @@ export default function AtendimentoPage() {
   const [isPolling, setIsPolling] = useState(false)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const messagesCache = useRef<Map<string, ChatMessage[]>>(new Map())
+  const [hasMoreMessages, setHasMoreMessages] = useState(false)
+  const [oldestMessageTimestamp, setOldestMessageTimestamp] = useState<string | null>(null)
 
   // Função utilitária para normalizar conteúdo removendo prefixos como '*Nome:*'
   function normalizeContent(content: string) {
@@ -71,34 +73,31 @@ export default function AtendimentoPage() {
     }
   }
 
-  // Função otimizada para buscar mensagens
-  const fetchMessages = async (chatId: string, forceRefresh = false) => {
-    // Usar cache se disponível e não for refresh forçado
+  // Função otimizada para buscar mensagens com paginação
+  const fetchMessages = async (chatId: string, forceRefresh = false, startAfter?: string) => {
     if (!forceRefresh && messagesCache.current.has(chatId)) {
       const cachedMessages = messagesCache.current.get(chatId)!
       setMessages(cachedMessages)
       return
     }
-
     setIsLoadingMessages(messages.length === 0)
     try {
-      const response = await fetch(`/api/atendimento/messages?chatId=${chatId}`)
+      let url = `/api/atendimento/messages?chatId=${chatId}&limit=10`
+      if (startAfter) url += `&startAfter=${encodeURIComponent(startAfter)}`
+      const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch messages')
-      const data: ChatMessage[] = await response.json()
-      
+      const data = await response.json()
+      const msgs: ChatMessage[] = data.messages || []
+      setHasMoreMessages(data.hasMore)
+      if (msgs.length > 0) {
+        setOldestMessageTimestamp(msgs[0].timestamp)
+      }
       const currentUserName = user?.name || '';
-      
-      // === FORÇADO: Deduplicação robusta de mensagens ===
-      // Em fetchMessages, fetchNewMessages e handleNewMessage, deduplicar por messageId, autor, tipo, timestamp (10s) e conteúdo normalizado
-      // Se já existe mensagem real igual, não adicionar temp-* nem real duplicada
-      // Se chega real, remover temp-* igual
-      // Manter mensagens com erro (failed) no array
-      const failed = data.filter(m => m.status === 'failed')
-      const merged = [...data, ...failed]
+      const failed = msgs.filter(m => m.status === 'failed')
+      const merged = [...msgs, ...failed]
       const result: ChatMessage[] = []
       for (const msg of merged) {
         const normContent = normalizeContent(msg.content || '')
-        // Se a mensagem veio do backend e é do atendente logado, force role: 'agent'
         if ((msg.agentName === currentUserName || msg.userName === currentUserName) && msg.role !== 'agent') {
           msg.role = 'agent'
         }
@@ -112,7 +111,6 @@ export default function AtendimentoPage() {
           )
           if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
         } else {
-          // Remove qualquer temp-* duplicada
           const idx = result.findIndex(m =>
             m.id.startsWith('temp-') &&
             normalizeContent(m.content || '') === normContent &&
@@ -126,6 +124,7 @@ export default function AtendimentoPage() {
       }
       const sorted = result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       messagesCache.current.set(chatId, sorted)
+      setMessages(sorted)
       return sorted
     } catch (error) {
       console.error(error)
@@ -135,53 +134,26 @@ export default function AtendimentoPage() {
     }
   }
 
-  // Função para buscar apenas mensagens novas (otimizada)
-  const fetchNewMessages = async (chatId: string) => {
-    if (!lastMessageTimestamp) return
-    
+  // Função para buscar mais mensagens antigas
+  const fetchMoreMessages = async () => {
+    if (!selectedChat || !oldestMessageTimestamp) return
+    setIsLoadingMessages(true)
     try {
-      const response = await fetch(`/api/atendimento/messages?chatId=${chatId}&since=${lastMessageTimestamp}`)
-      if (!response.ok) return
-      
-      const newMessages: ChatMessage[] = await response.json()
-      if (newMessages.length > 0) {
-        setMessages(prev => {
-          const combined = [...prev, ...newMessages]
-          const result: ChatMessage[] = []
-          for (const msg of combined) {
-            const normContent = normalizeContent(msg.content || '')
-            if (msg.id.startsWith('temp-')) {
-              const hasReal = combined.some(m2 =>
-                !m2.id.startsWith('temp-') &&
-                normalizeContent(m2.content || '') === normContent &&
-                ((m2.userName || m2.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
-                (m2.mediaType || 'text') === (msg.mediaType || 'text') &&
-                Math.abs(new Date(m2.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
-              )
-              if (!hasReal && !result.find(m => m.id === msg.id)) result.push(msg)
-            } else {
-              const idx = result.findIndex(m =>
-                m.id.startsWith('temp-') &&
-                normalizeContent(m.content || '') === normContent &&
-                ((m.userName || m.agentName || '').toLowerCase() === (msg.userName || msg.agentName || '').toLowerCase()) &&
-                (m.mediaType || 'text') === (msg.mediaType || 'text') &&
-                Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 10000
-              )
-              if (idx !== -1) result.splice(idx, 1)
-              if (!result.find(m => m.id === msg.id)) result.push(msg)
-            }
-          }
-          const sorted = result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-          messagesCache.current.set(chatId, sorted)
-          return sorted
-        })
-        
-        // Atualizar timestamp
-        const lastMsg = newMessages[newMessages.length - 1]
-        setLastMessageTimestamp(lastMsg.timestamp)
+      let url = `/api/atendimento/messages?chatId=${selectedChat.id}&limit=10&startAfter=${encodeURIComponent(oldestMessageTimestamp)}`
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Failed to fetch more messages')
+      const data = await response.json()
+      const msgs: ChatMessage[] = data.messages || []
+      setHasMoreMessages(data.hasMore)
+      if (msgs.length > 0) {
+        setOldestMessageTimestamp(msgs[0].timestamp)
+        setMessages(prev => [...msgs, ...prev])
       }
     } catch (error) {
-      console.error('Erro ao buscar mensagens novas:', error)
+      console.error(error)
+      toast.error('Erro ao carregar mais mensagens.')
+    } finally {
+      setIsLoadingMessages(false)
     }
   }
 
@@ -192,7 +164,7 @@ export default function AtendimentoPage() {
     pollingIntervalRef.current = setInterval(() => {
       fetchChats(false)
       if (selectedChat && !hasSelectedChatManually) {
-        fetchNewMessages(selectedChat.id)
+        fetchMoreMessages()
       }
     }, 5000) // Polling a cada 5s (ajustável)
   }
@@ -670,6 +642,8 @@ export default function AtendimentoPage() {
                 onMessageInfo={handleMessageInfo}
                 onReaction={handleReaction}
                 onCustomerUpdate={handleCustomerUpdate}
+                hasMoreMessages={hasMoreMessages}
+                onFetchMoreMessages={fetchMoreMessages}
               />
             ) : (
               <div className="flex flex-1 items-center justify-center text-gray-500">

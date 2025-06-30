@@ -12,14 +12,17 @@ function sanitizeContent(content: string) {
   return content.replace(/^\*[^*]+:\*\s*\n?/, '').trim();
 }
 
-// GET /api/atendimento/messages?chatId=[id]
+// GET /api/atendimento/messages?chatId=[id]&limit=10&startAfter=2024-06-01T12:00:00.000Z
 // Returns all messages for a given chat
 export async function GET(request: NextRequest) {
   let chatId: string | null = null;
   try {
     const { searchParams } = new URL(request.url)
     chatId = searchParams.get('chatId')
-    const since = searchParams.get('since') // Novo parâmetro para otimização
+    const since = searchParams.get('since')
+    const limitParam = searchParams.get('limit')
+    const startAfter = searchParams.get('startAfter')
+    const limit = limitParam ? parseInt(limitParam) : 10
 
     if (!chatId) {
       return NextResponse.json({ error: 'chatId is required' }, { status: 400 })
@@ -27,22 +30,11 @@ export async function GET(request: NextRequest) {
 
     console.log(`Buscando mensagens para chat ${chatId}${since ? ` desde ${since}` : ''}`)
 
-    const messagesRef = adminDB.collection('conversations').doc(chatId).collection('messages')
-    
-    let query = messagesRef.orderBy('timestamp', 'asc')
-    
-    // Se há timestamp 'since', filtrar apenas mensagens mais recentes
-    if (since) {
-      try {
-        const sinceDate = new Date(since)
-        if (!isNaN(sinceDate.getTime())) {
-          query = query.where('timestamp', '>', sinceDate.toISOString())
-          console.log(`Filtrando mensagens após: ${sinceDate.toISOString()}`)
-        }
-      } catch (error) {
-        console.warn('Timestamp "since" inválido, ignorando filtro:', since)
-      }
+    let query = adminDB.collection('conversations').doc(chatId).collection('messages').orderBy('timestamp', 'desc')
+    if (startAfter) {
+      query = query.startAfter(startAfter)
     }
+    query = query.limit(limit)
 
     const messagesSnapshot = await query.get()
     const messages: any[] = []
@@ -90,9 +82,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`Total de mensagens válidas carregadas: ${messages.length}`)
-    return NextResponse.json(messages)
-    
+    // Verificar se há mais mensagens
+    let hasMore = false
+    if (messages.length === limit) {
+      // Tenta buscar mais uma mensagem para saber se há mais
+      let extraQuery = adminDB.collection('conversations').doc(chatId).collection('messages').orderBy('timestamp', 'desc')
+      if (messages.length > 0) {
+        extraQuery = extraQuery.startAfter(messages[messages.length - 1].timestamp)
+      }
+      extraQuery = extraQuery.limit(1)
+      const extraSnapshot = await extraQuery.get()
+      hasMore = !extraSnapshot.empty
+    }
+
+    // Retornar mensagens em ordem do mais antigo para o mais recente
+    messages.reverse()
+    return NextResponse.json({ messages, hasMore })
   } catch (error) {
     console.error(`Erro ao buscar mensagens para o chat ${chatId || 'desconhecido'}:`, error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

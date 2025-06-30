@@ -59,6 +59,8 @@ interface ChatWindowProps {
   onMessageInfo?: (message: ChatMessage) => void
   onReaction?: (messageId: string, emoji: string) => void
   onCustomerUpdate?: (data: Partial<Chat>) => void
+  hasMoreMessages?: boolean
+  onFetchMoreMessages?: () => void
 }
 
 const WelcomeScreen = () => (
@@ -1343,6 +1345,13 @@ ${info.agentName ? `Agente: ${info.agentName}` : ''}`)
           </div>
         ) : (
           <div className="space-y-2">
+            {props.hasMoreMessages && props.onFetchMoreMessages && (
+              <div className="flex justify-center my-2">
+                <Button size="sm" variant="outline" onClick={props.onFetchMoreMessages}>
+                  Ver mais mensagens
+                </Button>
+              </div>
+            )}
             {groupedMessages.map((group, groupIndex) => (
               <div key={groupIndex}>
                 {/* Separador de data */}
