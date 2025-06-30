@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Readable } from 'stream'
 import { spawn } from 'child_process'
+import { writeFile, mkdir } from 'fs/promises'
+import path from 'path'
 
 export const runtime = 'nodejs'
 
@@ -52,14 +54,15 @@ export async function POST(request: NextRequest) {
     })
     if (code === 0) {
       const mp3Buffer = Buffer.concat(chunks)
-      return new NextResponse(mp3Buffer, {
-        status: 200,
-        headers: {
-          'Content-Type': 'audio/mpeg',
-          'Content-Disposition': 'attachment; filename="audio.mp3"',
-          'Access-Control-Allow-Origin': '*',
-        }
-      })
+      // Salvar arquivo convertido em public/uploads/audio/
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'audio')
+      await mkdir(uploadDir, { recursive: true })
+      const fileName = `audio_${Date.now()}.mp3`
+      const filePath = path.join(uploadDir, fileName)
+      await writeFile(filePath, mp3Buffer)
+      // Retornar URL relativa para o frontend
+      const url = `/uploads/audio/${fileName}`
+      return NextResponse.json({ url }, { status: 200 })
     } else {
       return NextResponse.json({ error: 'Erro na conversão', details: ffmpegError }, { status: 500 })
     }
