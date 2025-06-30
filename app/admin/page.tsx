@@ -104,7 +104,7 @@ const defaultConfig: AdminConfig = {
   // Valores padrão para delay humanizado
   responseDelayMin: 2,
   responseDelayMax: 5,
-  audioConverterUrl: ''
+  audioConverterUrl: 'https://audio.grupothermas.com.br/convert-audio'
 }
 
 export default function AdminPage() {
@@ -940,11 +940,14 @@ export default function AdminPage() {
                         <Label>URL do Microserviço de Áudio</Label>
                         <Input
                           type="text"
-                          value={config.audioConverterUrl || ''}
+                          value={config.audioConverterUrl || 'https://audio.grupothermas.com.br/convert-audio'}
                           onChange={e => setConfig(prev => ({ ...prev, audioConverterUrl: e.target.value }))}
-                          placeholder="http://localhost:3000/convert-audio"
+                          placeholder="https://audio.grupothermas.com.br/convert-audio"
                         />
-                        <p className="text-xs text-gray-500">Exemplo: http://localhost:3000/convert-audio</p>
+                        {config.audioConverterUrl?.includes('localhost') && (
+                          <p className="text-xs text-red-600 font-bold">AVISO: 'localhost' não funciona em produção. Use uma URL pública do microserviço!</p>
+                        )}
+                        <p className="text-xs text-gray-500">Exemplo: https://audio.grupothermas.com.br/convert-audio</p>
                       </div>
                     </CardContent>
                   </Card>
