@@ -822,17 +822,55 @@ const MessageInput = ({
   }
 
   return (
-    <div className="audio-recording-bar flex items-center bg-[#f6f8fb] border-2 border-[#5873d6] rounded-[25px] px-4 h-12 w-full max-w-[900px] mx-auto my-4 box-border relative">
-      <input
-        className="chat-input flex-1 border-none bg-transparent text-[#6c6c6c] text-base outline-none"
-        type="text"
+    <div className="audio-recording-bar flex items-center bg-[#f6f8fb] border-2 border-[#5873d6] rounded-[25px] px-4 h-auto min-h-12 w-full max-w-[900px] mx-auto my-4 box-border relative">
+      {/* Campo de mensagem com textarea para múltiplas linhas */}
+      <textarea
+        className="chat-input flex-1 border-none bg-transparent text-[#6c6c6c] text-base outline-none resize-none py-3 px-0 min-h-[48px] max-h-40"
         placeholder="Digite sua mensagem..."
         value={message}
         onChange={e => setMessage(e.target.value)}
         disabled={isRecording || !canInteract()}
+        rows={1}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && !e.shiftKey && !isRecording && canInteract()) {
+            e.preventDefault();
+            if (message.trim()) handleSend();
+          }
+        }}
+        style={{ lineHeight: '1.5', overflow: 'auto' }}
       />
+      {/* Botões de anexo, imagem, documento */}
+      {!isRecording && (
+        <div className="flex items-center gap-1 ml-2">
+          <button
+            className="text-gray-500 hover:text-blue-600 text-xl"
+            title="Enviar imagem"
+            onClick={() => handleAttachment('image')}
+            disabled={!canInteract()}
+          >
+            <Image className="w-5 h-5" />
+          </button>
+          <button
+            className="text-gray-500 hover:text-blue-600 text-xl"
+            title="Tirar foto"
+            onClick={() => handleAttachment('camera')}
+            disabled={!canInteract()}
+          >
+            <Camera className="w-5 h-5" />
+          </button>
+          <button
+            className="text-gray-500 hover:text-blue-600 text-xl"
+            title="Enviar documento"
+            onClick={() => handleAttachment('document')}
+            disabled={!canInteract()}
+          >
+            <FileText className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+      {/* Botões de áudio e enviar */}
       {isRecording ? (
-        <div className="audio-controls flex items-center ml-auto gap-2">
+        <div className="audio-controls flex items-center ml-2 gap-2">
           <button
             className="audio-cancel border-none bg-[#fff0f0] text-[#e94545] border border-[#e94545] rounded-full w-8 h-8 flex items-center justify-center text-xl hover:bg-[#ffd6d6] transition"
             title="Cancelar"
@@ -859,7 +897,7 @@ const MessageInput = ({
           </button>
         </div>
       ) : (
-        <div className="audio-controls flex items-center ml-auto gap-2">
+        <div className="audio-controls flex items-center ml-2 gap-2">
           <button
             className="text-gray-500 hover:text-gray-700 text-xl"
             title="Gravar áudio"
